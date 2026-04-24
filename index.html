@@ -387,6 +387,66 @@
             }
         }
 
+        // ============== Token 估算 / 提取 / 格式化 ==============
+        // 文本估算：CJK/假名/全宽符号按 ~1.5 char=1 token，其他（拉丁/数字/符号）按 ~4 char=1 token
+        function estimateTextTokens(text) {
+            if (!text) return 0;
+            const s = String(text);
+            let cjk = 0, other = 0;
+            for (const ch of s) {
+                const cp = ch.codePointAt(0);
+                if ((cp >= 0x3040 && cp <= 0x30ff) ||  // 日文假名
+                    (cp >= 0x3400 && cp <= 0x4dbf) ||  // CJK 扩展 A
+                    (cp >= 0x4e00 && cp <= 0x9fff) ||  // CJK 基本
+                    (cp >= 0xac00 && cp <= 0xd7af) ||  // 韩文音节
+                    (cp >= 0xff00 && cp <= 0xffef)) {  // 全宽 ASCII & 半宽假名
+                    cjk++;
+                } else {
+                    other++;
+                }
+            }
+            return Math.ceil(cjk / 1.5 + other / 4);
+        }
+        // 图片估算：按 base64 字节大小粗分档；与官方 vision 计费规则近似（低细节 ~85，高细节按 tile 累加）
+        function estimateImageTokens(dataUrl) {
+            if (typeof dataUrl !== 'string' || !dataUrl) return 0;
+            const base64Part = dataUrl.includes(',') ? dataUrl.split(',')[1] : dataUrl;
+            const bytes = Math.ceil((base64Part.length * 3) / 4);
+            if (bytes < 120 * 1024) return 350;   // 小图 / 低细节
+            if (bytes < 400 * 1024) return 700;   // 中等
+            return 1100;                           // 大图 / 高细节
+        }
+        // 一次 API 调用的发送（input）token 估算：固定开销 + 指令 + 用户 prompt + 图片
+        function estimateSendTokens(promptText, images) {
+            // 60 ≈ Responses API 的 system instructions + image_generation tool schema 固定开销
+            // 30 ≈ 我们自己在 generateImageFromRequest 里拼的 "Use the image_generation tool..." 指令
+            let t = 60 + 30;
+            t += estimateTextTokens(promptText || '');
+            if (Array.isArray(images)) {
+                for (const img of images) t += estimateImageTokens(img);
+            }
+            return t;
+        }
+        // 从 API 返回 JSON 里提取 usage；兼容 Responses API 新字段 + Chat Completions 旧字段
+        function extractUsageTokens(data) {
+            if (!data || typeof data !== 'object') return null;
+            const u = data.usage || (data.response && data.response.usage) || null;
+            if (!u) return null;
+            const pick = (...xs) => {
+                for (const x of xs) if (typeof x === 'number' && isFinite(x)) return x;
+                return null;
+            };
+            const input = pick(u.input_tokens, u.prompt_tokens);
+            const output = pick(u.output_tokens, u.completion_tokens);
+            let total = pick(u.total_tokens);
+            if (total == null && input != null && output != null) total = input + output;
+            return { input, output, total };
+        }
+        function formatTokenCount(n) {
+            if (n == null || !isFinite(n)) return '—';
+            return Math.max(0, Math.round(n)).toLocaleString('en-US');
+        }
+
         // ============== 全局状态 ==============
         let db = null;
         let currentConversationId = null;           // 当前正在看的会话 id
@@ -558,6 +618,11 @@
                 resultImgSrc: data.resultImgSrc || null,
                 fileName: data.fileName || null,
                 errorMessage: data.errorMessage || null,
+                // Token 统计：发送/接收各有"数值 + 是否估算"两字段
+                sendTokens: (typeof data.sendTokens === 'number') ? data.sendTokens : null,
+                sendTokensEstimated: data.sendTokensEstimated !== false, // 默认视为估算
+                recvTokens: (typeof data.recvTokens === 'number') ? data.recvTokens : null,
+                recvTokensEstimated: data.recvTokensEstimated !== false,
             };
             await putMsg(m);
             await _touchConversation(data.conversationId, m);
@@ -886,6 +951,7 @@
                     ${imgHtml}
                     ${textBubble}
                     ${editBtn}
+                    ${userTokenMetaHTML(msg)}
                 </div>
             `;
             chatContainer.appendChild(div);
@@ -925,6 +991,7 @@
                     <div class="loading-text text-sm text-gray-500 mt-3 italic max-w-md"></div>
                     <div class="retry-hint text-[11px] text-amber-600 mt-1 max-w-md ${retryHintHidden}">${escapeHTML(retryHintText)}</div>
                     <div class="text-[11px] text-gray-400 mt-1 max-w-md">${escapeHTML(footLine)}</div>
+                    ${botTokenMetaHTML(null, true, '生成中…')}
                     <button type="button" class="cancel-task-btn mt-2 text-xs text-red-500 hover:text-red-700 flex items-center gap-1" onclick="cancelTaskById(${taskId})">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                         取消生成
@@ -971,7 +1038,8 @@
             const div = document.createElement('div');
             div.className = 'flex gap-4 items-start w-full';
             div.dataset.messageId = String(msg.id);
-            div.innerHTML = botShellHTML(buildBotErrorHTML(msg.errorMessage, msg.id));
+            const meta = { recvTokens: msg.recvTokens, recvTokensEstimated: msg.recvTokensEstimated };
+            div.innerHTML = botShellHTML(buildBotErrorHTML(msg.errorMessage, msg.id, meta));
             chatContainer.appendChild(div);
             _messageDomRegistry.set(msg.id, div);
         }
@@ -980,7 +1048,8 @@
             const div = document.createElement('div');
             div.className = 'flex gap-4 items-start w-full';
             div.dataset.messageId = String(msg.id);
-            div.innerHTML = botShellHTML(buildBotTimeoutHTML(msg.errorMessage, msg.id));
+            const meta = { recvTokens: msg.recvTokens, recvTokensEstimated: msg.recvTokensEstimated };
+            div.innerHTML = botShellHTML(buildBotTimeoutHTML(msg.errorMessage, msg.id, meta));
             chatContainer.appendChild(div);
             _messageDomRegistry.set(msg.id, div);
         }
@@ -989,7 +1058,8 @@
             const div = document.createElement('div');
             div.className = 'flex gap-4 items-start w-full';
             div.dataset.messageId = String(msg.id);
-            div.innerHTML = botShellHTML(buildBotCancelledHTML(msg.errorMessage, msg.id));
+            const meta = { recvTokens: msg.recvTokens, recvTokensEstimated: msg.recvTokensEstimated };
+            div.innerHTML = botShellHTML(buildBotCancelledHTML(msg.errorMessage, msg.id, meta));
             chatContainer.appendChild(div);
             _messageDomRegistry.set(msg.id, div);
         }
@@ -997,6 +1067,7 @@
         function buildBotResultHTML(msg) {
             const imgSrc = msg.resultImgSrc;
             const msgId = msg.id;
+            const tokenMeta = botTokenMetaHTML(msg.recvTokens, msg.recvTokensEstimated !== false, null);
             return `
                 <div class="inline-block max-w-full">
                     <img src="${imgSrc}" class="rounded-xl max-w-full max-h-[400px] object-contain shadow-sm border border-gray-200 block">
@@ -1026,6 +1097,7 @@
                             标记图片
                         </button>
                     </div>
+                    ${tokenMeta}
                 </div>
             `;
         }
@@ -1042,46 +1114,62 @@
             `;
         }
 
-        function buildBotErrorHTML(errorText, msgId) {
+        // tokensMeta: { recvTokens, recvTokensEstimated } | undefined → 无则渲染 "—"
+        function buildBotErrorHTML(errorText, msgId, tokensMeta) {
             const retry = buildRetryButtonHTML(msgId, '重试', 'bg-white border border-red-300 text-red-600 hover:bg-red-100');
+            const meta = tokensMeta || {};
+            const tokenMeta = botTokenMetaHTML(meta.recvTokens, meta.recvTokensEstimated !== false, null);
             return `
-                <div class="bg-red-50 text-red-600 px-4 py-3 rounded-lg border border-red-200 text-sm">
-                    <div class="font-bold flex items-center gap-1 mb-1">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                        生成失败
+                <div>
+                    <div class="bg-red-50 text-red-600 px-4 py-3 rounded-lg border border-red-200 text-sm">
+                        <div class="font-bold flex items-center gap-1 mb-1">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            生成失败
+                        </div>
+                        <div class="break-words whitespace-pre-wrap">${escapeHTML(errorText || '')}</div>
+                        ${retry ? `<div class="mt-2">${retry}</div>` : ''}
                     </div>
-                    <div class="break-words whitespace-pre-wrap">${escapeHTML(errorText || '')}</div>
-                    ${retry ? `<div class="mt-2">${retry}</div>` : ''}
+                    ${tokenMeta}
                 </div>
             `;
         }
 
-        // 超时是独立状态：橙色、明确提示 10 分钟、带重试
-        function buildBotTimeoutHTML(errorText, msgId) {
+        // 超时是独立状态：橙色、明确提示、带重试
+        function buildBotTimeoutHTML(errorText, msgId, tokensMeta) {
             const text = errorText || '生成超过 10 分钟，已自动停止。可以点击重试。';
             const retry = buildRetryButtonHTML(msgId, '重试', 'bg-white border border-orange-300 text-orange-600 hover:bg-orange-100');
+            const meta = tokensMeta || {};
+            const tokenMeta = botTokenMetaHTML(meta.recvTokens, meta.recvTokensEstimated !== false, null);
             return `
-                <div class="bg-orange-50 text-orange-700 px-4 py-3 rounded-lg border border-orange-200 text-sm">
-                    <div class="font-bold flex items-center gap-1 mb-1">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                        生成超时
+                <div>
+                    <div class="bg-orange-50 text-orange-700 px-4 py-3 rounded-lg border border-orange-200 text-sm">
+                        <div class="font-bold flex items-center gap-1 mb-1">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            生成超时
+                        </div>
+                        <div class="break-words whitespace-pre-wrap">${escapeHTML(text)}</div>
+                        ${retry ? `<div class="mt-2">${retry}</div>` : ''}
                     </div>
-                    <div class="break-words whitespace-pre-wrap">${escapeHTML(text)}</div>
-                    ${retry ? `<div class="mt-2">${retry}</div>` : ''}
+                    ${tokenMeta}
                 </div>
             `;
         }
 
-        function buildBotCancelledHTML(extra, msgId) {
+        function buildBotCancelledHTML(extra, msgId, tokensMeta) {
             const hint = extra ? ` <span class="text-gray-400 text-xs">(${escapeHTML(extra)})</span>` : '';
             const retry = buildRetryButtonHTML(msgId, '重新生成', 'bg-white border border-indigo-200 text-indigo-600 hover:bg-indigo-50');
+            const meta = tokensMeta || {};
+            const tokenMeta = botTokenMetaHTML(meta.recvTokens, meta.recvTokensEstimated !== false, null);
             return `
-                <div class="bg-gray-100 text-gray-500 px-4 py-2 rounded-lg border border-gray-200 text-sm inline-flex items-center gap-2 flex-wrap">
-                    <span class="inline-flex items-center gap-1">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                        已取消生成${hint}
-                    </span>
-                    ${retry}
+                <div>
+                    <div class="bg-gray-100 text-gray-500 px-4 py-2 rounded-lg border border-gray-200 text-sm inline-flex items-center gap-2 flex-wrap">
+                        <span class="inline-flex items-center gap-1">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            已取消生成${hint}
+                        </span>
+                        ${retry}
+                    </div>
+                    ${tokenMeta}
                 </div>
             `;
         }
@@ -1106,6 +1194,67 @@
         }
         function replaceLoadingWithCancelled(msgId, extra) {
             replaceLoadingDom(msgId, buildBotCancelledHTML(extra, msgId));
+        }
+
+        // ============== Token meta 渲染 ==============
+        // 用户消息底部：↑ 发送 tokens（右对齐）
+        function userTokenMetaHTML(msg) {
+            let txt;
+            if (msg && typeof msg.sendTokens === 'number') {
+                txt = `${msg.sendTokensEstimated ? '≈ ' : ''}${formatTokenCount(msg.sendTokens)} tokens`;
+            } else {
+                txt = '—';
+            }
+            return `
+                <div class="mt-1 text-[11px] text-gray-400 flex items-center gap-1 self-end user-token-meta">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>
+                    <span class="user-token-meta-text">发送 ${escapeHTML(txt)}</span>
+                </div>
+            `;
+        }
+        // bot 消息底部：↓ 接收 tokens（左对齐）；statusOverride 有值时显示占位文本（如"生成中…"）
+        function botTokenMetaHTML(recvTokens, recvEstimated, statusOverride) {
+            let txt;
+            if (statusOverride) {
+                txt = statusOverride;
+            } else if (typeof recvTokens === 'number') {
+                txt = `${recvEstimated ? '≈ ' : ''}${formatTokenCount(recvTokens)} tokens`;
+            } else {
+                txt = '—';
+            }
+            return `
+                <div class="mt-2 text-[11px] text-gray-400 flex items-center gap-1 bot-token-meta">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>
+                    <span class="bot-token-meta-text">接收 ${escapeHTML(txt)}</span>
+                </div>
+            `;
+        }
+
+        // 运行时更新 user message DOM 里的 send tokens（API 返回真实 input_tokens 时调用）
+        function updateUserMessageTokenMetaDOM(conversationId, realInputTokens) {
+            if (currentConversationId !== Number(conversationId)) return;
+            // 找到聊天流里最新一条 user message（同 conversation）；它的 sendTokens 要刷成真实值
+            const nodes = chatContainer.querySelectorAll('[data-message-id].flex-row-reverse');
+            const last = nodes[nodes.length - 1];
+            if (!last) return;
+            const span = last.querySelector('.user-token-meta-text');
+            if (!span) return;
+            span.textContent = `发送 ${formatTokenCount(realInputTokens)} tokens`;
+        }
+
+        // 同时写回 DB：最近一条 user message 的 sendTokens 改成真实值
+        async function updateRecentUserMessageSendTokens(conversationId, realInputTokens) {
+            const msgs = await listMsgsByConv(conversationId);
+            // 倒序找 role='user' 最近那条
+            for (let i = msgs.length - 1; i >= 0; i--) {
+                if (msgs[i].role === 'user') {
+                    await updateMsg(msgs[i].id, {
+                        sendTokens: realInputTokens,
+                        sendTokensEstimated: false,
+                    });
+                    return;
+                }
+            }
         }
 
         // ============== API 请求（纯数据层，带 signal） ==============
@@ -1205,7 +1354,8 @@
                 }
             }
             if (!imgB64) throw new Error('API 返回成功，但未能提取到图片数据。');
-            return imgB64;
+            // 同时返回 usage 给上层做 token 统计（可能为 null，上层会 fallback 估算）
+            return { imgB64, usage: extractUsageTokens(data) };
         }
 
         // ============== 任务管理 ==============
@@ -1272,6 +1422,9 @@
         async function runGeneration({ conversationId, promptText, inputImages, params }) {
             conversationId = Number(conversationId);
 
+            // 发送估算（user-side 已经估过一次；bot 自己也存一份便于 reroll/retry 独立）
+            const estSend = estimateSendTokens(promptText, inputImages);
+
             // 创建 bot message (pending)
             const botMsg = await createMessage({
                 conversationId,
@@ -1280,6 +1433,10 @@
                 text: promptText,
                 images: inputImages,
                 params,
+                sendTokens: estSend,
+                sendTokensEstimated: true,
+                recvTokens: null,
+                recvTokensEstimated: true,
             });
 
             // 快照当前设置，一次生成整个生命周期都用这份
@@ -1324,16 +1481,42 @@
                 await renderConversationList();
 
                 try {
-                    const imgB64 = await generateImageFromRequest({
+                    const genResult = await generateImageFromRequest({
                         promptText, inputImages,
                         size: params.size, quality: params.quality, format: params.format,
                     }, controller.signal);
+                    const imgB64 = genResult.imgB64;
+                    const usage = genResult.usage; // 可能为 null
 
                     const imgSrc = `data:image/png;base64,${imgB64}`;
                     const ts = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14);
                     const fileName = `image-${ts}.png`;
 
-                    await updateMsg(botMsg.id, { status: 'done', resultImgSrc: imgSrc, fileName });
+                    // 计算 token 统计：usage 有值就用真实，否则 fallback 估算
+                    let sendTokens = estSend;
+                    let sendEst = true;
+                    let recvTokens = null;
+                    let recvEst = true;
+                    if (usage) {
+                        if (usage.input != null) { sendTokens = usage.input; sendEst = false; }
+                        if (usage.output != null) { recvTokens = usage.output; recvEst = false; }
+                        else if (usage.total != null && usage.input != null) {
+                            recvTokens = Math.max(usage.total - usage.input, 0); recvEst = false;
+                        }
+                    }
+                    // 图片生成接口经常只有 input_tokens 没 output_tokens；拿不到就用一个小估算
+                    if (recvTokens == null) { recvTokens = 60; recvEst = true; }
+
+                    await updateMsg(botMsg.id, {
+                        status: 'done', resultImgSrc: imgSrc, fileName,
+                        sendTokens, sendTokensEstimated: sendEst,
+                        recvTokens, recvTokensEstimated: recvEst,
+                    });
+
+                    // 如果 API 回了真实 input_tokens，反向更新本轮对应的 user message（就是同 conv 最近一条 user）
+                    if (usage && usage.input != null) {
+                        try { await updateRecentUserMessageSendTokens(conversationId, usage.input); } catch {}
+                    }
 
                     try {
                         const compressedCtx = await compressDataURL(imgSrc);
@@ -1348,8 +1531,15 @@
                     await saveToGallery(imgSrc, promptText || '生成');
 
                     if (currentConversationId === conversationId) {
-                        replaceLoadingWithResult({ id: botMsg.id, resultImgSrc: imgSrc, fileName });
+                        replaceLoadingWithResult({
+                            id: botMsg.id, resultImgSrc: imgSrc, fileName,
+                            recvTokens, recvTokensEstimated: recvEst,
+                        });
                         await renderContextBarFromConv();
+                        // 反向刷新 user message 的 meta（如果 API 回了真实 input_tokens）
+                        if (usage && usage.input != null) {
+                            updateUserMessageTokenMetaDOM(conversationId, usage.input);
+                        }
                     }
 
                     if (timeoutHandle) clearTimeout(timeoutHandle);
@@ -1366,7 +1556,7 @@
                     // 手动取消：直接终止，不重试
                     if (err && err.name === 'AbortError' && userCancelled && !timedOut) {
                         completeTask(taskId);
-                        await updateMsg(botMsg.id, { status: 'cancelled', errorMessage: null });
+                        await updateMsg(botMsg.id, { status: 'cancelled', errorMessage: null, recvTokens: null, recvTokensEstimated: true });
                         if (currentConversationId === conversationId) {
                             replaceLoadingWithCancelled(botMsg.id, null);
                         }
@@ -1389,7 +1579,7 @@
                         const cancelledDuringWait = !!(prev && prev.userCancelled);
                         completeTask(taskId);
                         if (cancelledDuringWait) {
-                            await updateMsg(botMsg.id, { status: 'cancelled', errorMessage: null });
+                            await updateMsg(botMsg.id, { status: 'cancelled', errorMessage: null, recvTokens: null, recvTokensEstimated: true });
                             if (currentConversationId === conversationId) {
                                 replaceLoadingWithCancelled(botMsg.id, null);
                             }
@@ -1399,20 +1589,20 @@
                         continue;
                     }
 
-                    // 最终失败：分类写回 message 状态
+                    // 最终失败：分类写回 message 状态（接收 tokens 置 null → 显示 "—"；发送保持估算）
                     completeTask(taskId);
                     if (timedOut) {
                         const tmsg = timeoutMin > 0
                             ? `生成超过 ${timeoutMin} 分钟，已自动停止。可以点击重试。`
                             : '生成已自动停止。可以点击重试。';
-                        await updateMsg(botMsg.id, { status: 'timeout', errorMessage: tmsg });
+                        await updateMsg(botMsg.id, { status: 'timeout', errorMessage: tmsg, recvTokens: null, recvTokensEstimated: true });
                         if (currentConversationId === conversationId) {
                             replaceLoadingWithTimeout(botMsg.id, tmsg);
                         }
                     } else {
                         const emsg = (err && err.message) ? err.message : String(err);
                         const extra = attempt > 0 ? `\n（已自动重试 ${attempt} 次仍失败）` : '';
-                        await updateMsg(botMsg.id, { status: 'error', errorMessage: emsg + extra });
+                        await updateMsg(botMsg.id, { status: 'error', errorMessage: emsg + extra, recvTokens: null, recvTokensEstimated: true });
                         if (currentConversationId === conversationId) {
                             replaceLoadingWithError(botMsg.id, emsg + extra);
                         }
@@ -1470,7 +1660,8 @@
             const format = document.getElementById('param-format').value;
             const params = { size, quality, format };
 
-            // 创建 user message + 渲染
+            // 创建 user message + 渲染；sendTokens 先存估算，后面 API 返回真实 input_tokens 会覆盖
+            const estSendForUser = estimateSendTokens(promptText, imagesToSend);
             const userMsg = await createMessage({
                 conversationId: convId,
                 role: 'user',
@@ -1478,6 +1669,8 @@
                 text: promptText,
                 images: imagesToSend,
                 params,
+                sendTokens: estSendForUser,
+                sendTokensEstimated: true,
             });
             if (currentConversationId === convId) renderUserMessage(userMsg);
 
@@ -1562,6 +1755,7 @@
                 editor.replaceWith(buildEditUserButton(messageId));
                 // 新建一条 user message（新 prompt + 原图/参数）
                 const convId = orig.conversationId;
+                const estSendEdit = estimateSendTokens(newText, orig.images || []);
                 const newUserMsg = await createMessage({
                     conversationId: convId,
                     role: 'user',
@@ -1569,6 +1763,8 @@
                     text: newText,
                     images: orig.images || [],
                     params: orig.params,
+                    sendTokens: estSendEdit,
+                    sendTokensEstimated: true,
                 });
                 if (currentConversationId === convId) renderUserMessage(newUserMsg);
                 runGeneration({
