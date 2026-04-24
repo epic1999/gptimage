@@ -7,15 +7,14 @@
     <!-- 引入 Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* 隐藏原生的滚动条以追求极致 UI，但保留滚动功能 */
+        /* 隐藏原生滚动条，保留滚动功能 */
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 10px; }
         ::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
         
-        .loader-dots div {
-            animation-timing-function: cubic-bezier(0, 1, 1, 0);
-        }
+        /* 加载动画 */
+        .loader-dots div { animation-timing-function: cubic-bezier(0, 1, 1, 0); }
         .loader-dots div:nth-child(1) { left: 8px; animation: loader-dots1 0.6s infinite; }
         .loader-dots div:nth-child(2) { left: 8px; animation: loader-dots2 0.6s infinite; }
         .loader-dots div:nth-child(3) { left: 32px; animation: loader-dots2 0.6s infinite; }
@@ -24,7 +23,7 @@
         @keyframes loader-dots3 { 0% { transform: scale(1); } 100% { transform: scale(0); } }
         @keyframes loader-dots2 { 0% { transform: translate(0, 0); } 100% { transform: translate(24px, 0); } }
         
-        /* 确保输入框不会被移动端键盘遮挡 */
+        /* 适配移动端安全区域 */
         #input-container { padding-bottom: env(safe-area-inset-bottom); }
     </style>
 </head>
@@ -55,7 +54,7 @@
     <!-- 主对话区 -->
     <main class="flex-1 flex flex-col h-full relative min-w-0">
         <!-- 顶部导航 -->
-        <header class="h-14 flex items-center justify-between px-4 border-b border-gray-200 shrink-0">
+        <header class="h-14 flex items-center justify-between px-4 border-b border-gray-200 shrink-0 bg-white z-10">
             <button onclick="toggleSidebar()" class="p-2 text-gray-600 hover:text-gray-900 md:hidden rounded-md hover:bg-gray-100">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
             </button>
@@ -70,13 +69,13 @@
 
         <!-- 聊天流 -->
         <div id="chat-container" class="flex-1 overflow-y-auto p-4 flex flex-col gap-6 w-full max-w-4xl mx-auto scroll-smooth">
-            <!-- Bot 欢迎语 -->
             <div class="flex gap-4 items-start w-full">
                 <div class="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center shrink-0 border border-indigo-200">
                     <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"></path></svg>
                 </div>
                 <div class="flex-1 pt-1 text-gray-800 leading-relaxed max-w-prose">
-                    你好！请在下方输入画面描述。<br>支持点击附件图标上传多张图片作为参考。
+                    你好！我是绘图助手。我支持<strong>连续对话改图</strong>：<br>
+                    生成图片后，您可以直接发送类似“给它带上口罩”、“换成黑白风格”的指令，我会基于上一张图为您修改！
                 </div>
             </div>
         </div>
@@ -84,25 +83,65 @@
         <!-- 输入区 -->
         <div id="input-container" class="w-full shrink-0 bg-white border-t border-gray-100 md:border-transparent pt-2 pb-4 px-4">
             <div class="max-w-4xl mx-auto">
-                <div class="flex flex-col bg-gray-50 border border-gray-300 rounded-2xl shadow-sm focus-within:ring-1 focus-within:ring-black focus-within:border-black transition-all">
-                    
-                    <!-- 预览缩略图区 -->
+                <div class="flex flex-col bg-gray-50 border border-gray-300 rounded-2xl shadow-sm focus-within:ring-1 focus-within:ring-black focus-within:border-black transition-all overflow-hidden relative">
+
+                    <!-- 生成参数选择条：尺寸 / 质量 / 输出格式 -->
+                    <div class="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 pt-2 pb-2 text-xs text-gray-500 border-b border-gray-100">
+                        <span class="font-medium text-gray-600">参数</span>
+                        <label class="flex items-center gap-1">
+                            <span>尺寸</span>
+                            <select id="param-size" class="bg-white border border-gray-200 rounded px-1.5 py-0.5 text-xs focus:outline-none focus:ring-1 focus:ring-black cursor-pointer">
+                                <option value="auto" selected>auto</option>
+                                <option value="1024x1024">1024×1024</option>
+                                <option value="1024x1536">1024×1536 (竖)</option>
+                                <option value="1536x1024">1536×1024 (横)</option>
+                            </select>
+                        </label>
+                        <label class="flex items-center gap-1">
+                            <span>质量</span>
+                            <select id="param-quality" class="bg-white border border-gray-200 rounded px-1.5 py-0.5 text-xs focus:outline-none focus:ring-1 focus:ring-black cursor-pointer">
+                                <option value="high" selected>high</option>
+                                <option value="auto">auto</option>
+                                <option value="medium">medium</option>
+                                <option value="low">low</option>
+                            </select>
+                        </label>
+                        <label class="flex items-center gap-1">
+                            <span>格式</span>
+                            <select id="param-format" class="bg-white border border-gray-200 rounded px-1.5 py-0.5 text-xs focus:outline-none focus:ring-1 focus:ring-black cursor-pointer">
+                                <option value="png" selected>png</option>
+                                <option value="jpeg">jpeg</option>
+                                <option value="webp">webp</option>
+                            </select>
+                        </label>
+                    </div>
+
+                    <!-- 连续对话：上下文参考图 UI -->
+                    <div id="context-bar" class="hidden bg-indigo-50/50 border-b border-indigo-100 px-3 py-2 flex items-center justify-between">
+                        <div class="flex items-center gap-2 text-[13px] text-indigo-600 font-medium">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
+                            已关联上一张图作为参考
+                            <img id="context-thumb" src="" class="w-7 h-7 object-cover rounded shadow-sm border border-indigo-200 ml-1">
+                        </div>
+                        <button onclick="clearContextImage()" class="text-indigo-400 hover:text-indigo-700 bg-white rounded-full p-0.5 shadow-sm border border-indigo-100" title="清除记忆，开始全新生成">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                        </button>
+                    </div>
+
+                    <!-- 多图预览缩略图区 -->
                     <div id="image-preview-bar" class="hidden flex gap-2 px-3 pt-3 overflow-x-auto">
                         <!-- JS 动态注入缩略图 -->
                     </div>
 
                     <!-- 文本框与按钮栏 -->
-                    <div class="flex items-end gap-2 p-2 relative">
-                        <!-- 附件按钮 -->
-                        <button onclick="document.getElementById('file-upload').click()" class="p-2 text-gray-500 hover:text-black rounded-lg hover:bg-gray-200 transition-colors shrink-0" title="上传图片">
+                    <div class="flex items-end gap-2 p-2 relative bg-gray-50">
+                        <button onclick="document.getElementById('file-upload').click()" class="p-2 text-gray-500 hover:text-black rounded-lg hover:bg-gray-200 transition-colors shrink-0" title="上传参考图">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg>
                         </button>
                         <input type="file" id="file-upload" multiple accept="image/*" class="hidden" onchange="handleFilesSelect(event)">
 
-                        <!-- 自动伸缩文本框 -->
-                        <textarea id="prompt-input" rows="1" placeholder="发送指令，例如：生成一只赛博朋克风格的猫" class="flex-1 max-h-40 bg-transparent resize-none outline-none py-2 text-gray-800 text-[15px] leading-normal" oninput="autoResizeTextarea(this)" onkeydown="handleEnter(event)"></textarea>
+                        <textarea id="prompt-input" rows="1" placeholder="发送指令，例如：生成一只猪猪侠" class="flex-1 max-h-40 bg-transparent resize-none outline-none py-2 text-gray-800 text-[15px] leading-normal" oninput="autoResizeTextarea(this)" onkeydown="handleEnter(event)"></textarea>
 
-                        <!-- 发送按钮 -->
                         <button id="send-btn" onclick="sendMessage()" class="p-2 bg-black text-white rounded-xl hover:bg-gray-800 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors shrink-0 flex items-center justify-center">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>
                         </button>
@@ -121,7 +160,7 @@
         <div class="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl transform transition-all">
             <h3 class="text-xl font-semibold mb-2 text-gray-800 text-center">配置 API 密钥</h3>
             <p class="text-sm text-gray-500 text-center mb-6">
-                请前往 <a href="https://vsllm.com" target="_blank" class="text-indigo-600 hover:underline">https://vsllm.com</a> 获取您的专属密钥<br>密钥仅保存在您的本地浏览器中。
+                请前往 <a href="https://vsllm.com" target="_blank" class="text-indigo-600 hover:underline font-medium">https://vsllm.com</a> 获取您的专属密钥<br>密钥仅保存在您的本地浏览器中。
             </p>
             <div class="space-y-4">
                 <div>
@@ -143,22 +182,41 @@
         const BASE_URL = "https://vsllm.com/v1/responses";
         const MODEL = "gpt-image-2-chat";
 
+        // ============================================================
+        // ！！！图片输入格式规范（别再混用了）！！！
+        //
+        // 本项目用的是 OpenAI Responses API（/v1/responses），图片 content item 长这样：
+        //   { type: 'input_image', image_url: 'data:image/png;base64,xxxx' }
+        //   image_url 是字符串（data URL 或 http URL），不是对象！
+        //   也可用 file_id: { type: 'input_image', file_id: 'file-xxx' }
+        //
+        // 千万别写成 Chat Completions（/v1/chat/completions）那一套：
+        //   { type: 'image_url', image_url: { url: 'data:...' } }   <-- 错
+        //   这是旧 Chat API 的格式，Responses API 不认，会直接挂掉（表现为 Failed to fetch）
+        //
+        // 同理 text 在 Responses API 里是 'input_text'，不是 'text'。
+        // ============================================================
+        function buildImageContent(dataUrlOrHttpUrl) {
+            // Responses API 规范：image_url 为字符串
+            return { type: 'input_image', image_url: dataUrlOrHttpUrl };
+        }
+
         // DOM 节点
         const chatContainer = document.getElementById('chat-container');
         const promptInput = document.getElementById('prompt-input');
         const sendBtn = document.getElementById('send-btn');
         const imagePreviewBar = document.getElementById('image-preview-bar');
         
-        let pendingImages = []; // 暂存用户选择的 Base64 图片组
+        // 状态变量
+        let pendingImages = []; // 用户手动上传的图片
+        let currentContextImage = null; // 连续对话：上一次生成的图片 (Base64)
 
-        // ============== 初始化与配置 ==============
+        // ============== 初始化 ==============
         window.onload = async () => {
             await initDB();
             loadGallery();
             const apiKey = localStorage.getItem('vsllm_api_key');
-            if (!apiKey) {
-                openSettings();
-            }
+            if (!apiKey) openSettings();
         };
 
         function openSettings() {
@@ -184,7 +242,6 @@
             document.getElementById('settings-modal').classList.add('hidden');
         }
 
-        // ============== 侧边栏控制 ==============
         function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
             const overlay = document.getElementById('sidebar-overlay');
@@ -197,7 +254,7 @@
             }
         }
 
-        // ============== 交互辅助 ==============
+        // ============== 交互与输入 ==============
         function autoResizeTextarea(el) {
             el.style.height = 'auto';
             el.style.height = (el.scrollHeight < 160 ? el.scrollHeight : 160) + 'px';
@@ -214,48 +271,64 @@
             chatContainer.scrollTo({ top: chatContainer.scrollHeight, behavior: 'smooth' });
         }
 
+        // ============== 上下文记忆图逻辑 ==============
+        function setContextImage(base64Data) {
+            currentContextImage = base64Data;
+            document.getElementById('context-thumb').src = base64Data;
+            document.getElementById('context-bar').classList.remove('hidden');
+        }
+
+        function clearContextImage() {
+            currentContextImage = null;
+            document.getElementById('context-bar').classList.add('hidden');
+            document.getElementById('context-thumb').src = "";
+        }
+
         // ============== 图片上传与前端压缩 ==============
         async function handleFilesSelect(e) {
             const files = e.target.files;
             if (!files || files.length === 0) return;
-
             for (let file of files) {
-                const base64 = await compressImage(file);
+                const base64 = await compressImageFile(file);
                 pendingImages.push(base64);
             }
             renderImagePreviews();
-            e.target.value = ''; // 清空 file input 状态
+            e.target.value = ''; 
         }
 
-        // 压缩图片并转为 Base64 (防止多图把 Payload 撑爆导致超时或 413)
-        function compressImage(file) {
+        // 压缩 File 对象
+        function compressImageFile(file) {
             return new Promise((resolve) => {
                 const reader = new FileReader();
-                reader.onload = (e) => {
-                    const img = new Image();
-                    img.onload = () => {
-                        const canvas = document.createElement('canvas');
-                        const MAX_SIZE = 1024;
-                        let width = img.width;
-                        let height = img.height;
-
-                        if (width > height && width > MAX_SIZE) {
-                            height *= MAX_SIZE / width;
-                            width = MAX_SIZE;
-                        } else if (height > MAX_SIZE) {
-                            width *= MAX_SIZE / height;
-                            height = MAX_SIZE;
-                        }
-
-                        canvas.width = width;
-                        canvas.height = height;
-                        const ctx = canvas.getContext('2d');
-                        ctx.drawImage(img, 0, 0, width, height);
-                        resolve(canvas.toDataURL('image/jpeg', 0.8));
-                    };
-                    img.src = e.target.result;
-                };
+                reader.onload = (e) => compressDataURL(e.target.result).then(resolve);
                 reader.readAsDataURL(file);
+            });
+        }
+
+        // 通用 DataURL 压缩 (压缩生成的图或上传的图为 JPEG 格式防 payload 过大)
+        function compressDataURL(dataUrl) {
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const MAX_SIZE = 1024;
+                    let width = img.width;
+                    let height = img.height;
+
+                    if (width > height && width > MAX_SIZE) {
+                        height *= MAX_SIZE / width;
+                        width = MAX_SIZE;
+                    } else if (height > MAX_SIZE) {
+                        width *= MAX_SIZE / height;
+                        height = MAX_SIZE;
+                    }
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+                    resolve(canvas.toDataURL('image/jpeg', 0.8));
+                };
+                img.src = dataUrl;
             });
         }
 
@@ -289,7 +362,7 @@
             let imgHtml = '';
             if (images && images.length > 0) {
                 imgHtml = `<div class="flex flex-wrap gap-2 mb-2 justify-end">` + 
-                          images.map(src => `<img src="${src}" class="w-24 h-24 object-cover rounded-lg border border-gray-200">`).join('') +
+                          images.map(src => `<img src="${src}" class="w-24 h-24 object-cover rounded-lg border border-gray-200 shadow-sm">`).join('') +
                           `</div>`;
             }
 
@@ -346,94 +419,126 @@
             if (!apiKey) { openSettings(); return; }
 
             const promptText = promptInput.value.trim();
-            if (!promptText && pendingImages.length === 0) return;
+            if (!promptText && pendingImages.length === 0 && !currentContextImage) return;
 
-            // 1. 记录输入并清空状态
+            // 1. 合并【用户手动上传图】和【连续对话记忆图】
             const imagesToSend = [...pendingImages];
-            appendUserMessage(promptText, imagesToSend);
+            if (currentContextImage) {
+                imagesToSend.push(currentContextImage);
+            }
             
+            // UI：渲染用户消息并清理输入框状态
+            appendUserMessage(promptText, imagesToSend);
             promptInput.value = '';
             promptInput.style.height = 'auto';
             pendingImages = [];
             renderImagePreviews();
+            clearContextImage(); // 发送后清理上下文视觉，准备承接下一张新图
             
             const loadingDiv = appendBotLoading();
             sendBtn.disabled = true;
 
-            // 2. 构造 Content 数组 (支持多模态输入)
-            let contentArray = [];
-            if (promptText) {
-                contentArray.push({
-                    type: 'input_text',
-                    text: `Use the image_generation tool to generate exactly one image. 不要输出长篇文字说明，只生成图片。提示词：${promptText}`
-                });
-            } else {
-                contentArray.push({
-                    type: 'input_text',
-                    text: `Use the image_generation tool to generate exactly one image. 不要输出长篇文字说明，只生成图片。请根据我上传的图片生成。`
-                });
-            }
+            // 2. 构造指令 (支持改图强化提示)
+            let instruction = `Use the image_generation tool to generate exactly one image. 不要输出长篇文字说明，只生成图片。`;
+            if (promptText) instruction += `\n提示词：${promptText}`;
+            if (imagesToSend.length > 0) instruction += `\n【重要指令】：请务必参考我附带的图片特征进行画面的修改、变体或延续生成。`;
 
-            // 追加 Base64 图像
+            let contentArray = [{ type: 'input_text', text: instruction }];
+
+            // 注入 Base64 图像 —— Responses API 格式：input_image + image_url 字符串
             imagesToSend.forEach(b64 => {
-                contentArray.push({
-                    type: 'image_url',
-                    image_url: { url: b64 }
-                });
+                contentArray.push(buildImageContent(b64));
             });
+
+            // 读用户选的生成参数
+            const selectedSize = document.getElementById('param-size').value;
+            const selectedQuality = document.getElementById('param-quality').value;
+            const selectedFormat = document.getElementById('param-format').value;
+
+            // 组 image_generation tool 配置
+            const imageGenTool = {
+                type: 'image_generation',
+                model: 'gpt-image-2',
+                output_format: selectedFormat,
+                quality: selectedQuality
+            };
+            // size 选 auto 时直接省略该字段，由服务端按默认策略决定，最兼容；
+            // 选具体尺寸才显式传值。这样即使某些网关对 'auto' 字面量挑剔也不会炸。
+            if (selectedSize && selectedSize !== 'auto') {
+                imageGenTool.size = selectedSize;
+            }
 
             const payload = {
                 model: MODEL,
-                input: [{
-                    role: 'user',
-                    content: contentArray
-                }],
-                tools: [{
-                    type: 'image_generation',
-                    model: 'gpt-image-2',
-                    output_format: 'png',
-                    quality: 'high',
-                    size: '1024x1024'
-                }],
+                input: [{ role: 'user', content: contentArray }],
+                tools: [imageGenTool],
                 instructions: 'You are a helpful assistant. Always call image_generation when the user asks for an image. Do not answer with only text.',
                 tool_choice: { type: 'image_generation' },
-                stream: false,
-                store: false
+                stream: false, store: false
             };
 
             try {
-                const response = await fetch(BASE_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${apiKey}`
-                    },
-                    body: JSON.stringify(payload)
-                });
+                // --- 发请求 ---
+                let response;
+                try {
+                    response = await fetch(BASE_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+                        body: JSON.stringify(payload)
+                    });
+                } catch (networkErr) {
+                    // fetch 本身抛错 = 网络层挂了，浏览器根本没收到 HTTP 响应
+                    throw new Error(
+                        `网络请求失败，没连上 ${BASE_URL}\n` +
+                        `可能原因：\n` +
+                        `• 被浏览器 CORS 策略拦截（接口未允许本页面 Origin）\n` +
+                        `• 本地网络断开 / DNS 解析失败 / SSL 握手失败\n` +
+                        `• API 域名无法到达或服务端未响应\n` +
+                        `• 浏览器扩展或代理拦截了请求\n` +
+                        `原始错误：${networkErr && networkErr.message ? networkErr.message : networkErr}`
+                    );
+                }
 
-                const data = await response.json();
-                if (!response.ok) throw new Error(data.error?.message || JSON.stringify(data));
+                // --- HTTP 状态检查 ---
+                // 先统一把 body 读成文本，再尝试 JSON 解析，避免 body 被消费两次
+                const rawText = await response.text().catch(() => '');
+                if (!response.ok) {
+                    let serverMsg = '';
+                    try {
+                        const errJson = JSON.parse(rawText);
+                        serverMsg = errJson?.error?.message || errJson?.message || JSON.stringify(errJson);
+                    } catch {
+                        serverMsg = rawText;
+                    }
+                    throw new Error(
+                        `HTTP ${response.status} ${response.statusText}\n` +
+                        `${serverMsg || '(服务端未返回错误正文)'}`
+                    );
+                }
 
-                // 3. 提取生成的图片 (按照原 Python 脚本兜底提取)
+                // --- 解析 JSON ---
+                let data;
+                try {
+                    data = JSON.parse(rawText);
+                } catch (parseErr) {
+                    throw new Error(
+                        `响应解析失败（不是合法 JSON）：${parseErr.message}\n` +
+                        `响应内容前 500 字：${rawText.slice(0, 500)}`
+                    );
+                }
+
+                // 3. 提取生成的图片 Base64
                 let imgB64 = null;
                 const outputs = data.output || [];
                 for (let item of outputs) {
-                    if (item.type === 'image_generation_call' && item.result) {
-                        imgB64 = item.result; break;
-                    }
+                    if (item.type === 'image_generation_call' && item.result) { imgB64 = item.result; break; }
                 }
                 if (!imgB64) {
                     for (let item of outputs) {
-                        if (item.type === 'image_generation_call') {
-                            imgB64 = item.image_base64 || item.b64_json;
-                            if (imgB64) break;
-                        }
+                        if (item.type === 'image_generation_call') { imgB64 = item.image_base64 || item.b64_json; if (imgB64) break; }
                     }
                 }
-
-                if (!imgB64) {
-                    throw new Error("API 返回成功，但未能提取到图片数据。");
-                }
+                if (!imgB64) throw new Error("API 返回成功，但未能提取到图片数据。");
 
                 // 4. 显示结果
                 const imgSrc = `data:image/png;base64,${imgB64}`;
@@ -453,8 +558,12 @@
                 `;
                 updateBotMessage(loadingDiv, resultHtml);
 
-                // 5. 存入本地图库
-                saveToGallery(imgSrc, promptText || '参考图生成');
+                // 5. 将新图设为上下文（为了防内存溢出先压缩再赋给上下文）
+                const compressedNextContext = await compressDataURL(imgSrc);
+                setContextImage(compressedNextContext);
+
+                // 6. 存入本地图库
+                saveToGallery(imgSrc, promptText || '连续对话修改生成');
 
             } catch (error) {
                 console.error("请求失败:", error);
@@ -464,7 +573,7 @@
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                             生成失败
                         </div>
-                        <div class="break-words">${escapeHTML(error.message)}</div>
+                        <div class="break-words whitespace-pre-wrap">${escapeHTML(error.message || String(error))}</div>
                     </div>
                 `);
             } finally {
@@ -496,10 +605,7 @@
                         db.createObjectStore(STORE_NAME, { keyPath: "id" });
                     }
                 };
-                request.onsuccess = (e) => {
-                    db = e.target.result;
-                    resolve();
-                };
+                request.onsuccess = (e) => { db = e.target.result; resolve(); };
                 request.onerror = (e) => reject(e);
             });
         }
@@ -508,13 +614,7 @@
             if (!db) return;
             const tx = db.transaction(STORE_NAME, "readwrite");
             const store = tx.objectStore(STORE_NAME);
-            const item = {
-                id: Date.now(),
-                base64: base64Data,
-                prompt: promptStr,
-                time: new Date().toLocaleString()
-            };
-            store.put(item);
+            store.put({ id: Date.now(), base64: base64Data, prompt: promptStr, time: new Date().toLocaleString() });
             tx.oncomplete = () => loadGallery();
         }
 
@@ -525,13 +625,12 @@
             const request = store.getAll();
             
             request.onsuccess = () => {
-                const items = request.result.sort((a, b) => b.id - a.id); // 倒序
+                const items = request.result.sort((a, b) => b.id - a.id);
                 const container = document.getElementById('gallery-container');
                 if (items.length === 0) {
                     container.innerHTML = `<div class="col-span-2 text-center text-gray-400 text-sm mt-10">图库为空，快去生成吧</div>`;
                     return;
                 }
-                
                 container.innerHTML = items.map(item => `
                     <div class="relative group rounded-lg overflow-hidden border border-gray-200 aspect-square bg-gray-100 cursor-pointer">
                         <img src="${item.base64}" class="w-full h-full object-cover" onclick="downloadImage('${item.base64}', 'image-${item.id}.png')" title="${escapeHTML(item.prompt)}">
