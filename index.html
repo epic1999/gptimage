@@ -124,7 +124,11 @@
                                 <option value="webp">webp</option>
                             </select>
                         </label>
-                        <button type="button" id="enhance-prompt-btn" onclick="openEnhancePromptModal()" class="ml-auto flex items-center gap-1 text-xs text-purple-600 hover:bg-purple-50 border border-purple-200 px-2 py-0.5 rounded" title="用 gpt-oss-120b 把当前输入框的提示词改写成更适合 gpt-image-2 的自然语言描述">
+                        <button type="button" id="character-btn" onclick="openCharacterManager()" class="ml-auto flex items-center gap-1 text-xs text-emerald-600 hover:bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded" title="管理角色卡；输入框内 @名字 会自动带入该角色的外貌/服饰/武器/设定">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                            角色卡<span id="character-count-badge" class="hidden ml-0.5 text-[10px] bg-emerald-100 rounded px-1"></span>
+                        </button>
+                        <button type="button" id="enhance-prompt-btn" onclick="openEnhancePromptModal()" class="flex items-center gap-1 text-xs text-purple-600 hover:bg-purple-50 border border-purple-200 px-2 py-0.5 rounded" title="用 gpt-oss-120b 把当前输入框的提示词改写成更适合 gpt-image-2 的自然语言描述">
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path></svg>
                             提示词增强
                         </button>
@@ -335,6 +339,61 @@
         </div>
     </div>
 
+    <!-- 角色卡管理 modal：列表 + 搜索 + 编辑表单 + 导入导出 -->
+    <div id="character-manager-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden justify-center items-center p-0 sm:p-4">
+        <div class="bg-white w-full h-full sm:h-auto sm:rounded-2xl sm:max-w-3xl sm:max-h-[92vh] shadow-2xl flex flex-col relative overflow-hidden">
+            <!-- Header -->
+            <div class="shrink-0 px-4 py-3 border-b border-gray-200 flex items-center gap-2">
+                <h3 class="text-lg font-semibold text-gray-800">角色卡</h3>
+                <span class="text-xs text-gray-400">用于 @ 角色名保持样貌/服饰一致性</span>
+                <button onclick="closeCharacterManager()" class="ml-auto text-gray-400 hover:text-gray-600 p-1" title="关闭">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+
+            <!-- 操作条：搜索 + 新建 + 导入 + 导出全部 -->
+            <div class="shrink-0 px-4 py-2 border-b border-gray-100 flex flex-wrap items-center gap-2">
+                <input type="text" id="char-search-input" placeholder="搜索角色名/标签…" class="flex-1 min-w-[140px] bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-400" oninput="onCharSearchInput(this.value)">
+                <button onclick="startNewCharacter()" class="text-xs text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2.5 py-1.5 rounded-md flex items-center gap-1">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                    新建
+                </button>
+                <input type="file" id="char-import-input" class="hidden" accept="application/json,.json" onchange="importCharactersFromFile(event)">
+                <button onclick="document.getElementById('char-import-input').click()" class="text-xs text-gray-700 bg-gray-100 hover:bg-gray-200 px-2.5 py-1.5 rounded-md flex items-center gap-1" title="导入单卡或全量角色包 JSON">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1M12 12V4m0 0l-4 4m4-4l4 4"></path></svg>
+                    导入
+                </button>
+                <button onclick="exportAllCharacters()" class="text-xs text-gray-700 bg-gray-100 hover:bg-gray-200 px-2.5 py-1.5 rounded-md flex items-center gap-1" title="导出全部角色为一个 JSON">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0l-4 4m4-4v12"></path></svg>
+                    导出全部
+                </button>
+                <button onclick="clearAllCharactersWithConfirm()" class="text-xs text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 px-2.5 py-1.5 rounded-md">
+                    清空
+                </button>
+            </div>
+
+            <!-- 主体：桌面左右分栏；移动端堆叠 -->
+            <div class="flex-1 min-h-0 overflow-hidden flex flex-col sm:grid sm:grid-cols-[240px_1fr]">
+                <!-- 列表 -->
+                <div id="char-list-pane" class="border-b sm:border-b-0 sm:border-r border-gray-200 overflow-y-auto max-h-[35vh] sm:max-h-none">
+                    <div id="char-list-container" class="p-2 flex flex-col gap-1"></div>
+                </div>
+                <!-- 详情/编辑 -->
+                <div id="char-edit-pane" class="flex-1 overflow-y-auto p-4"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- @ 角色选择器 popover：光标上方弹出；移动端变底部 sheet -->
+    <div id="mention-popover" class="hidden fixed z-[60] bg-white shadow-xl rounded-xl border border-gray-200 overflow-hidden">
+        <div class="px-3 py-1.5 border-b border-gray-100 text-[11px] text-gray-400 flex items-center justify-between">
+            <span>角色卡</span>
+            <span id="mention-popover-hint" class="text-gray-300">↑↓ 选择 · Enter 应用 · Esc 关闭</span>
+        </div>
+        <ul id="mention-list" class="max-h-64 overflow-y-auto"></ul>
+        <div id="mention-empty" class="hidden px-3 py-3 text-xs text-gray-400">没有匹配的角色，<a onclick="openCharacterManagerForAdd()" class="text-emerald-600 hover:underline cursor-pointer">去新建一个 →</a></div>
+    </div>
+
     <script>
         // ============================================================
         // ！！！图片输入格式规范（别再混用了）！！！
@@ -351,10 +410,11 @@
         const PROMPT_ENHANCE_MODEL = "gpt-oss-120b";
 
         const DB_NAME = "VsllmGallery";
-        const DB_VERSION = 2; // v1 只有 images；v2 加 conversations、messages
+        const DB_VERSION = 3; // v1 只有 images；v2 加 conversations、messages；v3 加 characters
         const STORE_GALLERY = "images";
         const STORE_CONVERSATIONS = "conversations";
         const STORE_MESSAGES = "messages";
+        const STORE_CHARACTERS = "characters";
 
         // 生成时轮播的等待文案（高质量图 1-5 分钟，给用户点乐子别闲着）
         const LOADING_MESSAGES = [
@@ -540,6 +600,8 @@
             }
             initMarkCanvasEvents();
             startPlaceholderRotation();
+            await preloadCharacters();
+            initMentionEvents();
 
             // 加载/创建默认会话
             let convs = await listConvs();
@@ -570,6 +632,12 @@
                     if (!d.objectStoreNames.contains(STORE_MESSAGES)) {
                         const ms = d.createObjectStore(STORE_MESSAGES, { keyPath: "id" });
                         ms.createIndex("conversationId", "conversationId");
+                    }
+                    // v3 新增：角色卡；只加 store，不碰已有 3 张表，无论 oldVersion 是多少都幂等
+                    if (!d.objectStoreNames.contains(STORE_CHARACTERS)) {
+                        const chs = d.createObjectStore(STORE_CHARACTERS, { keyPath: "id" });
+                        chs.createIndex("updatedAt", "updatedAt");
+                        chs.createIndex("nameLower", "nameLower", { unique: false });
                     }
                 };
                 req.onsuccess = (e) => { db = e.target.result; resolve(); };
@@ -693,6 +761,8 @@
                 sendTokensEstimated: data.sendTokensEstimated !== false, // 默认视为估算
                 recvTokens: (typeof data.recvTokens === 'number') ? data.recvTokens : null,
                 recvTokensEstimated: data.recvTokensEstimated !== false,
+                // 角色卡注入快照：{ id, name, updatedAt }[]；空数组/undefined 等价"无注入"
+                injectedCharacters: Array.isArray(data.injectedCharacters) ? data.injectedCharacters : [],
             };
             await putMsg(m);
             await _touchConversation(data.conversationId, m);
@@ -707,6 +777,1111 @@
                 conv.title = msg.text.slice(0, 22);
             }
             await putConv(conv);
+        }
+
+        // ============== 角色卡数据层 ==============
+        // 内存缓存：@ 搜索/注入/徽标计数都读这份；所有写操作后 invalidate + reload
+        let _charactersCache = [];
+        const CHAR_SCHEMA_VERSION = 1;
+
+        function _charDbOk() {
+            return !!(db && db.objectStoreNames && db.objectStoreNames.contains(STORE_CHARACTERS));
+        }
+
+        function normalizeCharacterName(raw) {
+            return (raw == null ? '' : String(raw)).trim();
+        }
+        function toNameLower(name) {
+            return normalizeCharacterName(name).toLowerCase();
+        }
+        function safeFilename(name) {
+            const s = normalizeCharacterName(name).replace(/[\/\\:*?"<>|]+/g, '_').replace(/\s+/g, '_');
+            return s || 'unnamed';
+        }
+
+        // 把任意形态的输入归一到标准 schema（导入/表单都走它）
+        function normalizeCharacterForm(raw) {
+            const r = raw || {};
+            const name = normalizeCharacterName(r.name);
+            const description = typeof r.description === 'string' ? r.description : '';
+            const pickStr = (v, fallback = '') => (typeof v === 'string' ? v : fallback);
+            // 老格式兼容：只有 description 时塞到 appearance
+            const appearance = pickStr(r.appearance) || (description && !r.appearance ? description : '');
+            return {
+                name,
+                nameLower: toNameLower(name),
+                appearance: appearance,
+                outfit: pickStr(r.outfit),
+                gear: pickStr(r.gear),
+                persona: pickStr(r.persona),
+                styleNote: pickStr(r.styleNote),
+                avatar: (typeof r.avatar === 'string' && r.avatar.startsWith('data:')) ? r.avatar : null,
+                tags: Array.isArray(r.tags) ? r.tags.map(x => String(x).trim()).filter(Boolean) :
+                      (typeof r.tags === 'string' ? r.tags.split(',').map(s => s.trim()).filter(Boolean) : []),
+            };
+        }
+
+        // 校验：名字必填且 <=32 字；每段描述 <=2000 字
+        function validateCharacter(c) {
+            const errs = [];
+            if (!c.name) errs.push('名字不能为空');
+            if (c.name && c.name.length > 32) errs.push('名字过长（≤32 字）');
+            const segs = ['appearance', 'outfit', 'gear', 'persona', 'styleNote'];
+            for (const k of segs) {
+                if (c[k] && c[k].length > 2000) errs.push(`${k} 过长（≤2000 字）`);
+            }
+            return errs;
+        }
+
+        function putCharacter(ch) {
+            return new Promise((resolve, reject) => {
+                if (!_charDbOk()) return reject(new Error('角色卡存储未就绪'));
+                const req = db.transaction(STORE_CHARACTERS, 'readwrite').objectStore(STORE_CHARACTERS).put(ch);
+                req.onsuccess = () => resolve();
+                req.onerror = (e) => reject(e.target.error || e);
+            });
+        }
+        function getCharacter(id) {
+            return new Promise((resolve, reject) => {
+                if (!_charDbOk()) return resolve(null);
+                const req = db.transaction(STORE_CHARACTERS, 'readonly').objectStore(STORE_CHARACTERS).get(Number(id));
+                req.onsuccess = () => resolve(req.result || null);
+                req.onerror = (e) => reject(e.target.error || e);
+            });
+        }
+        function listCharacters() {
+            return new Promise((resolve, reject) => {
+                if (!_charDbOk()) return resolve([]);
+                const req = db.transaction(STORE_CHARACTERS, 'readonly').objectStore(STORE_CHARACTERS).getAll();
+                req.onsuccess = () => {
+                    const items = (req.result || []).sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+                    resolve(items);
+                };
+                req.onerror = (e) => reject(e.target.error || e);
+            });
+        }
+        function deleteCharacter(id) {
+            return new Promise((resolve, reject) => {
+                if (!_charDbOk()) return reject(new Error('角色卡存储未就绪'));
+                const req = db.transaction(STORE_CHARACTERS, 'readwrite').objectStore(STORE_CHARACTERS).delete(Number(id));
+                req.onsuccess = () => resolve();
+                req.onerror = (e) => reject(e.target.error || e);
+            });
+        }
+        function clearAllCharacters() {
+            return new Promise((resolve, reject) => {
+                if (!_charDbOk()) return reject(new Error('角色卡存储未就绪'));
+                const req = db.transaction(STORE_CHARACTERS, 'readwrite').objectStore(STORE_CHARACTERS).clear();
+                req.onsuccess = () => resolve();
+                req.onerror = (e) => reject(e.target.error || e);
+            });
+        }
+
+        // 查重：nameLower 命中的第一个（排除某 id）；前端层面唯一性保护
+        async function findCharacterByName(name, excludeId) {
+            const lower = toNameLower(name);
+            if (!lower) return null;
+            const all = await listCharacters();
+            for (const c of all) {
+                if (c.nameLower === lower && c.id !== excludeId) return c;
+            }
+            return null;
+        }
+
+        async function preloadCharacters() {
+            try { _charactersCache = await listCharacters(); }
+            catch { _charactersCache = []; }
+            updateCharacterCountBadge();
+        }
+        function invalidateCharactersCache() {
+            preloadCharacters();
+        }
+        function getCachedCharacterById(id) {
+            return _charactersCache.find(c => c.id === Number(id)) || null;
+        }
+        function getCachedCharacterByName(name) {
+            const lower = toNameLower(name);
+            return _charactersCache.find(c => c.nameLower === lower) || null;
+        }
+
+        function updateCharacterCountBadge() {
+            const badge = document.getElementById('character-count-badge');
+            if (!badge) return;
+            const n = _charactersCache.length;
+            if (n > 0) {
+                badge.textContent = String(n);
+                badge.classList.remove('hidden');
+            } else {
+                badge.textContent = '';
+                badge.classList.add('hidden');
+            }
+        }
+
+        // 新建/保存 时用；id 缺失表示新建
+        async function upsertCharacterFromForm(form, existingId) {
+            const body = normalizeCharacterForm(form);
+            const errs = validateCharacter(body);
+            if (errs.length) throw new Error(errs.join('；'));
+            const dup = await findCharacterByName(body.name, existingId);
+            if (dup) throw new Error(`已有同名角色「${body.name}」，请换个名字或先删除旧的`);
+            const now = Date.now();
+            const ch = {
+                id: existingId || _newId(),
+                ...body,
+                createdAt: existingId ? (await getCharacter(existingId))?.createdAt || now : now,
+                updatedAt: now,
+                schemaVersion: CHAR_SCHEMA_VERSION,
+            };
+            await putCharacter(ch);
+            await preloadCharacters();
+            return ch;
+        }
+
+        // ============== 角色卡管理 UI ==============
+        let _currentEditingCharId = null; // null = 新建态
+        let _charListFilter = '';
+        let _charPendingAvatar = null;    // 当前表单里刚上传但还没保存的头像 dataURL
+
+        function openCharacterManager() {
+            _charListFilter = '';
+            const search = document.getElementById('char-search-input');
+            if (search) search.value = '';
+            const modal = document.getElementById('character-manager-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            renderCharacterList();
+            // 默认进入"新建"占位，右侧有引导
+            startNewCharacter();
+        }
+        function closeCharacterManager() {
+            const modal = document.getElementById('character-manager-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            _currentEditingCharId = null;
+            _charPendingAvatar = null;
+            // 关闭所有字段 AI 增强的进行中请求，避免跨角色回填
+            abortAllCharFieldEnhancers();
+        }
+        function openCharacterManagerForAdd() {
+            closeMentionPopover();
+            openCharacterManager();
+        }
+
+        function onCharSearchInput(v) {
+            _charListFilter = (v || '').trim().toLowerCase();
+            renderCharacterList();
+        }
+
+        function _filterCharacters(list, q) {
+            if (!q) return list;
+            return list.filter(c => {
+                if (c.nameLower && c.nameLower.includes(q)) return true;
+                if (Array.isArray(c.tags) && c.tags.some(t => (t || '').toLowerCase().includes(q))) return true;
+                return false;
+            });
+        }
+
+        function renderCharacterList() {
+            const container = document.getElementById('char-list-container');
+            if (!container) return;
+            const list = _filterCharacters(_charactersCache, _charListFilter);
+            if (list.length === 0) {
+                container.innerHTML = `<div class="text-xs text-gray-400 text-center py-4">${_charListFilter ? '没有匹配的角色' : '还没有角色，点上方"新建"创建第一张'}</div>`;
+                return;
+            }
+            container.innerHTML = list.map(c => {
+                const active = (_currentEditingCharId === c.id);
+                const avatarHtml = c.avatar
+                    ? `<img src="${c.avatar}" class="w-8 h-8 rounded-full object-cover border border-gray-200 shrink-0">`
+                    : `<div class="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs font-semibold shrink-0">${escapeHTML((c.name || '?').slice(0, 2))}</div>`;
+                const summary = (c.appearance || c.outfit || c.persona || '').replace(/\s+/g, ' ').slice(0, 40);
+                return `
+                    <div class="flex items-center gap-2 px-2 py-2 rounded-lg cursor-pointer ${active ? 'bg-emerald-50 border border-emerald-200' : 'hover:bg-gray-50 border border-transparent'}" onclick="selectCharacterForEdit(${c.id})">
+                        ${avatarHtml}
+                        <div class="flex-1 min-w-0">
+                            <div class="text-sm text-gray-800 truncate">${escapeHTML(c.name || '未命名')}</div>
+                            <div class="text-[11px] text-gray-400 truncate">${escapeHTML(summary || '（无描述）')}</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function startNewCharacter() {
+            _currentEditingCharId = null;
+            _charPendingAvatar = null;
+            renderCharacterEditPane(null);
+            renderCharacterList();
+        }
+
+        async function selectCharacterForEdit(id) {
+            _currentEditingCharId = Number(id);
+            const ch = getCachedCharacterById(id) || await getCharacter(id);
+            _charPendingAvatar = ch && ch.avatar || null;
+            renderCharacterEditPane(ch);
+            renderCharacterList();
+        }
+
+        // 5 段字段的中文标签
+        const CHAR_FIELD_LABELS = {
+            appearance: '样貌',
+            outfit: '服饰',
+            gear: '武器/道具',
+            persona: '通用设定',
+            styleNote: '风格备注',
+        };
+
+        function renderCharacterEditPane(ch) {
+            const pane = document.getElementById('char-edit-pane');
+            if (!pane) return;
+            const isNew = !ch;
+            const title = isNew ? '新建角色' : `编辑：${escapeHTML(ch.name)}`;
+            const avatarSrc = (_charPendingAvatar) ? _charPendingAvatar : (ch && ch.avatar) || '';
+
+            const fieldsHTML = ['appearance', 'outfit', 'gear', 'persona', 'styleNote'].map(k => `
+                <div class="char-field-group" data-field="${k}">
+                    <div class="flex items-center mb-1">
+                        <label class="text-sm font-medium text-gray-700">${CHAR_FIELD_LABELS[k]}</label>
+                        <button type="button" onclick="onCharFieldEnhanceClick('${k}')" class="char-ai-btn ml-auto inline-flex items-center gap-1 text-[11px] sm:text-[11px] text-purple-600 hover:bg-purple-50 border border-purple-200 px-2 py-1 sm:py-0.5 rounded-md" title="用 gpt-oss-120b 生成/优化这个字段">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path></svg>
+                            AI
+                        </button>
+                    </div>
+                    <textarea id="char-field-${k}" rows="3" class="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 focus:ring-1 focus:ring-emerald-400 focus:outline-none resize-y"></textarea>
+                    <div class="char-field-preview hidden mt-2 rounded-lg border border-purple-200 bg-purple-50 p-3">
+                        <div class="flex items-center justify-between text-[11px] text-purple-700 mb-1">
+                            <span class="char-field-preview-label">AI 建议</span>
+                            <button type="button" class="char-field-preview-close text-gray-400 hover:text-red-500" onclick="discardCharFieldPreview('${k}')" title="关闭">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                            </button>
+                        </div>
+                        <div class="char-field-preview-body">
+                            <pre class="char-field-preview-text whitespace-pre-wrap break-words text-sm text-gray-800 font-sans"></pre>
+                        </div>
+                        <div class="char-field-preview-actions mt-2 flex flex-wrap gap-2">
+                            <button type="button" class="flex-1 min-h-[36px] sm:min-h-0 bg-purple-600 text-white text-xs px-3 py-1.5 rounded-md hover:bg-purple-500" onclick="applyCharFieldPreview('${k}')">应用到此字段</button>
+                            <button type="button" class="flex-1 min-h-[36px] sm:min-h-0 bg-white border border-gray-300 text-gray-600 text-xs px-3 py-1.5 rounded-md hover:bg-gray-50" onclick="discardCharFieldPreview('${k}')">放弃</button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+
+            pane.innerHTML = `
+                <div class="flex items-center gap-2 mb-3">
+                    <div class="relative shrink-0">
+                        <img id="char-avatar-preview" src="${avatarSrc || ''}" class="w-14 h-14 rounded-full object-cover border border-gray-200 bg-gray-100 ${avatarSrc ? '' : 'hidden'}">
+                        <div id="char-avatar-placeholder" class="w-14 h-14 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-base font-semibold border border-emerald-200 ${avatarSrc ? 'hidden' : ''}">?</div>
+                        <input type="file" id="char-avatar-input" accept="image/*" class="hidden" onchange="onCharAvatarPick(event)">
+                        <button type="button" onclick="document.getElementById('char-avatar-input').click()" class="absolute -bottom-1 -right-1 bg-white border border-gray-200 rounded-full p-1 shadow-sm hover:bg-gray-50" title="上传头像（可选）">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                        </button>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="text-xs text-gray-400">${title}</div>
+                        <input id="char-field-name" type="text" maxlength="32" placeholder="角色名（@ 触发用）" class="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-base text-gray-800 focus:ring-1 focus:ring-emerald-400 focus:outline-none">
+                    </div>
+                </div>
+                <div class="flex items-center gap-1 mb-3 text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-2 py-1.5">
+                    <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    <span>字段越具体，角色一致性越稳。每段可点右上「AI」让 gpt-oss-120b 生成/优化。</span>
+                </div>
+                <div class="space-y-3">
+                    ${fieldsHTML}
+                    <div>
+                        <label class="text-sm font-medium text-gray-700 mb-1 block">标签（可选，逗号分隔）</label>
+                        <input id="char-field-tags" type="text" class="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 focus:ring-1 focus:ring-emerald-400 focus:outline-none">
+                    </div>
+                </div>
+                <div class="sticky bottom-0 left-0 right-0 -mx-4 mt-4 px-4 py-3 bg-white border-t border-gray-200 flex flex-wrap gap-2 shadow-[0_-2px_6px_rgba(0,0,0,0.04)]">
+                    <button type="button" onclick="saveCurrentCharacter()" class="flex-1 min-w-[120px] min-h-[40px] bg-black text-white rounded-lg text-sm hover:bg-gray-800">保存</button>
+                    ${isNew ? '' : `
+                        <button type="button" onclick="exportCurrentCharacter()" class="min-h-[40px] bg-gray-100 text-gray-700 rounded-lg text-sm px-3 hover:bg-gray-200">导出本卡</button>
+                        <button type="button" onclick="deleteCurrentCharacter()" class="min-h-[40px] bg-red-50 text-red-600 border border-red-200 rounded-lg text-sm px-3 hover:bg-red-100">删除</button>
+                    `}
+                </div>
+            `;
+
+            // 用 .value 赋值，避免 innerHTML 注入
+            document.getElementById('char-field-name').value = ch ? (ch.name || '') : '';
+            for (const k of Object.keys(CHAR_FIELD_LABELS)) {
+                document.getElementById('char-field-' + k).value = ch ? (ch[k] || '') : '';
+            }
+            document.getElementById('char-field-tags').value = ch && Array.isArray(ch.tags) ? ch.tags.join(', ') : '';
+        }
+
+        function collectCharacterFormFromDOM() {
+            const get = (id) => (document.getElementById(id) && document.getElementById(id).value) || '';
+            return {
+                name: get('char-field-name'),
+                appearance: get('char-field-appearance'),
+                outfit: get('char-field-outfit'),
+                gear: get('char-field-gear'),
+                persona: get('char-field-persona'),
+                styleNote: get('char-field-styleNote'),
+                avatar: _charPendingAvatar || null,
+                tags: get('char-field-tags'),
+            };
+        }
+
+        async function saveCurrentCharacter() {
+            const form = collectCharacterFormFromDOM();
+            try {
+                const ch = await upsertCharacterFromForm(form, _currentEditingCharId);
+                _currentEditingCharId = ch.id;
+                _charPendingAvatar = ch.avatar || null;
+                renderCharacterList();
+                renderCharacterEditPane(ch);
+                showToast('角色已保存');
+            } catch (e) {
+                alert('保存失败：' + (e && e.message ? e.message : e));
+            }
+        }
+
+        async function deleteCurrentCharacter() {
+            if (!_currentEditingCharId) return;
+            const ch = getCachedCharacterById(_currentEditingCharId);
+            if (!confirm(`确定删除角色「${(ch && ch.name) || '未命名'}」？\n不会删除历史消息里的 @ 文本，但以后 reroll 将无法再注入这个角色。`)) return;
+            try {
+                await deleteCharacter(_currentEditingCharId);
+                await preloadCharacters();
+                _currentEditingCharId = null;
+                _charPendingAvatar = null;
+                renderCharacterList();
+                renderCharacterEditPane(null);
+                showToast('已删除');
+            } catch (e) {
+                alert('删除失败：' + (e && e.message ? e.message : e));
+            }
+        }
+
+        async function clearAllCharactersWithConfirm() {
+            if (!confirm('确定清空所有角色卡？\n\n本地浏览器里所有角色卡都会被删除，无法恢复。\n（不影响已发送的历史消息）')) return;
+            try {
+                await clearAllCharacters();
+                await preloadCharacters();
+                _currentEditingCharId = null;
+                _charPendingAvatar = null;
+                renderCharacterList();
+                renderCharacterEditPane(null);
+                showToast('已清空');
+            } catch (e) {
+                alert('清空失败：' + (e && e.message ? e.message : e));
+            }
+        }
+
+        // 头像：走现有 compressDataURL 管道再收紧到 256 上限
+        async function onCharAvatarPick(e) {
+            const file = e.target.files && e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = async (ev) => {
+                try {
+                    const big = ev.target.result;
+                    const small = await compressDataURLForAvatar(big);
+                    _charPendingAvatar = small;
+                    const img = document.getElementById('char-avatar-preview');
+                    const ph = document.getElementById('char-avatar-placeholder');
+                    if (img) { img.src = small; img.classList.remove('hidden'); }
+                    if (ph) ph.classList.add('hidden');
+                } catch (err) {
+                    alert('头像处理失败：' + (err && err.message ? err.message : err));
+                }
+                e.target.value = '';
+            };
+            reader.readAsDataURL(file);
+        }
+        function compressDataURLForAvatar(dataUrl) {
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.onload = () => {
+                    const MAX = 256;
+                    let w = img.width, h = img.height;
+                    if (w > h && w > MAX) { h *= MAX / w; w = MAX; }
+                    else if (h > MAX) { w *= MAX / h; h = MAX; }
+                    const canvas = document.createElement('canvas');
+                    canvas.width = Math.round(w); canvas.height = Math.round(h);
+                    canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+                    resolve(canvas.toDataURL('image/jpeg', 0.85));
+                };
+                img.onerror = () => resolve(dataUrl);
+                img.src = dataUrl;
+            });
+        }
+
+        // 导出：单卡 / 全量
+        function _downloadJSON(obj, filename) {
+            const blob = new Blob([JSON.stringify(obj, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = filename;
+            document.body.appendChild(a); a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+        }
+        async function exportCurrentCharacter() {
+            if (!_currentEditingCharId) { alert('请先选择或保存一个角色再导出'); return; }
+            const ch = await getCharacter(_currentEditingCharId);
+            if (!ch) { alert('角色已丢失'); return; }
+            _downloadJSON({ type: 'vsllm-character', schemaVersion: CHAR_SCHEMA_VERSION, character: ch },
+                `character-${safeFilename(ch.name)}-${new Date().toISOString().slice(0,10).replace(/-/g,'')}.json`);
+        }
+        async function exportAllCharacters() {
+            const all = await listCharacters();
+            if (all.length === 0) { alert('还没有任何角色可以导出'); return; }
+            _downloadJSON({
+                type: 'vsllm-character-pack',
+                schemaVersion: CHAR_SCHEMA_VERSION,
+                exportedAt: Date.now(),
+                characters: all,
+            }, `characters-pack-${new Date().toISOString().slice(0,10).replace(/-/g,'')}.json`);
+        }
+
+        // 导入：支持单卡 / 整包 / 老格式兜底；重名弹策略
+        async function importCharactersFromFile(e) {
+            const file = e.target.files && e.target.files[0];
+            if (!file) return;
+            if (file.size > 5 * 1024 * 1024) { alert('文件太大（> 5MB），拒绝导入'); e.target.value=''; return; }
+            try {
+                const text = await file.text();
+                let obj;
+                try { obj = JSON.parse(text); }
+                catch (pe) { throw new Error('JSON 解析失败：' + pe.message); }
+
+                let list = [];
+                if (obj && obj.type === 'vsllm-character-pack' && Array.isArray(obj.characters)) {
+                    list = obj.characters;
+                } else if (obj && obj.type === 'vsllm-character' && obj.character) {
+                    list = [obj.character];
+                } else if (obj && (obj.name || obj.appearance || obj.description)) {
+                    // 老/裸格式兜底
+                    list = [obj];
+                } else if (Array.isArray(obj) && obj.length && (obj[0].name || obj[0].appearance)) {
+                    list = obj;
+                } else {
+                    throw new Error('文件格式不认识：既不是单卡、也不是 character-pack');
+                }
+
+                const result = await _importCharacterList(list);
+                const summary = `导入完成：新增 ${result.added}，覆盖 ${result.overwritten}，改名 ${result.renamed}，跳过 ${result.skipped}`;
+                showToast(summary);
+                renderCharacterList();
+            } catch (err) {
+                alert('导入失败：' + (err && err.message ? err.message : err));
+            }
+            e.target.value = '';
+        }
+
+        // 返回 { added, overwritten, renamed, skipped }；每条重名问用户一次策略
+        async function _importCharacterList(list) {
+            const stats = { added: 0, overwritten: 0, renamed: 0, skipped: 0 };
+            let globalStrategy = null; // 'overwrite' | 'rename' | 'skip' | null（每次都问）
+            for (const raw of list) {
+                const body = normalizeCharacterForm(raw);
+                const errs = validateCharacter(body);
+                if (errs.length) { stats.skipped++; continue; }
+                const existing = await findCharacterByName(body.name, null);
+                let strategy = globalStrategy;
+                if (existing && !strategy) {
+                    const ans = prompt(
+                        `角色「${body.name}」已存在。\n` +
+                        `输入 1 覆盖，2 改名导入（自动加后缀），3 跳过\n` +
+                        `（输入 1!/2!/3! 后缀表示对剩余重名都用这个策略）`,
+                        '2'
+                    );
+                    if (ans == null) { stats.skipped++; continue; }
+                    const sticky = ans.endsWith('!');
+                    const n = ans.replace(/!$/, '').trim();
+                    strategy = n === '1' ? 'overwrite' : n === '3' ? 'skip' : 'rename';
+                    if (sticky) globalStrategy = strategy;
+                }
+                if (existing && strategy === 'skip') { stats.skipped++; continue; }
+                let finalName = body.name;
+                let targetId;
+                if (existing && strategy === 'overwrite') {
+                    targetId = existing.id;
+                    stats.overwritten++;
+                } else if (existing && strategy === 'rename') {
+                    let k = 2;
+                    while (await findCharacterByName(`${body.name}-${k}`, null)) k++;
+                    finalName = `${body.name}-${k}`;
+                    stats.renamed++;
+                } else {
+                    stats.added++;
+                }
+                const now = Date.now();
+                const ch = {
+                    id: targetId || _newId(),
+                    ...body,
+                    name: finalName,
+                    nameLower: toNameLower(finalName),
+                    createdAt: raw.createdAt || now,
+                    updatedAt: now,
+                    schemaVersion: CHAR_SCHEMA_VERSION,
+                };
+                try { await putCharacter(ch); }
+                catch { stats.skipped++; if (strategy === 'overwrite') stats.overwritten--; else if (strategy === 'rename') stats.renamed--; else stats.added--; }
+            }
+            await preloadCharacters();
+            return stats;
+        }
+
+        // ============== 角色字段 AI 增强（gpt-oss-120b） ==============
+        // 每字段独立 AbortController；切换角色或关闭 modal 时统一 abort
+        const _charFieldAborters = new Map();
+        function abortAllCharFieldEnhancers() {
+            for (const ac of _charFieldAborters.values()) { try { ac.abort(); } catch {} }
+            _charFieldAborters.clear();
+        }
+
+        const CHAR_FIELD_ENHANCE_SYSTEM = [
+            '你在帮助用户构建"角色卡"，用于 gpt-image-2 图像模型的角色一致性生成。',
+            '任务：为指定字段产出或润色一段清晰的自然语言描述，不是关键词堆砌。',
+            '',
+            '字段语义：',
+            '- appearance：样貌（发型/发色/瞳色/身高/体型/脸型/肤色/标志特征）',
+            '- outfit：服饰（常穿套装、材质、配色、鞋饰）',
+            '- gear：武器/道具（佩戴的武器、法器、饰品、背包）',
+            '- persona：性格/背景/常见姿态/镜头偏好',
+            '- styleNote：画风、光线、色调、年代感、镜头',
+            '',
+            '硬性规则：',
+            '- 输出必须是自然语言段落，不要 Markdown、不要列点、不要引号、不要前后解释。',
+            '- 严格只输出本字段的最终内容本体，不要任何客套话。',
+            '- 不要与用户已填的其他字段矛盾；没把握就略过，不要编造极端设定。',
+            '- 用户以中文交流回中文，以英文交流回英文。',
+            '- 不添加用户未要求的敏感/违规内容。',
+            '- 长度约 60~220 字（优化时保持接近原文长度）。',
+            '',
+            '任务判定：',
+            '- 当"当前值"为空：基于角色名与其他已填字段合理生成一段新描述。',
+            '- 当"当前值"非空：保留用户核心意图，润色、补细节、去歧义。',
+        ].join('\n');
+
+        async function callCharacterFieldEnhancer({ characterName, fieldKey, currentValue, otherFields, signal }) {
+            const label = CHAR_FIELD_LABELS[fieldKey] || fieldKey;
+            const isEmpty = !currentValue || !currentValue.trim();
+            const other = [];
+            for (const k of ['appearance','outfit','gear','persona','styleNote']) {
+                if (k === fieldKey) continue;
+                const v = otherFields && otherFields[k];
+                if (v && v.trim()) other.push(`  ${k}(${CHAR_FIELD_LABELS[k]}): ${v.trim()}`);
+            }
+            const userMsg = [
+                `角色名：${characterName}`,
+                `目标字段：${fieldKey}（${label}）`,
+                `当前值：${isEmpty ? '(空)' : currentValue.trim()}`,
+                `任务：${isEmpty ? '请生成一段合理的新描述。' : '请在保留用户意图前提下润色、补细节、去歧义。'}`,
+                '',
+                '其他已填字段（仅供参考，帮助保持一致）：',
+                other.length ? other.join('\n') : '  (无)',
+                '',
+                `请只输出 ${fieldKey} 字段的最终自然语言内容本体。`,
+            ].join('\n');
+            return await postChatCompletion({
+                system: CHAR_FIELD_ENHANCE_SYSTEM,
+                user: userMsg,
+                signal,
+            });
+        }
+
+        // 预览区 DOM 定位：每个 .char-field-group[data-field=XX] 里有一个 .char-field-preview
+        function _getCharFieldPreviewNode(fieldKey) {
+            const group = document.querySelector(`.char-field-group[data-field="${fieldKey}"]`);
+            return group ? group.querySelector('.char-field-preview') : null;
+        }
+
+        // 状态机：loading / ready / error / idle(hidden)
+        function setCharFieldPreview(fieldKey, state, payload) {
+            const preview = _getCharFieldPreviewNode(fieldKey);
+            if (!preview) return;
+            const label = preview.querySelector('.char-field-preview-label');
+            const textEl = preview.querySelector('.char-field-preview-text');
+            const actions = preview.querySelector('.char-field-preview-actions');
+            preview.classList.remove('hidden', 'border-red-300', 'bg-red-50', 'border-purple-200', 'bg-purple-50');
+            if (state === 'loading') {
+                preview.classList.add('border-purple-200', 'bg-purple-50');
+                if (label) label.textContent = 'AI 生成中…';
+                if (textEl) textEl.textContent = '…';
+                if (actions) actions.innerHTML = `
+                    <button type="button" class="flex-1 min-h-[36px] sm:min-h-0 bg-white border border-gray-300 text-gray-600 text-xs px-3 py-1.5 rounded-md hover:bg-gray-50" onclick="cancelCharFieldEnhancer('${fieldKey}')">取消</button>
+                `;
+            } else if (state === 'ready') {
+                preview.classList.add('border-purple-200', 'bg-purple-50');
+                if (label) label.textContent = 'AI 建议';
+                if (textEl) textEl.textContent = (payload && payload.text) || '';
+                if (actions) actions.innerHTML = `
+                    <button type="button" class="flex-1 min-h-[36px] sm:min-h-0 bg-purple-600 text-white text-xs px-3 py-1.5 rounded-md hover:bg-purple-500" onclick="applyCharFieldPreview('${fieldKey}')">应用到此字段</button>
+                    <button type="button" class="flex-1 min-h-[36px] sm:min-h-0 bg-white border border-gray-300 text-gray-600 text-xs px-3 py-1.5 rounded-md hover:bg-gray-50" onclick="discardCharFieldPreview('${fieldKey}')">放弃</button>
+                `;
+            } else if (state === 'error') {
+                preview.classList.add('border-red-300', 'bg-red-50');
+                if (label) label.textContent = '生成失败';
+                if (textEl) textEl.textContent = (payload && payload.errorMessage) || '';
+                if (actions) actions.innerHTML = `
+                    <button type="button" class="flex-1 min-h-[36px] sm:min-h-0 bg-purple-600 text-white text-xs px-3 py-1.5 rounded-md hover:bg-purple-500" onclick="onCharFieldEnhanceClick('${fieldKey}')">重试</button>
+                    <button type="button" class="flex-1 min-h-[36px] sm:min-h-0 bg-white border border-gray-300 text-gray-600 text-xs px-3 py-1.5 rounded-md hover:bg-gray-50" onclick="discardCharFieldPreview('${fieldKey}')">关闭</button>
+                `;
+            }
+        }
+
+        function discardCharFieldPreview(fieldKey) {
+            const preview = _getCharFieldPreviewNode(fieldKey);
+            if (preview) {
+                const textEl = preview.querySelector('.char-field-preview-text');
+                if (textEl) textEl.textContent = '';
+                preview.classList.add('hidden');
+            }
+            const ac = _charFieldAborters.get(fieldKey);
+            if (ac) { try { ac.abort(); } catch {} _charFieldAborters.delete(fieldKey); }
+        }
+
+        function applyCharFieldPreview(fieldKey) {
+            const preview = _getCharFieldPreviewNode(fieldKey);
+            if (!preview) return;
+            const textEl = preview.querySelector('.char-field-preview-text');
+            const ta = document.getElementById('char-field-' + fieldKey);
+            if (ta && textEl) {
+                ta.value = textEl.textContent || '';
+            }
+            discardCharFieldPreview(fieldKey);
+            showToast(`已应用到【${CHAR_FIELD_LABELS[fieldKey] || fieldKey}】`);
+        }
+
+        function cancelCharFieldEnhancer(fieldKey) {
+            const ac = _charFieldAborters.get(fieldKey);
+            if (ac) { try { ac.abort(); } catch {} }
+            _charFieldAborters.delete(fieldKey);
+            discardCharFieldPreview(fieldKey);
+        }
+
+        async function onCharFieldEnhanceClick(fieldKey) {
+            const apiKey = localStorage.getItem('vsllm_api_key');
+            if (!apiKey) { showToast('先去设置填 API Key'); openSettings(); return; }
+            const name = (document.getElementById('char-field-name') || {}).value || '';
+            if (!name.trim()) {
+                showToast('请先填角色名');
+                const el = document.getElementById('char-field-name'); if (el) el.focus();
+                return;
+            }
+            const currentValue = (document.getElementById('char-field-' + fieldKey) || {}).value || '';
+            const other = {};
+            for (const k of Object.keys(CHAR_FIELD_LABELS)) {
+                if (k === fieldKey) continue;
+                other[k] = (document.getElementById('char-field-' + k) || {}).value || '';
+            }
+
+            // 同字段有旧请求就先 abort；不同字段互不影响；不影响主 enhancer 的 _enhanceAbortController
+            const prev = _charFieldAborters.get(fieldKey);
+            if (prev) { try { prev.abort(); } catch {} }
+            const ac = new AbortController();
+            _charFieldAborters.set(fieldKey, ac);
+            const myAc = ac;
+
+            setCharFieldPreview(fieldKey, 'loading');
+
+            try {
+                const text = await callCharacterFieldEnhancer({
+                    characterName: name.trim(),
+                    fieldKey,
+                    currentValue,
+                    otherFields: other,
+                    signal: ac.signal,
+                });
+                // 竞态保护：如果这次请求已经被新请求替换或 cancel，丢弃结果
+                if (_charFieldAborters.get(fieldKey) !== myAc) return;
+                _charFieldAborters.delete(fieldKey);
+                if (!text) { setCharFieldPreview(fieldKey, 'error', { errorMessage: '模型返回为空' }); return; }
+                const clamped = text.length > 800 ? (text.slice(0, 800) + '…') : text;
+                setCharFieldPreview(fieldKey, 'ready', { text: clamped });
+            } catch (err) {
+                if (_charFieldAborters.get(fieldKey) === myAc) _charFieldAborters.delete(fieldKey);
+                if (err && err.name === 'AbortError') return; // 手动取消：UI 已由 cancel/discard 负责
+                setCharFieldPreview(fieldKey, 'error', { errorMessage: (err && err.message) ? err.message : String(err) });
+            }
+        }
+
+        // ============== 角色卡 Prompt 注入 ==============
+        // 从文本里提取被 @ 的角色卡（保持出现顺序，去重；纯内存查 _charactersCache）
+        // 支持"最长匹配"：当用户输入 @张 正好也有角色叫 "张三"，优先匹配更长的 "@张三"
+        function extractMentionedCharacters(text) {
+            const out = [];
+            const seen = new Set();
+            const missing = [];
+            if (!text) return { characters: out, missingNames: missing };
+            // 按所有非空白连续串扫，用 _charactersCache 做最长前缀匹配
+            const names = (_charactersCache || []).map(c => c.name).filter(Boolean);
+            const byLower = new Map();
+            for (const c of (_charactersCache || [])) byLower.set(c.nameLower, c);
+
+            const re = /@([^\s@]+)/g; // @ 后连续非空白非 @
+            let m;
+            while ((m = re.exec(text)) != null) {
+                const raw = m[1];
+                // 在 raw 里从长到短找最长匹配
+                let matched = null;
+                for (let len = raw.length; len >= 1; len--) {
+                    const sub = raw.slice(0, len);
+                    const c = byLower.get(sub.toLowerCase());
+                    if (c) { matched = c; break; }
+                }
+                if (matched) {
+                    if (!seen.has(matched.id)) {
+                        seen.add(matched.id);
+                        out.push(matched);
+                    }
+                } else {
+                    // 不存在该角色（可能被删）
+                    if (!missing.includes(raw)) missing.push(raw);
+                }
+            }
+            return { characters: out, missingNames: missing };
+        }
+
+        // 把角色卡设定拼成自然语言"角色一致性指令"段，追加到用户 prompt 末尾
+        function buildCharacterInjectionBlock(characters) {
+            if (!characters || characters.length === 0) return '';
+            const namesLine = characters.map(c => `@${c.name}`).join('、');
+            const lines = [];
+            lines.push('---');
+            lines.push('【角色一致性指令】');
+            lines.push(`本次提示词中出现 ${namesLine} 等角色代称。请在生成图片时严格保持以下角色设定一致（外貌、服饰、武器、风格统一）：`);
+            lines.push('');
+            for (const c of characters) {
+                lines.push(`角色「${c.name}」：`);
+                if (c.appearance) lines.push(`  外貌：${c.appearance}`);
+                if (c.outfit)     lines.push(`  服饰：${c.outfit}`);
+                if (c.gear)       lines.push(`  武装/道具：${c.gear}`);
+                if (c.persona)    lines.push(`  背景/性格：${c.persona}`);
+                if (c.styleNote)  lines.push(`  风格提示：${c.styleNote}`);
+                lines.push('');
+            }
+            lines.push('请让画面中的角色精确匹配以上描述。若提示词某处与上述设定冲突，以提示词指令为准，但外貌/服饰/武装尽量保留。');
+            lines.push('---');
+            let block = lines.join('\n');
+            // 整体 clamp，避免太长撑爆 input tokens
+            if (block.length > 3000) block = block.slice(0, 2970) + '\n...（角色描述过长已截断）\n---';
+            return block;
+        }
+
+        // 单点组合：给 runGeneration 用；返回最终 prompt + 注入元数据
+        function composeFinalPromptWithCharacters(userText) {
+            const { characters, missingNames } = extractMentionedCharacters(userText || '');
+            if (characters.length === 0) {
+                return {
+                    finalPrompt: userText || '',
+                    injectedCharacters: [],
+                    missingNames,
+                };
+            }
+            const block = buildCharacterInjectionBlock(characters);
+            return {
+                finalPrompt: (userText || '') + '\n\n' + block,
+                injectedCharacters: characters.map(c => ({
+                    id: c.id, name: c.name, updatedAt: c.updatedAt,
+                })),
+                missingNames,
+            };
+        }
+
+        // 用于 user message 气泡渲染：先 escape 再把已注册角色的 @名字 包成绿高亮
+        function renderTextWithMentionsHTML(rawText) {
+            const safe = escapeHTML(rawText || '');
+            if (!safe) return safe;
+            // 在 escape 后的字符串里替换 @名字：必须避开 HTML 实体干扰
+            // 由 escape 产出的 @ 仍是字面 @，没有被转义；后面名字里含 & < > ' " 会变成实体
+            // 为稳妥：基于原文本做替换后再逐段 escape；但原文可能含 HTML 标签，需要分段处理
+            // 折中：用正则在原文上找 @名字区段，分段 escape
+            const names = (_charactersCache || []).map(c => c.name).filter(Boolean);
+            if (names.length === 0) return safe;
+            const lowerSet = new Set((_charactersCache || []).map(c => c.nameLower));
+            let html = '';
+            let i = 0;
+            const n = (rawText || '').length;
+            while (i < n) {
+                const at = (rawText || '').indexOf('@', i);
+                if (at < 0) { html += escapeHTML((rawText || '').slice(i)); break; }
+                html += escapeHTML((rawText || '').slice(i, at));
+                // 找最长可匹配名字
+                let matched = null;
+                let maxLen = 0;
+                // 向后扫描至空白/结尾
+                let j = at + 1;
+                while (j < n && !/\s/.test((rawText || '')[j]) && (rawText || '')[j] !== '@') j++;
+                const candidate = (rawText || '').slice(at + 1, j);
+                for (let len = candidate.length; len >= 1; len--) {
+                    const sub = candidate.slice(0, len);
+                    if (lowerSet.has(sub.toLowerCase())) { matched = sub; maxLen = len; break; }
+                }
+                if (matched) {
+                    html += `<span class="text-emerald-600 bg-emerald-50 rounded px-0.5">@${escapeHTML(matched)}</span>`;
+                    html += escapeHTML(candidate.slice(maxLen));
+                    i = j;
+                } else {
+                    // 没匹配就按普通字符输出 @candidate
+                    html += escapeHTML('@' + candidate);
+                    i = j;
+                }
+            }
+            return html;
+        }
+
+        // Bot 消息底部"使用角色卡：..."小字 HTML
+        function buildInjectedCharsBadgeHTML(injectedCharacters) {
+            if (!injectedCharacters || injectedCharacters.length === 0) return '';
+            const names = injectedCharacters.map(x => escapeHTML(x.name)).join('、');
+            return `
+                <div class="mt-1 text-[11px] text-emerald-600 flex items-center gap-1">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                    使用角色卡：${names}
+                </div>
+            `;
+        }
+
+        // ============== @ 角色选择器 ==============
+        const _mentionState = {
+            open: false,
+            items: [],        // 当前可选角色数组
+            activeIdx: 0,     // 高亮项
+            anchor: null,     // { start, end, query } —— query 在 textarea value 里的区间（含 @）
+            composing: false, // IME 组合输入中
+        };
+
+        function _isMobileViewport() { return window.innerWidth < 640; }
+
+        // 识别光标前的 @query；规则：@ 前必须是行首/空白/标点，@ 后不允许空白/换行
+        function detectMentionQueryAtCaret(el) {
+            if (!el) return null;
+            const v = el.value || '';
+            const caret = el.selectionStart;
+            if (caret == null) return null;
+            // 向左扫直到 @ 或越界
+            let i = caret - 1;
+            while (i >= 0) {
+                const c = v[i];
+                if (c === '\n' || c === '\r' || c === ' ' || c === '\t') return null; // 遇空白说明 @ 已结束
+                if (c === '@') break;
+                i--;
+            }
+            if (i < 0) return null;
+            // @ 前一字符必须是行首/空白/标点，避免 email 里的 @ 被误识别
+            const before = i > 0 ? v[i - 1] : '';
+            if (before && !/[\s,，。；;:：、"'‘’“”（）()\[\]【】{}<>！!?？—\-]/.test(before)) return null;
+            const query = v.slice(i + 1, caret);
+            if (query.length > 32) return null;
+            if (/[\s\n\r]/.test(query)) return null;
+            return { start: i, end: caret, query };
+        }
+
+        // 搜索角色：空 query 返回最近编辑的 8 条；非空按前缀 > 子串 > 最近 排序，前 8
+        function searchCharactersForMention(query) {
+            const list = _charactersCache || [];
+            if (!query) return list.slice(0, 8);
+            const q = query.toLowerCase();
+            const prefix = [], substr = [];
+            for (const c of list) {
+                const n = c.nameLower || '';
+                if (n.startsWith(q)) prefix.push(c);
+                else if (n.includes(q)) substr.push(c);
+                else if (Array.isArray(c.tags) && c.tags.some(t => (t || '').toLowerCase().includes(q))) substr.push(c);
+            }
+            return prefix.concat(substr).slice(0, 8);
+        }
+
+        function _matchHighlightHTML(name, query) {
+            const safe = escapeHTML(name || '');
+            if (!query) return safe;
+            const lower = (name || '').toLowerCase();
+            const q = query.toLowerCase();
+            const i = lower.indexOf(q);
+            if (i < 0) return safe;
+            const s0 = escapeHTML(name.slice(0, i));
+            const s1 = escapeHTML(name.slice(i, i + q.length));
+            const s2 = escapeHTML(name.slice(i + q.length));
+            return `${s0}<span class="bg-emerald-100 text-emerald-800">${s1}</span>${s2}`;
+        }
+
+        function renderMentionList() {
+            const ul = document.getElementById('mention-list');
+            const empty = document.getElementById('mention-empty');
+            if (!ul) return;
+            const items = _mentionState.items;
+            if (items.length === 0) {
+                ul.innerHTML = '';
+                if (empty) empty.classList.remove('hidden');
+                return;
+            }
+            if (empty) empty.classList.add('hidden');
+            const q = _mentionState.anchor ? _mentionState.anchor.query : '';
+            ul.innerHTML = items.map((c, i) => {
+                const active = (i === _mentionState.activeIdx);
+                const avatar = c.avatar
+                    ? `<img src="${c.avatar}" class="w-7 h-7 rounded-full object-cover border border-gray-200 shrink-0">`
+                    : `<div class="w-7 h-7 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-semibold shrink-0">${escapeHTML((c.name || '?').slice(0,2))}</div>`;
+                const summary = (c.appearance || c.outfit || c.persona || '').replace(/\s+/g, ' ').slice(0, 32);
+                return `
+                    <li data-idx="${i}" class="mention-item flex items-center gap-2 px-3 min-h-11 cursor-pointer ${active ? 'bg-emerald-50' : 'hover:bg-gray-50'}">
+                        ${avatar}
+                        <div class="flex-1 min-w-0 py-2">
+                            <div class="text-sm text-gray-800 truncate">${_matchHighlightHTML(c.name || '', q)}</div>
+                            <div class="text-[11px] text-gray-400 truncate">${escapeHTML(summary || '（无描述）')}</div>
+                        </div>
+                    </li>
+                `;
+            }).join('');
+        }
+
+        function _positionMentionPopover(anchorEl) {
+            const pop = document.getElementById('mention-popover');
+            if (!pop) return;
+            if (_isMobileViewport()) {
+                // 移动端底部 sheet：贴输入区上方，左右撑满
+                const inputRect = document.getElementById('input-container').getBoundingClientRect();
+                pop.style.left = '8px';
+                pop.style.right = '8px';
+                pop.style.width = 'auto';
+                pop.style.maxWidth = 'none';
+                pop.style.top = Math.max(8, inputRect.top - Math.min(pop.offsetHeight || 260, window.innerHeight * 0.5) - 8) + 'px';
+                pop.style.bottom = 'auto';
+                pop.style.maxHeight = Math.min(window.innerHeight * 0.55, 320) + 'px';
+            } else {
+                // 桌面：靠输入框上方；横向对齐输入框左边；高度不够就下方
+                const rect = anchorEl.getBoundingClientRect();
+                const popH = Math.min(pop.offsetHeight || 260, 320);
+                const spaceAbove = rect.top;
+                const top = (spaceAbove > popH + 12) ? (rect.top - popH - 8) : (rect.bottom + 8);
+                pop.style.left = Math.max(8, rect.left) + 'px';
+                pop.style.right = 'auto';
+                pop.style.top = top + 'px';
+                pop.style.bottom = 'auto';
+                pop.style.width = '280px';
+                pop.style.maxWidth = 'calc(100vw - 16px)';
+                pop.style.maxHeight = '320px';
+            }
+        }
+
+        function openMentionPopover(anchor) {
+            _mentionState.open = true;
+            _mentionState.anchor = anchor;
+            _mentionState.items = searchCharactersForMention(anchor.query);
+            _mentionState.activeIdx = 0;
+            const pop = document.getElementById('mention-popover');
+            if (!pop) return;
+            pop.classList.remove('hidden');
+            renderMentionList();
+            _positionMentionPopover(promptInput);
+        }
+        function closeMentionPopover() {
+            if (!_mentionState.open) {
+                const pop0 = document.getElementById('mention-popover');
+                if (pop0) pop0.classList.add('hidden');
+                return;
+            }
+            _mentionState.open = false;
+            _mentionState.anchor = null;
+            _mentionState.items = [];
+            const pop = document.getElementById('mention-popover');
+            if (pop) pop.classList.add('hidden');
+        }
+
+        function _refreshMentionFromCaret() {
+            if (_mentionState.composing) return;
+            const anchor = detectMentionQueryAtCaret(promptInput);
+            if (!anchor) { if (_mentionState.open) closeMentionPopover(); return; }
+            _mentionState.anchor = anchor;
+            _mentionState.items = searchCharactersForMention(anchor.query);
+            if (!_mentionState.open) {
+                openMentionPopover(anchor);
+            } else {
+                _mentionState.activeIdx = Math.min(_mentionState.activeIdx, Math.max(0, _mentionState.items.length - 1));
+                renderMentionList();
+                _positionMentionPopover(promptInput);
+            }
+        }
+
+        function _mentionKeyHandler(e) {
+            if (!_mentionState.open) return;
+            const n = _mentionState.items.length;
+            if (e.key === 'ArrowDown') {
+                if (n > 0) { _mentionState.activeIdx = (_mentionState.activeIdx + 1) % n; renderMentionList(); }
+                e.preventDefault();
+            } else if (e.key === 'ArrowUp') {
+                if (n > 0) { _mentionState.activeIdx = (_mentionState.activeIdx - 1 + n) % n; renderMentionList(); }
+                e.preventDefault();
+            } else if (e.key === 'Enter' || e.key === 'Tab') {
+                if (n > 0) {
+                    applyMentionSelection(_mentionState.items[_mentionState.activeIdx]);
+                    e.preventDefault();
+                }
+            } else if (e.key === 'Escape') {
+                closeMentionPopover();
+                e.preventDefault();
+            }
+        }
+
+        function applyMentionSelection(character) {
+            if (!character || !_mentionState.anchor) { closeMentionPopover(); return; }
+            const { start, end } = _mentionState.anchor;
+            const v = promptInput.value;
+            const insertText = '@' + character.name;
+            const suffix = (end < v.length && !/\s/.test(v[end])) ? ' ' : '';
+            promptInput.value = v.slice(0, start) + insertText + suffix + v.slice(end);
+            const caret = start + insertText.length + suffix.length;
+            promptInput.focus();
+            try { promptInput.setSelectionRange(caret, caret); } catch {}
+            autoResizeTextarea(promptInput);
+            closeMentionPopover();
+        }
+
+        function initMentionEvents() {
+            if (!promptInput) return;
+            promptInput.addEventListener('input', _refreshMentionFromCaret);
+            promptInput.addEventListener('click', _refreshMentionFromCaret);
+            promptInput.addEventListener('keyup', (e) => {
+                // 左右方向键 / Home/End 会导致光标跳，需刷新；但上下/Enter 已在 keydown 里处理
+                if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) _refreshMentionFromCaret();
+            });
+            promptInput.addEventListener('keydown', _mentionKeyHandler);
+            promptInput.addEventListener('blur', () => {
+                // 延迟关闭，让 popover 里的 touchstart/click 能先生效
+                setTimeout(() => {
+                    const pop = document.getElementById('mention-popover');
+                    if (document.activeElement !== promptInput && pop && !pop.matches(':hover')) {
+                        closeMentionPopover();
+                    }
+                }, 160);
+            });
+            // IME 组合输入：中途不识别 @，避免打拼音时候误触
+            promptInput.addEventListener('compositionstart', () => { _mentionState.composing = true; });
+            promptInput.addEventListener('compositionend', () => { _mentionState.composing = false; _refreshMentionFromCaret(); });
+
+            // popover 点击 / 触摸选择
+            const pop = document.getElementById('mention-popover');
+            if (pop) {
+                const pickFromEvent = (ev) => {
+                    const li = ev.target.closest('.mention-item');
+                    if (!li) return;
+                    const idx = Number(li.dataset.idx);
+                    if (!Number.isFinite(idx) || !_mentionState.items[idx]) return;
+                    ev.preventDefault();
+                    applyMentionSelection(_mentionState.items[idx]);
+                };
+                pop.addEventListener('mousedown', pickFromEvent);      // 桌面：用 mousedown 避免 blur
+                pop.addEventListener('touchstart', pickFromEvent, { passive: false });
+            }
+
+            // 点击外部关闭
+            document.addEventListener('mousedown', (e) => {
+                if (!_mentionState.open) return;
+                const pop = document.getElementById('mention-popover');
+                if (e.target === promptInput) return;
+                if (pop && pop.contains(e.target)) return;
+                closeMentionPopover();
+            });
+            // 窗口尺寸/键盘弹起时重新定位
+            window.addEventListener('resize', () => { if (_mentionState.open) _positionMentionPopover(promptInput); });
+            if (window.visualViewport) {
+                window.visualViewport.addEventListener('resize', () => { if (_mentionState.open) _positionMentionPopover(promptInput); });
+            }
         }
 
         // ============== 会话列表 UI ==============
@@ -1005,7 +2180,7 @@
                   `</div>` : '';
 
             const textBubble = msg.text
-                ? `<div class="bg-gray-100 px-4 py-2.5 rounded-2xl rounded-tr-sm text-gray-800 leading-relaxed text-[15px] break-words whitespace-pre-wrap user-text-bubble">${escapeHTML(msg.text)}</div>`
+                ? `<div class="bg-gray-100 px-4 py-2.5 rounded-2xl rounded-tr-sm text-gray-800 leading-relaxed text-[15px] break-words whitespace-pre-wrap user-text-bubble">${renderTextWithMentionsHTML(msg.text)}</div>`
                 : '';
 
             const editBtn = `<button type="button" onclick="startEditUserMessage(this, ${msg.id})" class="mt-1 text-xs text-gray-400 hover:text-indigo-600 flex items-center gap-1 self-end user-edit-btn">
@@ -1109,7 +2284,7 @@
             div.className = 'flex gap-4 items-start w-full';
             div.dataset.messageId = String(msg.id);
             const meta = { recvTokens: msg.recvTokens, recvTokensEstimated: msg.recvTokensEstimated };
-            div.innerHTML = botShellHTML(buildBotErrorHTML(msg.errorMessage, msg.id, meta));
+            div.innerHTML = botShellHTML(buildBotErrorHTML(msg.errorMessage, msg.id, meta, msg.injectedCharacters));
             chatContainer.appendChild(div);
             _messageDomRegistry.set(msg.id, div);
         }
@@ -1119,7 +2294,7 @@
             div.className = 'flex gap-4 items-start w-full';
             div.dataset.messageId = String(msg.id);
             const meta = { recvTokens: msg.recvTokens, recvTokensEstimated: msg.recvTokensEstimated };
-            div.innerHTML = botShellHTML(buildBotTimeoutHTML(msg.errorMessage, msg.id, meta));
+            div.innerHTML = botShellHTML(buildBotTimeoutHTML(msg.errorMessage, msg.id, meta, msg.injectedCharacters));
             chatContainer.appendChild(div);
             _messageDomRegistry.set(msg.id, div);
         }
@@ -1129,7 +2304,7 @@
             div.className = 'flex gap-4 items-start w-full';
             div.dataset.messageId = String(msg.id);
             const meta = { recvTokens: msg.recvTokens, recvTokensEstimated: msg.recvTokensEstimated };
-            div.innerHTML = botShellHTML(buildBotCancelledHTML(msg.errorMessage, msg.id, meta));
+            div.innerHTML = botShellHTML(buildBotCancelledHTML(msg.errorMessage, msg.id, meta, msg.injectedCharacters));
             chatContainer.appendChild(div);
             _messageDomRegistry.set(msg.id, div);
         }
@@ -1138,6 +2313,7 @@
             const imgSrc = msg.resultImgSrc;
             const msgId = msg.id;
             const tokenMeta = botTokenMetaHTML(msg.recvTokens, msg.recvTokensEstimated !== false, null);
+            const charsBadge = buildInjectedCharsBadgeHTML(msg.injectedCharacters);
             return `
                 <div class="inline-block max-w-full">
                     <img src="${imgSrc}" class="rounded-xl max-w-full max-h-[400px] object-contain shadow-sm border border-gray-200 block">
@@ -1167,6 +2343,7 @@
                             标记
                         </button>
                     </div>
+                    ${charsBadge}
                     ${tokenMeta}
                 </div>
             `;
@@ -1185,10 +2362,12 @@
         }
 
         // tokensMeta: { recvTokens, recvTokensEstimated } | undefined → 无则渲染 "—"
-        function buildBotErrorHTML(errorText, msgId, tokensMeta) {
+        // injectedCharacters: [{id,name,...}] 可选，非空时在卡片底部展示"使用角色卡：..."
+        function buildBotErrorHTML(errorText, msgId, tokensMeta, injectedCharacters) {
             const retry = buildRetryButtonHTML(msgId, '重试', 'bg-white border border-red-300 text-red-600 hover:bg-red-100');
             const meta = tokensMeta || {};
             const tokenMeta = botTokenMetaHTML(meta.recvTokens, meta.recvTokensEstimated !== false, null);
+            const charsBadge = buildInjectedCharsBadgeHTML(injectedCharacters);
             return `
                 <div>
                     <div class="bg-red-50 text-red-600 px-4 py-3 rounded-lg border border-red-200 text-sm">
@@ -1199,17 +2378,19 @@
                         <div class="break-words whitespace-pre-wrap">${escapeHTML(errorText || '')}</div>
                         ${retry ? `<div class="mt-2">${retry}</div>` : ''}
                     </div>
+                    ${charsBadge}
                     ${tokenMeta}
                 </div>
             `;
         }
 
         // 超时是独立状态：橙色、明确提示、带重试
-        function buildBotTimeoutHTML(errorText, msgId, tokensMeta) {
+        function buildBotTimeoutHTML(errorText, msgId, tokensMeta, injectedCharacters) {
             const text = errorText || '生成超过 10 分钟，已自动停止。可以点击重试。';
             const retry = buildRetryButtonHTML(msgId, '重试', 'bg-white border border-orange-300 text-orange-600 hover:bg-orange-100');
             const meta = tokensMeta || {};
             const tokenMeta = botTokenMetaHTML(meta.recvTokens, meta.recvTokensEstimated !== false, null);
+            const charsBadge = buildInjectedCharsBadgeHTML(injectedCharacters);
             return `
                 <div>
                     <div class="bg-orange-50 text-orange-700 px-4 py-3 rounded-lg border border-orange-200 text-sm">
@@ -1220,16 +2401,18 @@
                         <div class="break-words whitespace-pre-wrap">${escapeHTML(text)}</div>
                         ${retry ? `<div class="mt-2">${retry}</div>` : ''}
                     </div>
+                    ${charsBadge}
                     ${tokenMeta}
                 </div>
             `;
         }
 
-        function buildBotCancelledHTML(extra, msgId, tokensMeta) {
+        function buildBotCancelledHTML(extra, msgId, tokensMeta, injectedCharacters) {
             const hint = extra ? ` <span class="text-gray-400 text-xs">(${escapeHTML(extra)})</span>` : '';
             const retry = buildRetryButtonHTML(msgId, '重新生成', 'bg-white border border-indigo-200 text-indigo-600 hover:bg-indigo-50');
             const meta = tokensMeta || {};
             const tokenMeta = botTokenMetaHTML(meta.recvTokens, meta.recvTokensEstimated !== false, null);
+            const charsBadge = buildInjectedCharsBadgeHTML(injectedCharacters);
             return `
                 <div>
                     <div class="bg-gray-100 text-gray-500 px-4 py-2 rounded-lg border border-gray-200 text-sm inline-flex items-center gap-2 flex-wrap">
@@ -1239,6 +2422,7 @@
                         </span>
                         ${retry}
                     </div>
+                    ${charsBadge}
                     ${tokenMeta}
                 </div>
             `;
@@ -1256,14 +2440,14 @@
             _resultImages.set(Number(msg.id), { imgSrc: msg.resultImgSrc, fileName: msg.fileName });
             replaceLoadingDom(msg.id, buildBotResultHTML(msg));
         }
-        function replaceLoadingWithError(msgId, errMsg) {
-            replaceLoadingDom(msgId, buildBotErrorHTML(errMsg, msgId));
+        function replaceLoadingWithError(msgId, errMsg, injectedCharacters) {
+            replaceLoadingDom(msgId, buildBotErrorHTML(errMsg, msgId, undefined, injectedCharacters));
         }
-        function replaceLoadingWithTimeout(msgId, extra) {
-            replaceLoadingDom(msgId, buildBotTimeoutHTML(extra, msgId));
+        function replaceLoadingWithTimeout(msgId, extra, injectedCharacters) {
+            replaceLoadingDom(msgId, buildBotTimeoutHTML(extra, msgId, undefined, injectedCharacters));
         }
-        function replaceLoadingWithCancelled(msgId, extra) {
-            replaceLoadingDom(msgId, buildBotCancelledHTML(extra, msgId));
+        function replaceLoadingWithCancelled(msgId, extra, injectedCharacters) {
+            replaceLoadingDom(msgId, buildBotCancelledHTML(extra, msgId, undefined, injectedCharacters));
         }
 
         // ============== Token meta 渲染 ==============
@@ -1492,21 +2676,29 @@
         async function runGeneration({ conversationId, promptText, inputImages, params }) {
             conversationId = Number(conversationId);
 
-            // 发送估算（user-side 已经估过一次；bot 自己也存一份便于 reroll/retry 独立）
-            const estSend = estimateSendTokens(promptText, inputImages);
+            // 单点注入：在这里把用户原文里的 @角色 解析并拼角色一致性指令
+            // promptText 保留给 bot message 展示（含 @），finalPrompt 发给 API
+            const composed = composeFinalPromptWithCharacters(promptText || '');
+            const finalPrompt = composed.finalPrompt;
+            const injectedCharacters = composed.injectedCharacters;
+            const missingNames = composed.missingNames;
+
+            // 发送估算用最终 prompt 长度，更贴近真实 input_tokens
+            const estSend = estimateSendTokens(finalPrompt, inputImages);
 
             // 创建 bot message (pending)
             const botMsg = await createMessage({
                 conversationId,
                 role: 'bot',
                 status: 'pending',
-                text: promptText,
+                text: promptText,            // 展示/reroll 用：保留带 @ 的原文
                 images: inputImages,
                 params,
                 sendTokens: estSend,
                 sendTokensEstimated: true,
                 recvTokens: null,
                 recvTokensEstimated: true,
+                injectedCharacters,          // 持久化本次注入了哪些角色
             });
 
             // 快照当前设置，一次生成整个生命周期都用这份
@@ -1552,7 +2744,7 @@
 
                 try {
                     const genResult = await generateImageFromRequest({
-                        promptText, inputImages,
+                        promptText: finalPrompt, inputImages,  // finalPrompt 含角色一致性指令块
                         size: params.size, quality: params.quality, format: params.format,
                     }, controller.signal);
                     const imgB64 = genResult.imgB64;
@@ -1604,6 +2796,7 @@
                         replaceLoadingWithResult({
                             id: botMsg.id, resultImgSrc: imgSrc, fileName,
                             recvTokens, recvTokensEstimated: recvEst,
+                            injectedCharacters,
                         });
                         await renderContextBarFromConv();
                         // 反向刷新 user message 的 meta（如果 API 回了真实 input_tokens）
@@ -1628,7 +2821,7 @@
                         completeTask(taskId);
                         await updateMsg(botMsg.id, { status: 'cancelled', errorMessage: null, recvTokens: null, recvTokensEstimated: true });
                         if (currentConversationId === conversationId) {
-                            replaceLoadingWithCancelled(botMsg.id, null);
+                            replaceLoadingWithCancelled(botMsg.id, null, injectedCharacters);
                         }
                         await renderConversationList();
                         return;
@@ -1651,7 +2844,7 @@
                         if (cancelledDuringWait) {
                             await updateMsg(botMsg.id, { status: 'cancelled', errorMessage: null, recvTokens: null, recvTokensEstimated: true });
                             if (currentConversationId === conversationId) {
-                                replaceLoadingWithCancelled(botMsg.id, null);
+                                replaceLoadingWithCancelled(botMsg.id, null, injectedCharacters);
                             }
                             await renderConversationList();
                             return;
@@ -1667,14 +2860,14 @@
                             : '生成已自动停止。可以点击重试。';
                         await updateMsg(botMsg.id, { status: 'timeout', errorMessage: tmsg, recvTokens: null, recvTokensEstimated: true });
                         if (currentConversationId === conversationId) {
-                            replaceLoadingWithTimeout(botMsg.id, tmsg);
+                            replaceLoadingWithTimeout(botMsg.id, tmsg, injectedCharacters);
                         }
                     } else {
                         const emsg = (err && err.message) ? err.message : String(err);
                         const extra = attempt > 0 ? `\n（已自动重试 ${attempt} 次仍失败）` : '';
                         await updateMsg(botMsg.id, { status: 'error', errorMessage: emsg + extra, recvTokens: null, recvTokensEstimated: true });
                         if (currentConversationId === conversationId) {
-                            replaceLoadingWithError(botMsg.id, emsg + extra);
+                            replaceLoadingWithError(botMsg.id, emsg + extra, injectedCharacters);
                         }
                         console.error('生成失败', err);
                     }
@@ -1950,12 +3143,18 @@
             if (_enhanceAbortController) { try { _enhanceAbortController.abort(); } catch {} }
             _enhanceAbortController = new AbortController();
 
+            // 如果用户已经在 prompt 里 @ 了角色，把角色卡设定作为额外上下文喂给增强器，避免改写时丢特征
+            const { characters: mentionedChars } = extractMentionedCharacters(raw);
+            const extraSystem = mentionedChars.length > 0 ? buildCharactersExtraContextForEnhancer(mentionedChars) : '';
             try {
-                const enhanced = await callPromptEnhancer(raw, _enhanceAbortController.signal);
+                const enhanced = await callPromptEnhancer(raw, _enhanceAbortController.signal, { extraSystem });
                 if (!enhanced) throw new Error('模型返回为空');
                 _enhanceState.enhanced = enhanced;
                 renderEnhancedResult(enhanced);
-                setEnhanceStatus('改写完成。确认效果满意可"应用到输入框"。', 'success');
+                const hint = mentionedChars.length > 0
+                    ? `改写完成（已感知 ${mentionedChars.length} 张角色卡）。确认后可"应用到输入框"。`
+                    : '改写完成。确认效果满意可"应用到输入框"。';
+                setEnhanceStatus(hint, 'success');
                 document.getElementById('enhance-apply-btn').disabled = false;
             } catch (err) {
                 if (err && err.name === 'AbortError') {
@@ -2004,22 +3203,22 @@
             '- If the user writes in Chinese, reply in Chinese. If English, reply in English. Otherwise follow the user\'s language.',
             '- Do not add any unsafe / explicit / policy-violating content that the user did not ask for.',
             '- Output ONLY the rewritten prompt text. No preface, no explanation, no Markdown, no quotes, no bullet list.',
+            '- If the user text contains tokens like @name, preserve them verbatim; do NOT expand them into descriptions; do NOT remove or rename them.',
         ].join('\n');
 
-        async function callPromptEnhancer(rawPrompt, signal) {
+        // ============ 底层 Chat Completions 调用（主 enhancer 和角色字段 enhancer 共用） ============
+        async function postChatCompletion({ system, user, model, temperature = 0.7, signal }) {
             const apiKey = localStorage.getItem('vsllm_api_key');
             if (!apiKey) throw new Error('未配置 API Key');
-
             const payload = {
-                model: PROMPT_ENHANCE_MODEL,
+                model: model || PROMPT_ENHANCE_MODEL,
                 messages: [
-                    { role: 'system', content: PROMPT_ENHANCE_SYSTEM },
-                    { role: 'user', content: rawPrompt },
+                    { role: 'system', content: system || '' },
+                    { role: 'user', content: user || '' },
                 ],
-                temperature: 0.7,
+                temperature,
                 stream: false,
             };
-
             let response;
             try {
                 response = await fetch(CHAT_URL, {
@@ -2032,7 +3231,6 @@
                 if (networkErr && networkErr.name === 'AbortError') throw networkErr;
                 throw new Error(`网络请求失败：${networkErr && networkErr.message ? networkErr.message : networkErr}`);
             }
-
             const rawText = await response.text().catch(() => '');
             if (!response.ok) {
                 let serverMsg = '';
@@ -2041,30 +3239,57 @@
                     serverMsg = (errJson && errJson.error && errJson.error.message) || errJson.message || JSON.stringify(errJson);
                 } catch { serverMsg = rawText; }
                 if (response.status === 401 || response.status === 403) {
-                    throw new Error(`密钥被拒 HTTP ${response.status}。请检查 API Key 是否填对、是否在 image_2fen 分组。`);
+                    const e = new Error(`密钥被拒 HTTP ${response.status}。请检查 API Key 是否填对、是否在 image_2fen 分组。`);
+                    e._httpStatus = response.status;
+                    throw e;
                 }
-                throw new Error(`HTTP ${response.status} ${response.statusText}\n${serverMsg || '(服务端未返回错误正文)'}`);
+                const e = new Error(`HTTP ${response.status} ${response.statusText}\n${serverMsg || '(服务端未返回错误正文)'}`);
+                e._httpStatus = response.status;
+                throw e;
             }
-
             let data;
             try { data = JSON.parse(rawText); }
             catch (parseErr) {
                 throw new Error(`响应不是合法 JSON：${parseErr.message}\n响应前 500 字：${rawText.slice(0, 500)}`);
             }
-
-            // 兼容 OpenAI 标准格式
             const choice = data && data.choices && data.choices[0];
             let content = choice && choice.message && choice.message.content;
             if (Array.isArray(content)) {
-                // 某些兼容服务会返回数组形态：[{ type:'text', text:'...' }, ...]
                 content = content.map(c => (typeof c === 'string') ? c : (c && c.text) || '').join('');
             }
             if (typeof content !== 'string') throw new Error('响应里没找到文本内容（data.choices[0].message.content）');
             let out = content.trim();
-            // 去掉模型偶发的包裹引号 / 代码围栏
             out = out.replace(/^```[a-zA-Z]*\n?/, '').replace(/\n?```$/, '').trim();
             out = out.replace(/^["'“”‘’]+|["'“”‘’]+$/g, '').trim();
             return out;
+        }
+
+        // 如果用户 prompt 里有 @角色，给 enhancer 追加一段角色上下文（保留 @ 不展开）
+        function buildCharactersExtraContextForEnhancer(characters) {
+            if (!characters || characters.length === 0) return '';
+            const lines = [];
+            lines.push('');
+            lines.push('Additional character context — the user prompt contains @character references. These are fixed identities the downstream image pipeline will inject separately. Follow these rules:');
+            lines.push('- Keep all @name tokens intact and in place. Do NOT expand them into descriptions.');
+            lines.push('- Your rewrite should not contradict the following character setups. When the user hints at their actions/scene, describe the scene around them, but leave their appearance/outfit/gear to the system.');
+            for (const c of characters) {
+                lines.push(`Character @${c.name}:`);
+                if (c.appearance) lines.push(`  appearance: ${c.appearance}`);
+                if (c.outfit)     lines.push(`  outfit: ${c.outfit}`);
+                if (c.gear)       lines.push(`  gear: ${c.gear}`);
+                if (c.persona)    lines.push(`  persona: ${c.persona}`);
+                if (c.styleNote)  lines.push(`  style: ${c.styleNote}`);
+            }
+            return lines.join('\n');
+        }
+
+        async function callPromptEnhancer(rawPrompt, signal, options) {
+            const extraSystem = options && options.extraSystem ? options.extraSystem : '';
+            return await postChatCompletion({
+                system: PROMPT_ENHANCE_SYSTEM + (extraSystem ? '\n' + extraSystem : ''),
+                user: rawPrompt,
+                signal,
+            });
         }
 
         // ============== 视频首尾帧提取（纯前端） ==============
