@@ -124,6 +124,10 @@
                                 <option value="webp">webp</option>
                             </select>
                         </label>
+                        <button type="button" onclick="openVideoFrameModal()" class="ml-auto flex items-center gap-1 text-xs text-indigo-600 hover:bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded" title="从本地视频截取首帧/尾帧加入参考图（纯前端处理，不上传视频）">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                            截取视频帧
+                        </button>
                     </div>
 
                     <div id="context-bar" class="hidden bg-indigo-50/50 border-b border-indigo-100 px-3 py-2 flex items-center justify-between">
@@ -171,6 +175,27 @@
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">API Key</label>
                     <input type="password" id="api-key-input" placeholder="sk-..." class="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-xl focus:ring-2 focus:ring-black focus:border-black outline-none transition-all">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">生成自动超时</label>
+                    <select id="setting-timeout" class="w-full px-3 py-2.5 bg-gray-50 border border-gray-300 rounded-xl focus:ring-2 focus:ring-black focus:border-black outline-none transition-all">
+                        <option value="never">永不（默认）</option>
+                        <option value="300000">5 分钟</option>
+                        <option value="600000">10 分钟</option>
+                        <option value="900000">15 分钟</option>
+                        <option value="1800000">30 分钟</option>
+                    </select>
+                    <p class="text-[11px] text-gray-400 mt-1">到时间会自动停止并提示可重试。默认永不超时，一直等后端返回。</p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">失败自动重试次数</label>
+                    <select id="setting-retry" class="w-full px-3 py-2.5 bg-gray-50 border border-gray-300 rounded-xl focus:ring-2 focus:ring-black focus:border-black outline-none transition-all">
+                        <option value="0">0（不自动重试，默认）</option>
+                        <option value="1">最多 1 次</option>
+                        <option value="2">最多 2 次</option>
+                        <option value="3">最多 3 次</option>
+                    </select>
+                    <p class="text-[11px] text-gray-400 mt-1">仅对网络错误、HTTP 5xx、超时自动重试；参数错误 / 401 / 403 / 400 不重试；手动取消不重试。</p>
                 </div>
                 <div class="flex gap-2">
                     <button onclick="testApiKey()" class="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl hover:bg-gray-200 transition-colors font-medium">
@@ -232,6 +257,41 @@
         </div>
     </div>
 
+    <!-- 视频截帧 modal：纯前端，选本地视频后 seek+canvas 截帧加入 pendingImages -->
+    <div id="video-frame-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden justify-center items-center p-4">
+        <div class="bg-white rounded-2xl w-full max-w-sm p-6 shadow-2xl relative">
+            <h3 class="text-lg font-semibold mb-1 text-gray-800">截取视频帧</h3>
+            <p class="text-xs text-gray-500 mb-4 leading-relaxed">从本地视频提取一帧作为参考图。<br>纯前端处理，不会上传视频本身，只把截取到的图加入待发送区。</p>
+            <div class="space-y-2 mb-4">
+                <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                    <input type="radio" name="vf-which" value="first" checked class="accent-indigo-600">
+                    <span>首帧</span>
+                </label>
+                <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                    <input type="radio" name="vf-which" value="last" class="accent-indigo-600">
+                    <span>尾帧</span>
+                </label>
+                <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                    <input type="radio" name="vf-which" value="both" class="accent-indigo-600">
+                    <span>首 + 尾（两张都要）</span>
+                </label>
+            </div>
+            <input type="file" id="video-frame-input" accept="video/*" class="hidden" onchange="onVideoFrameFileSelect(event)">
+            <div class="flex gap-2">
+                <button type="button" onclick="closeVideoFrameModal()" class="flex-1 bg-gray-100 text-gray-700 py-2.5 rounded-xl hover:bg-gray-200 transition-colors text-sm">
+                    取消
+                </button>
+                <button type="button" onclick="pickVideoForFrame()" id="video-frame-pick-btn" class="flex-1 bg-black text-white py-2.5 rounded-xl hover:bg-gray-800 transition-colors text-sm">
+                    选择视频并截取
+                </button>
+            </div>
+            <div id="video-frame-status" class="text-xs text-gray-500 mt-3 min-h-[1em]"></div>
+            <button onclick="closeVideoFrameModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+    </div>
+
     <script>
         // ============================================================
         // ！！！图片输入格式规范（别再混用了）！！！
@@ -269,8 +329,56 @@
             "精修中，别催，催出不来好图…",
         ];
 
+        // 全项目构造图片 content item 的唯一入口；别的地方一律不能手写 { type: 'image_url', ... }
         function buildImageContent(url) {
+            if (typeof url !== 'string' || !url) {
+                // 强制字符串入参；老调用里如果传了 content item 对象，这里会早早炸出来，不会打到后端
+                throw new Error(`buildImageContent 期望字符串 URL（data URL 或 http URL），收到：${typeof url}`);
+            }
             return { type: 'input_image', image_url: url };
+        }
+
+        // 把任意形态的"图片条目"归一成字符串 URL；老持久化里可能混进对象形态
+        // 兼容：字符串 / { image_url: { url } } / { image_url: 'str' } / { url } / { b64 } / { data }
+        function normalizeImageEntry(x) {
+            if (typeof x === 'string') return x;
+            if (x && typeof x === 'object') {
+                if (x.image_url && typeof x.image_url === 'object' && typeof x.image_url.url === 'string') return x.image_url.url;
+                if (typeof x.image_url === 'string') return x.image_url;
+                if (typeof x.url === 'string') return x.url;
+                if (typeof x.b64 === 'string') return x.b64;
+                if (typeof x.data === 'string') return x.data;
+            }
+            return null;
+        }
+
+        function normalizeInputImages(arr) {
+            if (!Array.isArray(arr)) return [];
+            const out = [];
+            for (const x of arr) {
+                const s = normalizeImageEntry(x);
+                if (typeof s === 'string' && s) out.push(s);
+            }
+            return out;
+        }
+
+        // fetch 前的最后兜底：payload 里如果还有 Chat Completions 形态的 image_url 就直接拦住
+        // 这样后端不再收到非法 type；前端错误信息也能明确告诉用户这是参数 bug
+        function assertNoChatImageUrlContent(payload) {
+            const inputs = (payload && Array.isArray(payload.input)) ? payload.input : [];
+            for (let i = 0; i < inputs.length; i++) {
+                const item = inputs[i];
+                const content = (item && Array.isArray(item.content)) ? item.content : [];
+                for (let j = 0; j < content.length; j++) {
+                    const c = content[j];
+                    if (c && c.type === 'image_url') {
+                        throw new Error(
+                            `内部参数错误：图片格式仍是 image_url，应为 input_image（位置 input[${i}].content[${j}]）。\n` +
+                            `这是前端 bug，不是你 prompt 的问题。请刷新页面重试；反复出现可新建对话重发。`
+                        );
+                    }
+                }
+            }
         }
 
         // ============== 全局状态 ==============
@@ -531,6 +639,8 @@
                         renderBotDone(m);
                     } else if (m.status === 'error') {
                         renderBotErrorMsg(m);
+                    } else if (m.status === 'timeout') {
+                        renderBotTimeout(m);
                     } else if (m.status === 'cancelled') {
                         renderBotCancelled(m);
                     } else if (m.status === 'pending') {
@@ -777,6 +887,21 @@
         }
 
         function renderBotLoading(msg, taskId) {
+            // 从 task 读 attempt 信息，切换会话回来能看到"自动重试 N/M"
+            const task = _tasks.get(taskId);
+            const attempt = (task && task.attempt) || 0;
+            const maxAttempts = (task && task.maxAttempts) || 1;
+
+            // 脚注根据当前设置动态生成（快照时 loadTimeoutMs/RetryCount 读的是最新值，和 task 快照一致）
+            const tMs = loadTimeoutMs();
+            const rN = loadRetryCount();
+            const timeoutLabel = tMs > 0 ? `超过 ${Math.round(tMs / 60000)} 分钟自动停止` : '默认不自动超时';
+            const retryLabel = rN > 0 ? `；失败最多自动重试 ${rN} 次` : '';
+            const footLine = `${timeoutLabel}${retryLabel}。失败可手动重试，也可随时取消。`;
+
+            const retryHintHidden = attempt > 0 ? '' : 'hidden';
+            const retryHintText = attempt > 0 ? `上次失败，自动重试中 ${attempt}/${maxAttempts - 1}…` : '';
+
             const div = document.createElement('div');
             div.className = 'flex gap-4 items-start w-full';
             div.dataset.messageId = String(msg.id);
@@ -792,6 +917,8 @@
                         <div class="absolute top-0 w-2 h-2 rounded-full bg-indigo-400"></div>
                     </div>
                     <div class="loading-text text-sm text-gray-500 mt-3 italic max-w-md"></div>
+                    <div class="retry-hint text-[11px] text-amber-600 mt-1 max-w-md ${retryHintHidden}">${escapeHTML(retryHintText)}</div>
+                    <div class="text-[11px] text-gray-400 mt-1 max-w-md">${escapeHTML(footLine)}</div>
                     <button type="button" class="cancel-task-btn mt-2 text-xs text-red-500 hover:text-red-700 flex items-center gap-1" onclick="cancelTaskById(${taskId})">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                         取消生成
@@ -838,7 +965,16 @@
             const div = document.createElement('div');
             div.className = 'flex gap-4 items-start w-full';
             div.dataset.messageId = String(msg.id);
-            div.innerHTML = botShellHTML(buildBotErrorHTML(msg.errorMessage));
+            div.innerHTML = botShellHTML(buildBotErrorHTML(msg.errorMessage, msg.id));
+            chatContainer.appendChild(div);
+            _messageDomRegistry.set(msg.id, div);
+        }
+
+        function renderBotTimeout(msg) {
+            const div = document.createElement('div');
+            div.className = 'flex gap-4 items-start w-full';
+            div.dataset.messageId = String(msg.id);
+            div.innerHTML = botShellHTML(buildBotTimeoutHTML(msg.errorMessage, msg.id));
             chatContainer.appendChild(div);
             _messageDomRegistry.set(msg.id, div);
         }
@@ -847,7 +983,7 @@
             const div = document.createElement('div');
             div.className = 'flex gap-4 items-start w-full';
             div.dataset.messageId = String(msg.id);
-            div.innerHTML = botShellHTML(buildBotCancelledHTML(msg.errorMessage));
+            div.innerHTML = botShellHTML(buildBotCancelledHTML(msg.errorMessage, msg.id));
             chatContainer.appendChild(div);
             _messageDomRegistry.set(msg.id, div);
         }
@@ -875,6 +1011,10 @@
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m-3-3h6"></path></svg>
                             增强图片
                         </button>
+                        <button onclick="cutoutBgFromKoukoutu()" title="新标签页打开抠图工具 koukoutu.com（不会自动上传你的图，需要你手动上传）" class="bg-teal-50 text-teal-700 hover:bg-teal-100 px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-1 transition-colors">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.121 14.121L19 19m-7-7l7-7m-7 7l-2.879 2.879M12 12L9.121 9.121m0 5.758a3 3 0 10-4.243 4.243 3 3 0 004.243-4.243zm0-5.758a3 3 0 10-4.243-4.243 3 3 0 004.243 4.243z"></path></svg>
+                            抠图
+                        </button>
                         <button onclick="markResultImage(${msgId})" title="在图上画红圈标记要改的位置" class="bg-rose-50 text-rose-600 hover:bg-rose-100 px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-1 transition-colors">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
                             标记图片
@@ -884,24 +1024,58 @@
             `;
         }
 
-        function buildBotErrorHTML(msg) {
+        // 重试按钮（通用）；msgId 缺失时返回空（不给重试入口）
+        function buildRetryButtonHTML(msgId, label, colorClasses) {
+            if (!msgId) return '';
+            const cls = colorClasses || 'bg-white border border-red-300 text-red-600 hover:bg-red-100';
+            return `
+                <button onclick="retryFromFailedMessage(${msgId})" class="${cls} px-3 py-1 rounded-md text-xs font-medium flex items-center gap-1">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h5M20 20v-5h-5M4 9a8 8 0 0115-3M20 15a8 8 0 01-15 3"></path></svg>
+                    ${label || '重试'}
+                </button>
+            `;
+        }
+
+        function buildBotErrorHTML(errorText, msgId) {
+            const retry = buildRetryButtonHTML(msgId, '重试', 'bg-white border border-red-300 text-red-600 hover:bg-red-100');
             return `
                 <div class="bg-red-50 text-red-600 px-4 py-3 rounded-lg border border-red-200 text-sm">
                     <div class="font-bold flex items-center gap-1 mb-1">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                         生成失败
                     </div>
-                    <div class="break-words whitespace-pre-wrap">${escapeHTML(msg || '')}</div>
+                    <div class="break-words whitespace-pre-wrap">${escapeHTML(errorText || '')}</div>
+                    ${retry ? `<div class="mt-2">${retry}</div>` : ''}
                 </div>
             `;
         }
 
-        function buildBotCancelledHTML(extra) {
-            const hint = extra ? ` <span class="text-gray-400 text-xs">(${escapeHTML(extra)})</span>` : '';
+        // 超时是独立状态：橙色、明确提示 10 分钟、带重试
+        function buildBotTimeoutHTML(errorText, msgId) {
+            const text = errorText || '生成超过 10 分钟，已自动停止。可以点击重试。';
+            const retry = buildRetryButtonHTML(msgId, '重试', 'bg-white border border-orange-300 text-orange-600 hover:bg-orange-100');
             return `
-                <div class="bg-gray-100 text-gray-500 px-4 py-2 rounded-lg border border-gray-200 text-sm inline-flex items-center gap-1">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                    已取消生成${hint}
+                <div class="bg-orange-50 text-orange-700 px-4 py-3 rounded-lg border border-orange-200 text-sm">
+                    <div class="font-bold flex items-center gap-1 mb-1">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        生成超时
+                    </div>
+                    <div class="break-words whitespace-pre-wrap">${escapeHTML(text)}</div>
+                    ${retry ? `<div class="mt-2">${retry}</div>` : ''}
+                </div>
+            `;
+        }
+
+        function buildBotCancelledHTML(extra, msgId) {
+            const hint = extra ? ` <span class="text-gray-400 text-xs">(${escapeHTML(extra)})</span>` : '';
+            const retry = buildRetryButtonHTML(msgId, '重新生成', 'bg-white border border-indigo-200 text-indigo-600 hover:bg-indigo-50');
+            return `
+                <div class="bg-gray-100 text-gray-500 px-4 py-2 rounded-lg border border-gray-200 text-sm inline-flex items-center gap-2 flex-wrap">
+                    <span class="inline-flex items-center gap-1">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        已取消生成${hint}
+                    </span>
+                    ${retry}
                 </div>
             `;
         }
@@ -919,24 +1093,30 @@
             replaceLoadingDom(msg.id, buildBotResultHTML(msg));
         }
         function replaceLoadingWithError(msgId, errMsg) {
-            replaceLoadingDom(msgId, buildBotErrorHTML(errMsg));
+            replaceLoadingDom(msgId, buildBotErrorHTML(errMsg, msgId));
+        }
+        function replaceLoadingWithTimeout(msgId, extra) {
+            replaceLoadingDom(msgId, buildBotTimeoutHTML(extra, msgId));
         }
         function replaceLoadingWithCancelled(msgId, extra) {
-            replaceLoadingDom(msgId, buildBotCancelledHTML(extra));
+            replaceLoadingDom(msgId, buildBotCancelledHTML(extra, msgId));
         }
 
         // ============== API 请求（纯数据层，带 signal） ==============
         async function generateImageFromRequest(record, signal) {
             const apiKey = localStorage.getItem('vsllm_api_key');
             if (!apiKey) throw new Error('未配置 API Key');
-            const { promptText, inputImages, size, quality, format } = record;
+            const { promptText, size, quality, format } = record;
+            // 入口处统一 normalize；挡住历史持久化里混进来的对象形态
+            const inputImages = normalizeInputImages(record.inputImages);
 
             let instruction = `Use the image_generation tool to generate exactly one image. 不要输出长篇文字说明，只生成图片。`;
             if (promptText) instruction += `\n提示词：${promptText}`;
-            if (inputImages && inputImages.length > 0) instruction += `\n【重要指令】：请务必参考我附带的图片特征进行画面的修改、变体或延续生成。`;
+            if (inputImages.length > 0) instruction += `\n【重要指令】：请务必参考我附带的图片特征进行画面的修改、变体或延续生成。`;
 
             const contentArray = [{ type: 'input_text', text: instruction }];
-            (inputImages || []).forEach(b64 => contentArray.push(buildImageContent(b64)));
+            // 只通过唯一入口 buildImageContent 构造，入参非字符串会早早抛错
+            inputImages.forEach(url => contentArray.push(buildImageContent(url)));
 
             const imageGenTool = {
                 type: 'image_generation',
@@ -954,6 +1134,9 @@
                 tool_choice: { type: 'image_generation' },
                 stream: false, store: false,
             };
+
+            // fetch 前的最后兜底：任何 content item 的 type=='image_url' 都拦住，不发请求
+            assertNoChatImageUrlContent(payload);
 
             let response;
             try {
@@ -984,7 +1167,16 @@
                     const errJson = JSON.parse(rawText);
                     serverMsg = errJson?.error?.message || errJson?.message || JSON.stringify(errJson);
                 } catch { serverMsg = rawText; }
-                throw new Error(`HTTP ${response.status} ${response.statusText}\n${serverMsg || '(服务端未返回错误正文)'}`);
+                // 后端明确说 image_url 不合法 → 给用户说人话，这不是 prompt 的问题
+                let prefix = '';
+                if (serverMsg && /image_url/.test(serverMsg) && /(Supported values|invalid_value)/i.test(serverMsg)) {
+                    prefix = '【前端图片参数格式错误，不是你 prompt 的问题】\n' +
+                             '后端不接受 image_url 类型，需要 input_image。\n' +
+                             '这通常是老版本残留数据导致的：请刷新页面重试；如仍旧报错，新建对话重新上传图即可。\n\n';
+                }
+                const e = new Error(`HTTP ${response.status} ${response.statusText}\n${prefix}${serverMsg || '(服务端未返回错误正文)'}`);
+                e._httpStatus = response.status; // 用于 isTransientError 判断
+                throw e;
             }
 
             let data;
@@ -1011,9 +1203,19 @@
         }
 
         // ============== 任务管理 ==============
+        // 每个 task 独立持一个 AbortController + timedOut 标志
+        // timedOut=true 表示 abort 是"自动超时"触发的，timedOut=false 且被 abort 则是"手动取消"
         function createTask(conversationId, messageId, controller) {
             const id = ++_taskCounter;
-            _tasks.set(id, { id, conversationId: Number(conversationId), messageId: Number(messageId), controller });
+            _tasks.set(id, {
+                id,
+                conversationId: Number(conversationId),
+                messageId: Number(messageId),
+                controller,
+                timedOut: false,
+                attempt: 0,      // 第几次尝试（0 初次，1..N 为自动重试）
+                maxAttempts: 1,  // 总共允许的尝试次数 = 1 + retryCount
+            });
             return id;
         }
         function completeTask(taskId) {
@@ -1022,11 +1224,45 @@
         function cancelTaskById(taskId) {
             const t = _tasks.get(taskId);
             if (!t) return;
+            // 手动取消：timedOut 保持 false；同时记一个标志防止 runGeneration 再自动重试
+            t.userCancelled = true;
             try { t.controller.abort(); } catch {}
         }
 
-        // 统一生成流程（sendMessage / reroll / edit-regen 共用）
-        // 关键：task 持 conversationId + messageId，完成时只在当前 conv 才更新 DOM，否则只写 DB
+        // ============== 用户可配置的生成行为 ==============
+        // 超时：默认 0 = 永不超时；可选 5/10/15/30 分钟
+        function loadTimeoutMs() {
+            const v = localStorage.getItem('vsllm_timeout_ms');
+            if (!v || v === 'never' || v === '0') return 0;
+            const n = parseInt(v, 10);
+            return Number.isFinite(n) && n > 0 ? n : 0;
+        }
+        // 失败自动重试：默认 0 = 不重试；最多 3 次
+        function loadRetryCount() {
+            const v = localStorage.getItem('vsllm_retry_count');
+            if (!v) return 0;
+            const n = parseInt(v, 10);
+            if (!Number.isFinite(n)) return 0;
+            return Math.max(0, Math.min(n, 5));
+        }
+
+        // 只对"临时性"错误自动重试；参数/鉴权错误和手动取消都不重试
+        function isTransientError(err, timedOut) {
+            if (timedOut) return true; // 自动超时算 transient
+            if (!err) return false;
+            if (err.name === 'AbortError') return false; // 手动取消不重试
+            const status = err._httpStatus || 0;
+            if (status >= 500 && status < 600) return true; // 5xx
+            if (status >= 400 && status < 500) return false; // 4xx 都不重试（参数/鉴权/限流）
+            const msg = (err.message || '').toString();
+            if (/invalid_request_error|invalid_value|image_url/i.test(msg)) return false;
+            if (/网络请求失败|Failed to fetch|NetworkError|ENOTFOUND|ECONNRESET/i.test(msg)) return true;
+            return false; // 不明错误默认不重试，免得循环放大问题
+        }
+
+        // 统一生成流程（sendMessage / reroll / edit-regen / retry 共用）
+        // 每次调用只创建一条 bot message，内部循环处理"自动重试"；每一轮有独立 AbortController 和 timeout timer
+        // 用户设置快照：任务启动时读一次 timeoutMs / maxRetries，后续不再受设置修改影响
         async function runGeneration({ conversationId, promptText, inputImages, params }) {
             conversationId = Number(conversationId);
 
@@ -1035,67 +1271,173 @@
                 conversationId,
                 role: 'bot',
                 status: 'pending',
-                text: promptText,        // 留给 reroll 时回读
+                text: promptText,
                 images: inputImages,
                 params,
             });
 
-            const controller = new AbortController();
-            const taskId = createTask(conversationId, botMsg.id, controller);
+            // 快照当前设置，一次生成整个生命周期都用这份
+            const timeoutMs = loadTimeoutMs();       // 0 = 永不超时
+            const maxRetries = loadRetryCount();     // 0..3
+            const maxAttempts = 1 + maxRetries;      // 总尝试次数
+            const timeoutMin = timeoutMs > 0 ? Math.round(timeoutMs / 60000) : 0;
 
-            // 如果当前正在看这个 conv，渲染 loading
-            if (currentConversationId === conversationId) {
-                renderBotLoading(botMsg, taskId);
-            }
-            await renderConversationList();
+            let attempt = 0;      // 0 初次，1..maxRetries 为自动重试
+            let lastErr = null;
+            let lastTimedOut = false;
 
-            try {
-                const imgB64 = await generateImageFromRequest({
-                    promptText, inputImages,
-                    size: params.size, quality: params.quality, format: params.format,
-                }, controller.signal);
+            while (attempt < maxAttempts) {
+                const controller = new AbortController();
+                const taskId = createTask(conversationId, botMsg.id, controller);
+                // 把 attempt 信息写进 task，让 renderBotLoading 能读到并显示"自动重试 N/M"
+                const task = _tasks.get(taskId);
+                if (task) {
+                    task.attempt = attempt;
+                    task.maxAttempts = maxAttempts;
+                }
 
-                const imgSrc = `data:image/png;base64,${imgB64}`;
-                const ts = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14);
-                const fileName = `image-${ts}.png`;
+                // 按用户设置启动超时 timer；timeoutMs=0 时跳过（永不超时）
+                let timeoutHandle = null;
+                if (timeoutMs > 0) {
+                    timeoutHandle = setTimeout(() => {
+                        const t = _tasks.get(taskId);
+                        if (!t) return;
+                        t.timedOut = true;
+                        try { t.controller.abort(); } catch {}
+                    }, timeoutMs);
+                }
 
-                await updateMsg(botMsg.id, { status: 'done', resultImgSrc: imgSrc, fileName });
-
-                // 更新所属 conv 的 contextImage（压缩）
-                try {
-                    const compressedCtx = await compressDataURL(imgSrc);
-                    const conv = await getConv(conversationId);
-                    if (conv) {
-                        conv.contextImage = compressedCtx;
-                        conv.updatedAt = Date.now();
-                        await putConv(conv);
-                    }
-                } catch {}
-
-                // 存本地图库（全局共享）
-                await saveToGallery(imgSrc, promptText || '生成');
-
+                // 渲染 loading：首次 append 一条新消息；重试则原地更新 retry hint + cancel 按钮
                 if (currentConversationId === conversationId) {
-                    replaceLoadingWithResult({ id: botMsg.id, resultImgSrc: imgSrc, fileName });
-                    await renderContextBarFromConv();
-                }
-            } catch (err) {
-                if (err && err.name === 'AbortError') {
-                    await updateMsg(botMsg.id, { status: 'cancelled', errorMessage: null });
-                    if (currentConversationId === conversationId) {
-                        replaceLoadingWithCancelled(botMsg.id, null);
+                    if (attempt === 0) {
+                        renderBotLoading(botMsg, taskId);
+                    } else {
+                        refreshLoadingForRetry(botMsg.id, taskId, attempt, maxAttempts);
                     }
-                } else {
-                    const emsg = err && err.message ? err.message : String(err);
-                    await updateMsg(botMsg.id, { status: 'error', errorMessage: emsg });
-                    if (currentConversationId === conversationId) {
-                        replaceLoadingWithError(botMsg.id, emsg);
-                    }
-                    console.error('生成失败', err);
                 }
-            } finally {
-                completeTask(taskId);
                 await renderConversationList();
+
+                try {
+                    const imgB64 = await generateImageFromRequest({
+                        promptText, inputImages,
+                        size: params.size, quality: params.quality, format: params.format,
+                    }, controller.signal);
+
+                    const imgSrc = `data:image/png;base64,${imgB64}`;
+                    const ts = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14);
+                    const fileName = `image-${ts}.png`;
+
+                    await updateMsg(botMsg.id, { status: 'done', resultImgSrc: imgSrc, fileName });
+
+                    try {
+                        const compressedCtx = await compressDataURL(imgSrc);
+                        const conv = await getConv(conversationId);
+                        if (conv) {
+                            conv.contextImage = compressedCtx;
+                            conv.updatedAt = Date.now();
+                            await putConv(conv);
+                        }
+                    } catch {}
+
+                    await saveToGallery(imgSrc, promptText || '生成');
+
+                    if (currentConversationId === conversationId) {
+                        replaceLoadingWithResult({ id: botMsg.id, resultImgSrc: imgSrc, fileName });
+                        await renderContextBarFromConv();
+                    }
+
+                    if (timeoutHandle) clearTimeout(timeoutHandle);
+                    completeTask(taskId);
+                    await renderConversationList();
+                    return; // 成功，退出循环
+                } catch (err) {
+                    if (timeoutHandle) clearTimeout(timeoutHandle);
+                    const t = _tasks.get(taskId);
+                    const timedOut = !!(t && t.timedOut);
+                    const userCancelled = !!(t && t.userCancelled);
+                    // 注意：这里不立即 completeTask。若要进入重试延时，保留 task 让切换会话 / 取消按钮还能找到它
+
+                    // 手动取消：直接终止，不重试
+                    if (err && err.name === 'AbortError' && userCancelled && !timedOut) {
+                        completeTask(taskId);
+                        await updateMsg(botMsg.id, { status: 'cancelled', errorMessage: null });
+                        if (currentConversationId === conversationId) {
+                            replaceLoadingWithCancelled(botMsg.id, null);
+                        }
+                        await renderConversationList();
+                        return;
+                    }
+
+                    lastErr = err;
+                    lastTimedOut = timedOut;
+
+                    // 判断是否可自动重试
+                    const transient = isTransientError(err, timedOut);
+                    const canRetry = transient && (attempt + 1 < maxAttempts);
+                    if (canRetry) {
+                        attempt++;
+                        // 给用户一点小喘息再重试；期间保留旧 task，让取消按钮/切换会话能找到它
+                        await new Promise(r => setTimeout(r, 800));
+                        // 等待结束后再判断是不是用户在这段时间点了取消
+                        const prev = _tasks.get(taskId);
+                        const cancelledDuringWait = !!(prev && prev.userCancelled);
+                        completeTask(taskId);
+                        if (cancelledDuringWait) {
+                            await updateMsg(botMsg.id, { status: 'cancelled', errorMessage: null });
+                            if (currentConversationId === conversationId) {
+                                replaceLoadingWithCancelled(botMsg.id, null);
+                            }
+                            await renderConversationList();
+                            return;
+                        }
+                        continue;
+                    }
+
+                    // 最终失败：分类写回 message 状态
+                    completeTask(taskId);
+                    if (timedOut) {
+                        const tmsg = timeoutMin > 0
+                            ? `生成超过 ${timeoutMin} 分钟，已自动停止。可以点击重试。`
+                            : '生成已自动停止。可以点击重试。';
+                        await updateMsg(botMsg.id, { status: 'timeout', errorMessage: tmsg });
+                        if (currentConversationId === conversationId) {
+                            replaceLoadingWithTimeout(botMsg.id, tmsg);
+                        }
+                    } else {
+                        const emsg = (err && err.message) ? err.message : String(err);
+                        const extra = attempt > 0 ? `\n（已自动重试 ${attempt} 次仍失败）` : '';
+                        await updateMsg(botMsg.id, { status: 'error', errorMessage: emsg + extra });
+                        if (currentConversationId === conversationId) {
+                            replaceLoadingWithError(botMsg.id, emsg + extra);
+                        }
+                        console.error('生成失败', err);
+                    }
+                    await renderConversationList();
+                    return;
+                }
+            }
+        }
+
+        // 重试轮：只原地更新 loading DOM 的 cancel 按钮 taskId 和 retry 提示
+        function refreshLoadingForRetry(msgId, taskId, attempt, maxAttempts) {
+            const div = _messageDomRegistry.get(msgId);
+            if (!div) return;
+            const cancelBtn = div.querySelector('.cancel-task-btn');
+            if (cancelBtn) cancelBtn.setAttribute('onclick', `cancelTaskById(${taskId})`);
+            updateLoadingRetryHint(msgId, attempt, maxAttempts);
+        }
+
+        function updateLoadingRetryHint(msgId, attempt, maxAttempts) {
+            const div = _messageDomRegistry.get(msgId);
+            if (!div) return;
+            const hint = div.querySelector('.retry-hint');
+            if (!hint) return;
+            if (attempt > 0) {
+                hint.textContent = `上次失败，自动重试中 ${attempt}/${maxAttempts - 1}…`;
+                hint.classList.remove('hidden');
+            } else {
+                hint.textContent = '';
+                hint.classList.add('hidden');
             }
         }
 
@@ -1110,8 +1452,10 @@
             if (!conv) return;
 
             const promptText = promptInput.value.trim();
-            const imagesToSend = [...(conv.pendingImages || [])];
-            if (conv.contextImage) imagesToSend.push(conv.contextImage);
+            // 从 conv 里读出来先 normalize 一下，老数据可能是对象形态，这里全部转成字符串 URL
+            const rawImages = [...(conv.pendingImages || [])];
+            if (conv.contextImage) rawImages.push(conv.contextImage);
+            const imagesToSend = normalizeInputImages(rawImages);
 
             if (!promptText && imagesToSend.length === 0) return;
 
@@ -1164,6 +1508,24 @@
                 inputImages: orig.images || [],
                 params: orig.params || { size: 'auto', quality: 'high', format: 'png' },
             });
+        }
+
+        // 失败/超时/取消消息点"重试"：用原参数在原对话里追加一次新生成
+        // 只写回失败消息所在的 conversation，不自动切换；若用户不在那个对话，给 toast 提示
+        async function retryFromFailedMessage(messageId) {
+            const orig = await getMsg(messageId);
+            if (!orig) { alert('消息已丢失，无法重试。'); return; }
+            const convId = Number(orig.conversationId);
+            runGeneration({
+                conversationId: convId,
+                promptText: orig.text || '',
+                inputImages: orig.images || [],
+                params: orig.params || { size: 'auto', quality: 'high', format: 'png' },
+            });
+            if (currentConversationId !== convId) {
+                const conv = await getConv(convId);
+                showToast(`已在「${(conv && conv.title) || '其他对话'}」中重试`);
+            }
         }
 
         async function startEditUserMessage(btnEl, messageId) {
@@ -1256,6 +1618,198 @@
 
         function enhanceResultImage() {
             window.open('https://www.iloveimg.com/zh-cn/upscale-image', '_blank', 'noopener,noreferrer');
+        }
+
+        // 抠图跳转：新标签页打开 koukoutu.com，不自动传本地图
+        function cutoutBgFromKoukoutu() {
+            window.open('https://www.koukoutu.com/removebgtool/all', '_blank', 'noopener,noreferrer');
+        }
+
+        // ============== 视频首尾帧提取（纯前端） ==============
+        function openVideoFrameModal() {
+            // 默认回到"首帧"；清状态
+            const radios = document.querySelectorAll('input[name="vf-which"]');
+            radios.forEach(r => { r.checked = (r.value === 'first'); });
+            setVideoFrameStatus('', 'info');
+            const modal = document.getElementById('video-frame-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+        function closeVideoFrameModal() {
+            const modal = document.getElementById('video-frame-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            // 清掉 file input 里的选择，不然下次选同一个视频不会触发 onchange
+            const input = document.getElementById('video-frame-input');
+            if (input) input.value = '';
+        }
+        function setVideoFrameStatus(text, type) {
+            const el = document.getElementById('video-frame-status');
+            if (!el) return;
+            el.textContent = text || '';
+            const color = type === 'error' ? 'text-red-600' : type === 'success' ? 'text-green-600' : 'text-gray-500';
+            el.className = `text-xs mt-3 min-h-[1em] ${color}`;
+        }
+        // 点"选择视频并截取" → 触发 file picker
+        function pickVideoForFrame() {
+            const input = document.getElementById('video-frame-input');
+            if (input) input.click();
+        }
+        async function onVideoFrameFileSelect(e) {
+            const file = e.target.files && e.target.files[0];
+            if (!file) return;
+            const which = (document.querySelector('input[name="vf-which"]:checked') || {}).value || 'first';
+            const btn = document.getElementById('video-frame-pick-btn');
+            if (btn) btn.disabled = true;
+            setVideoFrameStatus('正在加载视频元数据…', 'info');
+            try {
+                const frames = await extractVideoFrames(file, which, (msg) => setVideoFrameStatus(msg, 'info'));
+                // 把截出来的帧加入当前会话的 pendingImages（一张张 put，方便顺序）
+                const convIdAtOpen = currentConversationId;
+                for (const f of frames) {
+                    const conv = await getConv(convIdAtOpen);
+                    if (!conv) break;
+                    conv.pendingImages = conv.pendingImages || [];
+                    conv.pendingImages.push(f.dataUrl);
+                    await putConv(conv);
+                }
+                if (currentConversationId === convIdAtOpen) {
+                    await renderPendingImagesFromConv();
+                }
+                const labels = frames.map(f => f.label).join(' + ');
+                setVideoFrameStatus(`已截取 ${labels}，加入待发送区`, 'success');
+                showToast(`已截取${labels}，已加入参考图`);
+                setTimeout(closeVideoFrameModal, 600);
+            } catch (err) {
+                const emsg = err && err.message ? err.message : String(err);
+                setVideoFrameStatus('失败：' + emsg, 'error');
+            } finally {
+                if (btn) btn.disabled = false;
+                // file input 清空，让用户能重选同一个视频
+                e.target.value = '';
+            }
+        }
+
+        // 加载视频 → 依次 seek 到目标时间点 → canvas 截帧 → 转 dataURL
+        function extractVideoFrames(file, which, onStatus) {
+            return new Promise((resolve, reject) => {
+                const url = URL.createObjectURL(file);
+                const video = document.createElement('video');
+                video.preload = 'auto';
+                video.muted = true;
+                video.playsInline = true;
+                video.crossOrigin = 'anonymous';
+                // metadata 超时兜底，有些视频在浏览器里根本解不了
+                let metaTimer = setTimeout(() => {
+                    cleanup();
+                    reject(new Error('加载视频元数据超时，可能浏览器不支持此格式。'));
+                }, 15000);
+                const cleanup = () => {
+                    try { URL.revokeObjectURL(url); } catch {}
+                    video.removeAttribute('src');
+                    try { video.load(); } catch {}
+                };
+                video.onerror = () => {
+                    clearTimeout(metaTimer);
+                    cleanup();
+                    const code = video.error && video.error.code;
+                    reject(new Error('视频加载失败（可能格式不被浏览器支持，code=' + code + '）'));
+                };
+                video.onloadedmetadata = async () => {
+                    clearTimeout(metaTimer);
+                    const duration = video.duration;
+                    if (!isFinite(duration) || duration <= 0) {
+                        cleanup();
+                        reject(new Error('视频时长无效，无法截帧'));
+                        return;
+                    }
+                    const targets = [];
+                    if (which === 'first' || which === 'both') {
+                        // 0.05s 比严格 0 更稳，避免纯黑首帧
+                        targets.push({ label: '首帧', time: Math.min(0.05, duration / 2) });
+                    }
+                    if (which === 'last' || which === 'both') {
+                        // 尾部 seek 最稳的是略前一点，不是严格 duration
+                        targets.push({ label: '尾帧', time: Math.max(duration - 0.1, 0) });
+                    }
+                    const results = [];
+                    try {
+                        for (const t of targets) {
+                            if (onStatus) onStatus(`截取${t.label}中…`);
+                            const dataUrl = await seekAndCaptureFrame(video, t.time);
+                            results.push({ label: t.label, dataUrl });
+                        }
+                        cleanup();
+                        resolve(results);
+                    } catch (e) {
+                        cleanup();
+                        reject(e);
+                    }
+                };
+                video.src = url;
+                // 某些浏览器要调一下 load() 才触发
+                try { video.load(); } catch {}
+            });
+        }
+
+        // 对已加载好的 video 元素 seek 到指定秒数，seeked 触发后用 canvas 截帧
+        function seekAndCaptureFrame(video, time) {
+            return new Promise((resolve, reject) => {
+                let done = false;
+                const cleanupListeners = () => {
+                    video.removeEventListener('seeked', onSeeked);
+                    video.removeEventListener('error', onError);
+                };
+                const onSeeked = () => {
+                    if (done) return;
+                    done = true;
+                    cleanupListeners();
+                    try {
+                        const w0 = video.videoWidth, h0 = video.videoHeight;
+                        if (!w0 || !h0) { reject(new Error('videoWidth/Height 为 0，无法截帧')); return; }
+                        const MAX = 1024;
+                        let w = w0, h = h0;
+                        if (w > h && w > MAX) { h = h * MAX / w; w = MAX; }
+                        else if (h > MAX) { w = w * MAX / h; h = MAX; }
+                        const canvas = document.createElement('canvas');
+                        canvas.width = Math.round(w);
+                        canvas.height = Math.round(h);
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                        const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+                        if (!dataUrl || dataUrl.length < 100) {
+                            reject(new Error('截帧结果为空，可能视频有 DRM 或跨域限制'));
+                            return;
+                        }
+                        resolve(dataUrl);
+                    } catch (e) {
+                        reject(e);
+                    }
+                };
+                const onError = () => {
+                    if (done) return;
+                    done = true;
+                    cleanupListeners();
+                    reject(new Error('seek 过程中视频报错'));
+                };
+                video.addEventListener('seeked', onSeeked);
+                video.addEventListener('error', onError);
+                try {
+                    video.currentTime = time;
+                } catch (e) {
+                    done = true;
+                    cleanupListeners();
+                    reject(new Error('设置 currentTime 失败：' + (e && e.message ? e.message : e)));
+                    return;
+                }
+                // seek 超时兜底（部分视频尾部 seek 会卡住）
+                setTimeout(() => {
+                    if (done) return;
+                    done = true;
+                    cleanupListeners();
+                    reject(new Error(`seek 到 ${time.toFixed(2)}s 超时（10s）。尾帧偶尔会失败，试试"首帧"或换个视频。`));
+                }, 10000);
+            });
         }
 
         // 把 bot 生成图丢进标记编辑器，保存后加到（当时打开所在的）conv 的 pendingImages
@@ -1496,6 +2050,12 @@
         // ============== 设置 + 探活 ==============
         function openSettings() {
             document.getElementById('api-key-input').value = localStorage.getItem('vsllm_api_key') || '';
+            // 回填超时设置；默认永不
+            const savedTimeout = localStorage.getItem('vsllm_timeout_ms');
+            document.getElementById('setting-timeout').value = savedTimeout || 'never';
+            // 回填重试次数；默认 0
+            const savedRetry = localStorage.getItem('vsllm_retry_count');
+            document.getElementById('setting-retry').value = savedRetry || '0';
             showKeyTestResult('', 'info');
             document.getElementById('settings-modal').classList.remove('hidden');
         }
@@ -1513,12 +2073,17 @@
                 return;
             }
             localStorage.setItem('vsllm_api_key', key);
+            // 同时保存超时和重试设置；两项都已有默认值（never / 0）
+            const timeoutVal = document.getElementById('setting-timeout').value || 'never';
+            const retryVal = document.getElementById('setting-retry').value || '0';
+            localStorage.setItem('vsllm_timeout_ms', timeoutVal);
+            localStorage.setItem('vsllm_retry_count', retryVal);
             // 保存后自动探活；成功才自动关窗，失败时让用户看错原因再改
             const ok = await testApiKey();
             if (ok) {
                 setTimeout(() => {
                     document.getElementById('settings-modal').classList.add('hidden');
-                    showToast('密钥已保存并验证通过');
+                    showToast('设置已保存并验证');
                 }, 400);
             }
         }
