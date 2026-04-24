@@ -1,19 +1,17 @@
+
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>vsllm GPT绘图工作台</title>
-    <!-- 引入 Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* 隐藏原生滚动条，保留滚动功能 */
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 10px; }
         ::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
-        
-        /* 加载动画 */
+
         .loader-dots div { animation-timing-function: cubic-bezier(0, 1, 1, 0); }
         .loader-dots div:nth-child(1) { left: 8px; animation: loader-dots1 0.6s infinite; }
         .loader-dots div:nth-child(2) { left: 8px; animation: loader-dots2 0.6s infinite; }
@@ -22,70 +20,82 @@
         @keyframes loader-dots1 { 0% { transform: scale(0); } 100% { transform: scale(1); } }
         @keyframes loader-dots3 { 0% { transform: scale(1); } 100% { transform: scale(0); } }
         @keyframes loader-dots2 { 0% { transform: translate(0, 0); } 100% { transform: translate(24px, 0); } }
-        
-        /* 适配移动端安全区域 */
+
         #input-container { padding-bottom: env(safe-area-inset-bottom); }
     </style>
 </head>
 <body class="bg-white text-gray-800 h-screen w-screen overflow-hidden flex font-sans">
 
-    <!-- 侧边栏：我的图库 -->
+    <!-- 侧边栏：对话列表 + 本地图库 -->
     <aside id="sidebar" class="fixed md:relative z-40 h-full w-64 bg-gray-50 border-r border-gray-200 flex flex-col transition-transform duration-300 -translate-x-full md:translate-x-0">
         <div class="h-14 flex items-center justify-between px-4 border-b border-gray-200 shrink-0">
             <span class="font-semibold text-gray-700 flex items-center gap-2">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                本地图库
+                工作台
             </span>
             <button onclick="toggleSidebar()" class="md:hidden text-gray-500 hover:text-gray-700 p-1">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
             </button>
         </div>
-        <div id="gallery-container" class="flex-1 overflow-y-auto p-3 grid grid-cols-2 gap-2 content-start">
-            <!-- 历史图片渲染区 -->
+
+        <!-- 对话列表 section -->
+        <div class="flex flex-col min-h-0 flex-1">
+            <div class="px-3 pt-3 pb-2 flex items-center justify-between shrink-0">
+                <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide">对话</span>
+                <button onclick="newConversation()" class="text-xs text-indigo-600 hover:bg-indigo-50 px-2 py-1 rounded flex items-center gap-1" title="新建对话">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                    新建
+                </button>
+            </div>
+            <div id="conversation-list" class="flex-1 overflow-y-auto px-2 pb-2 flex flex-col gap-1 min-h-0"></div>
         </div>
-        <div class="p-3 border-t border-gray-200 text-xs text-gray-400 text-center shrink-0">
-            图片存储于浏览器本地
+
+        <!-- 图库 section -->
+        <div class="flex flex-col min-h-0 flex-1 border-t border-gray-200">
+            <div class="px-3 pt-3 pb-2 shrink-0 flex items-center gap-1">
+                <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide">图库</span>
+            </div>
+            <div id="gallery-container" class="flex-1 overflow-y-auto px-3 pb-2 grid grid-cols-2 gap-2 content-start min-h-0"></div>
+        </div>
+
+        <!-- 底部：清空按钮两枚 -->
+        <div class="p-3 border-t border-gray-200 shrink-0 flex flex-col gap-1.5">
+            <div class="flex gap-1.5">
+                <button onclick="clearAllConversations()" class="flex-1 text-[11px] text-red-600 hover:bg-red-50 border border-red-200 px-2 py-1 rounded" title="清空所有对话和消息">
+                    清空对话
+                </button>
+                <button onclick="clearAllGallery()" class="flex-1 text-[11px] text-red-600 hover:bg-red-50 border border-red-200 px-2 py-1 rounded" title="清空图库里所有图">
+                    清空图库
+                </button>
+            </div>
+            <div class="text-[10px] text-gray-400 text-center">都存浏览器本地，清空无法恢复</div>
         </div>
     </aside>
 
-    <!-- 侧边栏遮罩（移动端） -->
     <div id="sidebar-overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-black bg-opacity-50 z-30 hidden md:hidden transition-opacity"></div>
 
     <!-- 主对话区 -->
     <main class="flex-1 flex flex-col h-full relative min-w-0">
-        <!-- 顶部导航 -->
         <header class="h-14 flex items-center justify-between px-4 border-b border-gray-200 shrink-0 bg-white z-10">
             <button onclick="toggleSidebar()" class="p-2 text-gray-600 hover:text-gray-900 md:hidden rounded-md hover:bg-gray-100">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
             </button>
-            <div class="font-medium text-lg flex items-center gap-2 flex-1 justify-center md:justify-start md:pl-4">
-                <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path></svg>
-                vsllm 绘图工作台
+            <div class="font-medium text-lg flex items-center gap-2 flex-1 justify-center md:justify-start md:pl-4 truncate">
+                <svg class="w-5 h-5 text-indigo-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path></svg>
+                <span id="header-conv-title" class="truncate">vsllm 绘图工作台</span>
             </div>
             <button onclick="openSettings()" class="p-2 text-gray-600 hover:text-gray-900 rounded-md hover:bg-gray-100" title="设置">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
             </button>
         </header>
 
-        <!-- 聊天流 -->
-        <div id="chat-container" class="flex-1 overflow-y-auto p-4 flex flex-col gap-6 w-full max-w-4xl mx-auto scroll-smooth">
-            <div class="flex gap-4 items-start w-full">
-                <div class="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center shrink-0 border border-indigo-200">
-                    <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"></path></svg>
-                </div>
-                <div class="flex-1 pt-1 text-gray-800 leading-relaxed max-w-prose">
-                    你好！我是绘图助手。我支持<strong>连续对话改图</strong>：<br>
-                    生成图片后，您可以直接发送类似“给它带上口罩”、“换成黑白风格”的指令，我会基于上一张图为您修改！
-                </div>
-            </div>
-        </div>
+        <div id="chat-container" class="flex-1 overflow-y-auto p-4 flex flex-col gap-6 w-full max-w-4xl mx-auto scroll-smooth"></div>
 
-        <!-- 输入区 -->
         <div id="input-container" class="w-full shrink-0 bg-white border-t border-gray-100 md:border-transparent pt-2 pb-4 px-4">
             <div class="max-w-4xl mx-auto">
                 <div class="flex flex-col bg-gray-50 border border-gray-300 rounded-2xl shadow-sm focus-within:ring-1 focus-within:ring-black focus-within:border-black transition-all overflow-hidden relative">
 
-                    <!-- 生成参数选择条：尺寸 / 质量 / 输出格式 -->
                     <div class="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 pt-2 pb-2 text-xs text-gray-500 border-b border-gray-100">
                         <span class="font-medium text-gray-600">参数</span>
                         <label class="flex items-center gap-1">
@@ -116,7 +126,6 @@
                         </label>
                     </div>
 
-                    <!-- 连续对话：上下文参考图 UI -->
                     <div id="context-bar" class="hidden bg-indigo-50/50 border-b border-indigo-100 px-3 py-2 flex items-center justify-between">
                         <div class="flex items-center gap-2 text-[13px] text-indigo-600 font-medium">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
@@ -128,12 +137,8 @@
                         </button>
                     </div>
 
-                    <!-- 多图预览缩略图区 -->
-                    <div id="image-preview-bar" class="hidden flex gap-2 px-3 pt-3 overflow-x-auto">
-                        <!-- JS 动态注入缩略图 -->
-                    </div>
+                    <div id="image-preview-bar" class="hidden flex gap-2 px-3 pt-3 overflow-x-auto"></div>
 
-                    <!-- 文本框与按钮栏 -->
                     <div class="flex items-end gap-2 p-2 relative bg-gray-50">
                         <button onclick="document.getElementById('file-upload').click()" class="p-2 text-gray-500 hover:text-black rounded-lg hover:bg-gray-200 transition-colors shrink-0" title="上传参考图">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg>
@@ -147,7 +152,7 @@
                         </button>
                     </div>
                 </div>
-                
+
                 <div class="text-center mt-2 text-xs text-gray-400">
                     当前使用模型: <span class="font-mono bg-gray-100 px-1 rounded text-gray-500">gpt-image-2-chat</span>
                 </div>
@@ -157,19 +162,25 @@
 
     <!-- 设置模态框 -->
     <div id="settings-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex justify-center items-center p-4">
-        <div class="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl transform transition-all">
+        <div class="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl transform transition-all relative">
             <h3 class="text-xl font-semibold mb-2 text-gray-800 text-center">配置 API 密钥</h3>
             <p class="text-sm text-gray-500 text-center mb-6">
                 请前往 <a href="https://vsllm.com" target="_blank" class="text-indigo-600 hover:underline font-medium">https://vsllm.com</a> 获取您的专属密钥<br>密钥仅保存在您的本地浏览器中。
             </p>
-            <div class="space-y-4">
+            <div class="space-y-3">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">API Key</label>
                     <input type="password" id="api-key-input" placeholder="sk-..." class="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-xl focus:ring-2 focus:ring-black focus:border-black outline-none transition-all">
                 </div>
-                <button onclick="saveSettings()" class="w-full bg-black text-white py-3 rounded-xl hover:bg-gray-800 transition-colors font-medium">
-                    保存并开始使用
-                </button>
+                <div class="flex gap-2">
+                    <button onclick="testApiKey()" class="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl hover:bg-gray-200 transition-colors font-medium">
+                        测试连接
+                    </button>
+                    <button onclick="saveSettings()" class="flex-1 bg-black text-white py-3 rounded-xl hover:bg-gray-800 transition-colors font-medium">
+                        保存
+                    </button>
+                </div>
+                <div id="api-key-test-result" class="text-xs min-h-[1em] text-gray-500"></div>
             </div>
             <button onclick="closeSettings()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
@@ -177,71 +188,526 @@
         </div>
     </div>
 
-    <!-- 逻辑脚本 -->
-    <script>
-        const BASE_URL = "https://vsllm.com/v1/responses";
-        const MODEL = "gpt-image-2-chat";
+    <!-- 标记/编辑图片 modal -->
+    <div id="mark-editor-modal" class="fixed inset-0 bg-black bg-opacity-70 z-50 hidden justify-center items-center p-3">
+        <div class="bg-white rounded-2xl w-full max-w-3xl p-4 shadow-2xl flex flex-col gap-3 max-h-[92vh]">
+            <div class="flex items-center justify-between shrink-0">
+                <h3 class="text-lg font-semibold text-gray-800">编辑/标记图片</h3>
+                <button onclick="closeMarkEditor()" class="text-gray-400 hover:text-gray-600 p-1" title="取消">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <p class="text-xs text-gray-500 bg-indigo-50 border border-indigo-100 rounded-md px-3 py-2 leading-relaxed shrink-0">
+                圈出想改的位置，保存后这张图会放进待发送区，再在输入框里写类似<span class="font-medium text-indigo-700">"修复红圈内的手"</span>、<span class="font-medium text-indigo-700">"把圈住的区域换成XXX"</span>的指令发出去。
+            </p>
 
+            <div class="flex flex-wrap items-center gap-3 text-xs text-gray-600 shrink-0">
+                <label class="flex items-center gap-1">
+                    <span>画笔色</span>
+                    <input type="color" id="mark-color" value="#ef4444" class="w-8 h-7 rounded cursor-pointer border border-gray-200">
+                </label>
+                <label class="flex items-center gap-1">
+                    <span>粗细</span>
+                    <input type="range" id="mark-size" min="2" max="40" value="10" class="w-28" oninput="document.getElementById('mark-size-label').textContent = this.value">
+                    <span id="mark-size-label" class="font-mono w-6 text-center">10</span>
+                </label>
+                <button type="button" onclick="markUndo()" class="px-2 py-1 bg-gray-100 rounded hover:bg-gray-200 flex items-center gap-1" title="撤销最近一笔">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a5 5 0 015 5v2M3 10l4-4m-4 4l4 4"></path></svg>
+                    撤销
+                </button>
+                <button type="button" onclick="markClear()" class="px-2 py-1 bg-gray-100 rounded hover:bg-gray-200 flex items-center gap-1" title="清空所有标记">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    清除
+                </button>
+            </div>
+
+            <div class="flex-1 overflow-auto bg-gray-100 rounded-lg flex items-center justify-center p-2 min-h-0">
+                <canvas id="mark-canvas" class="max-w-full max-h-full shadow" style="touch-action: none; cursor: crosshair;"></canvas>
+            </div>
+
+            <div class="flex justify-end gap-2 pt-1 shrink-0">
+                <button type="button" onclick="closeMarkEditor()" class="px-4 py-2 text-sm text-gray-600 rounded-lg hover:bg-gray-100">取消</button>
+                <button type="button" onclick="saveMarkEditor()" class="px-4 py-2 text-sm bg-black text-white rounded-lg hover:bg-gray-800">保存标记</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
         // ============================================================
         // ！！！图片输入格式规范（别再混用了）！！！
-        //
-        // 本项目用的是 OpenAI Responses API（/v1/responses），图片 content item 长这样：
+        // Responses API（/v1/responses）图片 item 长这样：
         //   { type: 'input_image', image_url: 'data:image/png;base64,xxxx' }
-        //   image_url 是字符串（data URL 或 http URL），不是对象！
-        //   也可用 file_id: { type: 'input_image', file_id: 'file-xxx' }
-        //
-        // 千万别写成 Chat Completions（/v1/chat/completions）那一套：
-        //   { type: 'image_url', image_url: { url: 'data:...' } }   <-- 错
-        //   这是旧 Chat API 的格式，Responses API 不认，会直接挂掉（表现为 Failed to fetch）
-        //
-        // 同理 text 在 Responses API 里是 'input_text'，不是 'text'。
+        //   image_url 是字符串！文本用 input_text。
+        // Chat Completions 那套 { type:'image_url', image_url:{url} } 不认，会炸。
         // ============================================================
-        function buildImageContent(dataUrlOrHttpUrl) {
-            // Responses API 规范：image_url 为字符串
-            return { type: 'input_image', image_url: dataUrlOrHttpUrl };
+        const BASE_URL = "https://vsllm.com/v1/responses";
+        const MODELS_URL = "https://vsllm.com/v1/models";
+        const MODEL = "gpt-image-2-chat";
+
+        const DB_NAME = "VsllmGallery";
+        const DB_VERSION = 2; // v1 只有 images；v2 加 conversations、messages
+        const STORE_GALLERY = "images";
+        const STORE_CONVERSATIONS = "conversations";
+        const STORE_MESSAGES = "messages";
+
+        // 生成时轮播的等待文案（高质量图 1-5 分钟，给用户点乐子别闲着）
+        const LOADING_MESSAGES = [
+            "正在给像素排队上户口…",
+            "高质量可能需要 1-5 分钟，别急，画师在磨刀…",
+            "正在跟模型讲价，争取多给点细节…",
+            "AI 在调色板里翻来翻去…",
+            "模型打完草稿正在上色…",
+            "构图、上色、精修，挨个来…",
+            "给每个像素抽了根烟提神…",
+            "高清细节刻画中，急不得…",
+            "调光布景中，假装在拍电影大片…",
+            "AI：让我想想怎么画最好看…",
+            "这张图信息量大，服务器也在喘气…",
+            "模型正在纠结笔触要粗还是细…",
+            "像素们排好队了，正在摆 pose…",
+            "画师磨刀三年、出图三秒，马上好…",
+            "精修中，别催，催出不来好图…",
+        ];
+
+        function buildImageContent(url) {
+            return { type: 'input_image', image_url: url };
         }
 
-        // DOM 节点
+        // ============== 全局状态 ==============
+        let db = null;
+        let currentConversationId = null;           // 当前正在看的会话 id
+        const _tasks = new Map();                    // taskId -> { id, conversationId, messageId, controller }
+        let _taskCounter = 0;
+        const _messageDomRegistry = new Map();       // messageId -> HTMLElement（仅当前会话）
+        const _resultImages = new Map();             // messageId -> { imgSrc, fileName }
+        let _markEditorState = null;
+
         const chatContainer = document.getElementById('chat-container');
         const promptInput = document.getElementById('prompt-input');
         const sendBtn = document.getElementById('send-btn');
         const imagePreviewBar = document.getElementById('image-preview-bar');
-        
-        // 状态变量
-        let pendingImages = []; // 用户手动上传的图片
-        let currentContextImage = null; // 连续对话：上一次生成的图片 (Base64)
 
         // ============== 初始化 ==============
         window.onload = async () => {
-            await initDB();
-            loadGallery();
+            try {
+                await initDB();
+            } catch (e) {
+                alert('本地存储初始化失败：' + (e && e.message ? e.message : e));
+                return;
+            }
+            initMarkCanvasEvents();
+
+            // 加载/创建默认会话
+            let convs = await listConvs();
+            if (convs.length === 0) {
+                const c = await createConversation();
+                convs = [c];
+            }
+            await switchToConversation(convs[0].id);
+            await loadGallery();
+
             const apiKey = localStorage.getItem('vsllm_api_key');
             if (!apiKey) openSettings();
         };
 
-        function openSettings() {
-            document.getElementById('api-key-input').value = localStorage.getItem('vsllm_api_key') || '';
-            document.getElementById('settings-modal').classList.remove('hidden');
+        // ============== IndexedDB ==============
+        function initDB() {
+            return new Promise((resolve, reject) => {
+                const req = indexedDB.open(DB_NAME, DB_VERSION);
+                req.onupgradeneeded = (e) => {
+                    const d = e.target.result;
+                    if (!d.objectStoreNames.contains(STORE_GALLERY)) {
+                        d.createObjectStore(STORE_GALLERY, { keyPath: "id" });
+                    }
+                    if (!d.objectStoreNames.contains(STORE_CONVERSATIONS)) {
+                        const cs = d.createObjectStore(STORE_CONVERSATIONS, { keyPath: "id" });
+                        cs.createIndex("updatedAt", "updatedAt");
+                    }
+                    if (!d.objectStoreNames.contains(STORE_MESSAGES)) {
+                        const ms = d.createObjectStore(STORE_MESSAGES, { keyPath: "id" });
+                        ms.createIndex("conversationId", "conversationId");
+                    }
+                };
+                req.onsuccess = (e) => { db = e.target.result; resolve(); };
+                req.onerror = (e) => reject(e.target.error || e);
+            });
         }
 
-        function closeSettings() {
-            if(!localStorage.getItem('vsllm_api_key')){
-                alert("请先填写并保存 API 密钥才能正常使用哦！");
+        // 唯一 id：Date.now()*1000 + 随机 3 位；远低于 MAX_SAFE_INTEGER
+        function _newId() {
+            return Date.now() * 1000 + Math.floor(Math.random() * 1000);
+        }
+
+        // ---- Conversation CRUD ----
+        function putConv(conv) {
+            return new Promise((resolve, reject) => {
+                const req = db.transaction(STORE_CONVERSATIONS, 'readwrite').objectStore(STORE_CONVERSATIONS).put(conv);
+                req.onsuccess = () => resolve();
+                req.onerror = (e) => reject(e.target.error || e);
+            });
+        }
+        function getConv(id) {
+            return new Promise((resolve, reject) => {
+                const req = db.transaction(STORE_CONVERSATIONS, 'readonly').objectStore(STORE_CONVERSATIONS).get(Number(id));
+                req.onsuccess = () => resolve(req.result);
+                req.onerror = (e) => reject(e.target.error || e);
+            });
+        }
+        function listConvs() {
+            return new Promise((resolve, reject) => {
+                const req = db.transaction(STORE_CONVERSATIONS, 'readonly').objectStore(STORE_CONVERSATIONS).getAll();
+                req.onsuccess = () => {
+                    const items = (req.result || []).sort((a, b) => b.updatedAt - a.updatedAt);
+                    resolve(items);
+                };
+                req.onerror = (e) => reject(e.target.error || e);
+            });
+        }
+        async function createConversation(title) {
+            const conv = {
+                id: _newId(),
+                title: title || '新对话',
+                createdAt: Date.now(),
+                updatedAt: Date.now(),
+                contextImage: null,
+                pendingImages: [],
+            };
+            await putConv(conv);
+            return conv;
+        }
+        function deleteConvDB(id) {
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction([STORE_CONVERSATIONS, STORE_MESSAGES], 'readwrite');
+                tx.objectStore(STORE_CONVERSATIONS).delete(Number(id));
+                const idx = tx.objectStore(STORE_MESSAGES).index('conversationId');
+                const cursorReq = idx.openCursor(IDBKeyRange.only(Number(id)));
+                cursorReq.onsuccess = (e) => {
+                    const c = e.target.result;
+                    if (c) { c.delete(); c.continue(); }
+                };
+                tx.oncomplete = () => resolve();
+                tx.onerror = (e) => reject(e.target.error || e);
+            });
+        }
+        function clearAllConversationsDB() {
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction([STORE_CONVERSATIONS, STORE_MESSAGES], 'readwrite');
+                tx.objectStore(STORE_CONVERSATIONS).clear();
+                tx.objectStore(STORE_MESSAGES).clear();
+                tx.oncomplete = () => resolve();
+                tx.onerror = (e) => reject(e.target.error || e);
+            });
+        }
+
+        // ---- Message CRUD ----
+        function putMsg(m) {
+            return new Promise((resolve, reject) => {
+                const req = db.transaction(STORE_MESSAGES, 'readwrite').objectStore(STORE_MESSAGES).put(m);
+                req.onsuccess = () => resolve();
+                req.onerror = (e) => reject(e.target.error || e);
+            });
+        }
+        function getMsg(id) {
+            return new Promise((resolve, reject) => {
+                const req = db.transaction(STORE_MESSAGES, 'readonly').objectStore(STORE_MESSAGES).get(Number(id));
+                req.onsuccess = () => resolve(req.result);
+                req.onerror = (e) => reject(e.target.error || e);
+            });
+        }
+        function listMsgsByConv(convId) {
+            return new Promise((resolve, reject) => {
+                const idx = db.transaction(STORE_MESSAGES, 'readonly').objectStore(STORE_MESSAGES).index('conversationId');
+                const req = idx.getAll(Number(convId));
+                req.onsuccess = () => {
+                    const items = (req.result || []).sort((a, b) => a.createdAt - b.createdAt);
+                    resolve(items);
+                };
+                req.onerror = (e) => reject(e.target.error || e);
+            });
+        }
+        async function updateMsg(id, patch) {
+            const m = await getMsg(id);
+            if (!m) return; // 可能被删对话一起干掉了
+            Object.assign(m, patch);
+            await putMsg(m);
+        }
+        async function createMessage(data) {
+            const m = {
+                id: _newId(),
+                conversationId: data.conversationId,
+                role: data.role,
+                status: data.status || 'done',
+                createdAt: Date.now(),
+                text: data.text || '',
+                images: data.images || [],
+                params: data.params || null,
+                resultImgSrc: data.resultImgSrc || null,
+                fileName: data.fileName || null,
+                errorMessage: data.errorMessage || null,
+            };
+            await putMsg(m);
+            await _touchConversation(data.conversationId, m);
+            return m;
+        }
+        async function _touchConversation(convId, msg) {
+            const conv = await getConv(convId);
+            if (!conv) return;
+            conv.updatedAt = Date.now();
+            // 首次 user 发言用作标题
+            if (msg && msg.role === 'user' && msg.text && (!conv.title || conv.title === '新对话')) {
+                conv.title = msg.text.slice(0, 22);
+            }
+            await putConv(conv);
+        }
+
+        // ============== 会话列表 UI ==============
+        async function renderConversationList() {
+            const convs = await listConvs();
+            const container = document.getElementById('conversation-list');
+            if (!container) return;
+            if (convs.length === 0) {
+                container.innerHTML = '<div class="text-xs text-gray-400 text-center py-2">还没有对话</div>';
                 return;
             }
-            document.getElementById('settings-modal').classList.add('hidden');
+            // 统计每个 conv 是否有正在生成的 task
+            const runningConvIds = new Set([..._tasks.values()].map(t => t.conversationId));
+            container.innerHTML = convs.map(c => {
+                const active = c.id === currentConversationId;
+                const running = runningConvIds.has(c.id);
+                return `
+                    <div class="group flex items-center justify-between gap-1 px-2 py-1.5 rounded-md cursor-pointer ${active ? 'bg-indigo-100 text-indigo-700' : 'hover:bg-gray-100 text-gray-700'}" onclick="switchToConversation(${c.id})">
+                        <span class="text-sm truncate flex-1 flex items-center gap-1" title="${escapeHTML(c.title || '新对话')}">
+                            ${running ? '<span class="inline-block w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse shrink-0" title="正在生成"></span>' : ''}
+                            <span class="truncate">${escapeHTML(c.title || '新对话')}</span>
+                        </span>
+                        <button onclick="event.stopPropagation(); deleteConversationWithConfirm(${c.id})" class="p-0.5 text-gray-400 hover:text-red-600 opacity-60 md:opacity-0 md:group-hover:opacity-100 shrink-0" title="删除对话">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                        </button>
+                    </div>
+                `;
+            }).join('');
         }
 
-        function saveSettings() {
-            const key = document.getElementById('api-key-input').value.trim();
-            if (!key.startsWith('sk-')) {
-                alert('请填写正确的 API Key (通常以 sk- 开头)');
+        async function newConversation() {
+            const c = await createConversation();
+            await switchToConversation(c.id);
+            promptInput.focus();
+        }
+
+        async function switchToConversation(id) {
+            // 停掉当前会话所有 loading 的文案轮播 timer
+            for (const div of _messageDomRegistry.values()) {
+                stopBotLoading(div);
+            }
+            _messageDomRegistry.clear();
+            _resultImages.clear();
+
+            currentConversationId = Number(id);
+            const conv = await getConv(currentConversationId);
+
+            // 更新 header 标题
+            const titleEl = document.getElementById('header-conv-title');
+            if (titleEl) titleEl.textContent = conv ? (conv.title || '新对话') : 'vsllm 绘图工作台';
+
+            // 聊天流：先渲染欢迎
+            chatContainer.innerHTML = `
+                <div class="flex gap-4 items-start w-full">
+                    <div class="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center shrink-0 border border-indigo-200">
+                        <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"></path></svg>
+                    </div>
+                    <div class="flex-1 pt-1 text-gray-800 leading-relaxed max-w-prose">
+                        你好！我是绘图助手。我支持<strong>连续对话改图</strong>：<br>生成图片后直接发送"给它带上口罩"、"换成黑白风格"等指令，我会基于上一张图为您修改！
+                    </div>
+                </div>
+            `;
+
+            // 渲染消息
+            const msgs = await listMsgsByConv(currentConversationId);
+            for (const m of msgs) {
+                if (m.role === 'user') {
+                    renderUserMessage(m);
+                } else {
+                    if (m.status === 'done') {
+                        renderBotDone(m);
+                    } else if (m.status === 'error') {
+                        renderBotErrorMsg(m);
+                    } else if (m.status === 'cancelled') {
+                        renderBotCancelled(m);
+                    } else if (m.status === 'pending') {
+                        // 有没有仍在跑的 task？
+                        const task = [..._tasks.values()].find(t => t.messageId === m.id);
+                        if (task) {
+                            renderBotLoading(m, task.id);
+                        } else {
+                            // task 丢了（刷新过），改成 cancelled
+                            await updateMsg(m.id, { status: 'cancelled', errorMessage: '页面已刷新，任务丢失' });
+                            m.status = 'cancelled';
+                            m.errorMessage = '页面已刷新，任务丢失';
+                            renderBotCancelled(m);
+                        }
+                    }
+                }
+            }
+
+            await renderPendingImagesFromConv();
+            await renderContextBarFromConv();
+            await renderConversationList();
+
+            // 移动端：点了对话自动收起菜单
+            if (window.innerWidth < 768) {
+                document.getElementById('sidebar').classList.add('-translate-x-full');
+                document.getElementById('sidebar-overlay').classList.add('hidden');
+            }
+            // 等 DOM 刷完再滚到底
+            setTimeout(() => { chatContainer.scrollTop = chatContainer.scrollHeight; }, 30);
+        }
+
+        async function deleteConversationWithConfirm(id) {
+            const conv = await getConv(id);
+            if (!conv) return;
+            const runningOfThis = [..._tasks.values()].filter(t => t.conversationId === Number(id));
+            let msg = `确定删除对话"${conv.title || '新对话'}"？\n\n会连消息和生成图一起删除，无法恢复。`;
+            if (runningOfThis.length > 0) msg += `\n\n这个对话里还有 ${runningOfThis.length} 个正在生成的任务，会一并取消。`;
+            if (!confirm(msg)) return;
+            for (const t of runningOfThis) {
+                try { t.controller.abort(); } catch {}
+            }
+            await deleteConvDB(id);
+            // 切到剩下的最近会话；没有就新建
+            let convs = await listConvs();
+            if (convs.length === 0) {
+                const c = await createConversation();
+                convs = [c];
+            }
+            await switchToConversation(convs[0].id);
+        }
+
+        async function clearAllConversations() {
+            const running = _tasks.size;
+            let msg = '确定清空所有对话？\n\n这会删除浏览器本地保存的所有对话和消息，无法恢复。\n（图库是另一个"清空图库"按钮，不受影响）';
+            if (running > 0) msg += `\n\n注意：当前有 ${running} 个正在生成的任务，全部会被取消。`;
+            if (!confirm(msg)) return;
+            for (const t of _tasks.values()) {
+                try { t.controller.abort(); } catch {}
+            }
+            await clearAllConversationsDB();
+            const c = await createConversation();
+            await switchToConversation(c.id);
+        }
+
+        // ============== 上下文图/待发送图（按 conversation 存） ==============
+        async function renderContextBarFromConv() {
+            const conv = await getConv(currentConversationId);
+            const bar = document.getElementById('context-bar');
+            const thumb = document.getElementById('context-thumb');
+            if (conv && conv.contextImage) {
+                thumb.src = conv.contextImage;
+                bar.classList.remove('hidden');
+            } else {
+                thumb.src = '';
+                bar.classList.add('hidden');
+            }
+        }
+
+        async function clearContextImage() {
+            const conv = await getConv(currentConversationId);
+            if (!conv) return;
+            conv.contextImage = null;
+            await putConv(conv);
+            await renderContextBarFromConv();
+        }
+
+        async function renderPendingImagesFromConv() {
+            const conv = await getConv(currentConversationId);
+            if (!conv || !conv.pendingImages || conv.pendingImages.length === 0) {
+                imagePreviewBar.classList.add('hidden');
+                imagePreviewBar.innerHTML = '';
                 return;
             }
-            localStorage.setItem('vsllm_api_key', key);
-            document.getElementById('settings-modal').classList.add('hidden');
+            imagePreviewBar.classList.remove('hidden');
+            imagePreviewBar.innerHTML = conv.pendingImages.map((b64, index) => `
+                <div class="flex flex-col items-center gap-1 shrink-0">
+                    <div class="relative w-16 h-16 rounded-lg overflow-hidden border border-gray-200 group">
+                        <img src="${b64}" class="w-full h-full object-cover">
+                        <button onclick="removePendingImage(${index})" class="absolute top-1 right-1 bg-black bg-opacity-60 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity" title="移除这张">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                        </button>
+                    </div>
+                    <button onclick="openMarkEditorForPending(${index})" class="text-[10px] text-gray-500 hover:text-indigo-600 flex items-center gap-0.5" title="在图上画红圈标记">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                        编辑/标记
+                    </button>
+                </div>
+            `).join('');
         }
 
+        async function addPendingImage(b64) {
+            const conv = await getConv(currentConversationId);
+            if (!conv) return;
+            conv.pendingImages = conv.pendingImages || [];
+            conv.pendingImages.push(b64);
+            await putConv(conv);
+            await renderPendingImagesFromConv();
+        }
+
+        async function removePendingImage(index) {
+            const conv = await getConv(currentConversationId);
+            if (!conv || !conv.pendingImages) return;
+            conv.pendingImages.splice(index, 1);
+            await putConv(conv);
+            await renderPendingImagesFromConv();
+        }
+
+        // ============== 图片上传 + 压缩 ==============
+        async function handleFilesSelect(e) {
+            const files = e.target.files;
+            if (!files || files.length === 0) return;
+            for (let file of files) {
+                const base64 = await compressImageFile(file);
+                await addPendingImage(base64);
+            }
+            e.target.value = '';
+        }
+        function compressImageFile(file) {
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = (e) => compressDataURL(e.target.result).then(resolve);
+                reader.readAsDataURL(file);
+            });
+        }
+        function compressDataURL(dataUrl) {
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const MAX = 1024;
+                    let w = img.width, h = img.height;
+                    if (w > h && w > MAX) { h *= MAX / w; w = MAX; }
+                    else if (h > MAX) { w *= MAX / h; h = MAX; }
+                    canvas.width = w; canvas.height = h;
+                    canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+                    resolve(canvas.toDataURL('image/jpeg', 0.8));
+                };
+                img.src = dataUrl;
+            });
+        }
+
+        // ============== 工具 ==============
+        function escapeHTML(str) {
+            return (str == null ? '' : String(str)).replace(/[&<>'"]/g, tag => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+            }[tag]));
+        }
+        function scrollToBottom() {
+            chatContainer.scrollTo({ top: chatContainer.scrollHeight, behavior: 'smooth' });
+        }
+        function autoResizeTextarea(el) {
+            el.style.height = 'auto';
+            el.style.height = (el.scrollHeight < 160 ? el.scrollHeight : 160) + 'px';
+        }
+        function handleEnter(e) {
+            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+        }
         function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
             const overlay = document.getElementById('sidebar-overlay');
@@ -253,137 +719,68 @@
                 overlay.classList.add('hidden');
             }
         }
-
-        // ============== 交互与输入 ==============
-        function autoResizeTextarea(el) {
-            el.style.height = 'auto';
-            el.style.height = (el.scrollHeight < 160 ? el.scrollHeight : 160) + 'px';
-        }
-
-        function handleEnter(e) {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                sendMessage();
+        function showToast(text) {
+            let t = document.getElementById('_toast');
+            if (!t) {
+                t = document.createElement('div');
+                t.id = '_toast';
+                t.className = 'fixed bottom-6 left-1/2 -translate-x-1/2 bg-black text-white px-4 py-2 rounded-lg text-sm z-[100] opacity-0 transition-opacity pointer-events-none shadow-lg';
+                document.body.appendChild(t);
             }
-        }
-
-        function scrollToBottom() {
-            chatContainer.scrollTo({ top: chatContainer.scrollHeight, behavior: 'smooth' });
-        }
-
-        // ============== 上下文记忆图逻辑 ==============
-        function setContextImage(base64Data) {
-            currentContextImage = base64Data;
-            document.getElementById('context-thumb').src = base64Data;
-            document.getElementById('context-bar').classList.remove('hidden');
-        }
-
-        function clearContextImage() {
-            currentContextImage = null;
-            document.getElementById('context-bar').classList.add('hidden');
-            document.getElementById('context-thumb').src = "";
-        }
-
-        // ============== 图片上传与前端压缩 ==============
-        async function handleFilesSelect(e) {
-            const files = e.target.files;
-            if (!files || files.length === 0) return;
-            for (let file of files) {
-                const base64 = await compressImageFile(file);
-                pendingImages.push(base64);
-            }
-            renderImagePreviews();
-            e.target.value = ''; 
-        }
-
-        // 压缩 File 对象
-        function compressImageFile(file) {
-            return new Promise((resolve) => {
-                const reader = new FileReader();
-                reader.onload = (e) => compressDataURL(e.target.result).then(resolve);
-                reader.readAsDataURL(file);
-            });
-        }
-
-        // 通用 DataURL 压缩 (压缩生成的图或上传的图为 JPEG 格式防 payload 过大)
-        function compressDataURL(dataUrl) {
-            return new Promise((resolve) => {
-                const img = new Image();
-                img.onload = () => {
-                    const canvas = document.createElement('canvas');
-                    const MAX_SIZE = 1024;
-                    let width = img.width;
-                    let height = img.height;
-
-                    if (width > height && width > MAX_SIZE) {
-                        height *= MAX_SIZE / width;
-                        width = MAX_SIZE;
-                    } else if (height > MAX_SIZE) {
-                        width *= MAX_SIZE / height;
-                        height = MAX_SIZE;
-                    }
-                    canvas.width = width;
-                    canvas.height = height;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0, width, height);
-                    resolve(canvas.toDataURL('image/jpeg', 0.8));
-                };
-                img.src = dataUrl;
-            });
-        }
-
-        function renderImagePreviews() {
-            if (pendingImages.length === 0) {
-                imagePreviewBar.classList.add('hidden');
-                imagePreviewBar.innerHTML = '';
-                return;
-            }
-            imagePreviewBar.classList.remove('hidden');
-            imagePreviewBar.innerHTML = pendingImages.map((b64, index) => `
-                <div class="relative w-16 h-16 shrink-0 rounded-lg overflow-hidden border border-gray-200 group">
-                    <img src="${b64}" class="w-full h-full object-cover">
-                    <button onclick="removePendingImage(${index})" class="absolute top-1 right-1 bg-black bg-opacity-60 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                    </button>
-                </div>
-            `).join('');
-        }
-
-        function removePendingImage(index) {
-            pendingImages.splice(index, 1);
-            renderImagePreviews();
+            t.textContent = text;
+            t.classList.add('opacity-100');
+            clearTimeout(t.__hideTimer);
+            t.__hideTimer = setTimeout(() => t.classList.remove('opacity-100'), 2000);
         }
 
         // ============== 消息渲染 ==============
-        function appendUserMessage(text, images) {
-            const msgDiv = document.createElement('div');
-            msgDiv.className = 'flex gap-4 items-start w-full flex-row-reverse';
-            
-            let imgHtml = '';
-            if (images && images.length > 0) {
-                imgHtml = `<div class="flex flex-wrap gap-2 mb-2 justify-end">` + 
-                          images.map(src => `<img src="${src}" class="w-24 h-24 object-cover rounded-lg border border-gray-200 shadow-sm">`).join('') +
-                          `</div>`;
-            }
+        function botShellHTML(inner) {
+            return `
+                <div class="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center shrink-0 border border-indigo-200">
+                    <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"></path></svg>
+                </div>
+                <div class="flex-1">${inner}</div>
+            `;
+        }
 
-            msgDiv.innerHTML = `
+        function renderUserMessage(msg) {
+            const div = document.createElement('div');
+            div.className = 'flex gap-4 items-start w-full flex-row-reverse';
+            div.dataset.messageId = String(msg.id);
+
+            const imgHtml = (msg.images && msg.images.length > 0)
+                ? `<div class="flex flex-wrap gap-2 mb-2 justify-end">` +
+                  msg.images.map(src => `<img src="${src}" class="w-24 h-24 object-cover rounded-lg border border-gray-200 shadow-sm">`).join('') +
+                  `</div>` : '';
+
+            const textBubble = msg.text
+                ? `<div class="bg-gray-100 px-4 py-2.5 rounded-2xl rounded-tr-sm text-gray-800 leading-relaxed text-[15px] break-words whitespace-pre-wrap user-text-bubble">${escapeHTML(msg.text)}</div>`
+                : '';
+
+            const editBtn = `<button type="button" onclick="startEditUserMessage(this, ${msg.id})" class="mt-1 text-xs text-gray-400 hover:text-indigo-600 flex items-center gap-1 self-end user-edit-btn">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                编辑并重生
+            </button>`;
+
+            div.innerHTML = `
                 <div class="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center shrink-0">
                     <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
                 </div>
                 <div class="flex-1 flex flex-col items-end max-w-[80%]">
                     ${imgHtml}
-                    ${text ? `<div class="bg-gray-100 px-4 py-2.5 rounded-2xl rounded-tr-sm text-gray-800 leading-relaxed text-[15px] break-words whitespace-pre-wrap">${escapeHTML(text)}</div>` : ''}
+                    ${textBubble}
+                    ${editBtn}
                 </div>
             `;
-            chatContainer.appendChild(msgDiv);
-            scrollToBottom();
+            chatContainer.appendChild(div);
+            _messageDomRegistry.set(msg.id, div);
         }
 
-        function appendBotLoading() {
-            const msgDiv = document.createElement('div');
-            msgDiv.className = 'flex gap-4 items-start w-full';
-            msgDiv.id = 'current-loading';
-            msgDiv.innerHTML = `
+        function renderBotLoading(msg, taskId) {
+            const div = document.createElement('div');
+            div.className = 'flex gap-4 items-start w-full';
+            div.dataset.messageId = String(msg.id);
+            div.innerHTML = `
                 <div class="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center shrink-0 border border-indigo-200">
                     <svg class="w-5 h-5 text-indigo-600 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"></path></svg>
                 </div>
@@ -394,79 +791,160 @@
                         <div class="absolute top-0 w-2 h-2 rounded-full bg-indigo-400"></div>
                         <div class="absolute top-0 w-2 h-2 rounded-full bg-indigo-400"></div>
                     </div>
+                    <div class="loading-text text-sm text-gray-500 mt-3 italic max-w-md"></div>
+                    <button type="button" class="cancel-task-btn mt-2 text-xs text-red-500 hover:text-red-700 flex items-center gap-1" onclick="cancelTaskById(${taskId})">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        取消生成
+                    </button>
                 </div>
             `;
-            chatContainer.appendChild(msgDiv);
-            scrollToBottom();
-            return msgDiv;
-        }
+            chatContainer.appendChild(div);
 
-        function updateBotMessage(msgDiv, contentHtml) {
-            msgDiv.removeAttribute('id');
-            msgDiv.querySelector('.flex-1').innerHTML = contentHtml;
-            scrollToBottom();
-        }
-
-        function escapeHTML(str) {
-            return str.replace(/[&<>'"]/g, tag => ({
-                '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
-            }[tag]));
-        }
-
-        // ============== 核心：发送与 API 请求 ==============
-        async function sendMessage() {
-            const apiKey = localStorage.getItem('vsllm_api_key');
-            if (!apiKey) { openSettings(); return; }
-
-            const promptText = promptInput.value.trim();
-            if (!promptText && pendingImages.length === 0 && !currentContextImage) return;
-
-            // 1. 合并【用户手动上传图】和【连续对话记忆图】
-            const imagesToSend = [...pendingImages];
-            if (currentContextImage) {
-                imagesToSend.push(currentContextImage);
+            const textEl = div.querySelector('.loading-text');
+            let lastIdx = -1;
+            function pick() {
+                let i;
+                do { i = Math.floor(Math.random() * LOADING_MESSAGES.length); }
+                while (LOADING_MESSAGES.length > 1 && i === lastIdx);
+                lastIdx = i;
+                textEl.textContent = LOADING_MESSAGES[i];
             }
-            
-            // UI：渲染用户消息并清理输入框状态
-            appendUserMessage(promptText, imagesToSend);
-            promptInput.value = '';
-            promptInput.style.height = 'auto';
-            pendingImages = [];
-            renderImagePreviews();
-            clearContextImage(); // 发送后清理上下文视觉，准备承接下一张新图
-            
-            const loadingDiv = appendBotLoading();
-            sendBtn.disabled = true;
+            pick();
+            div.__loadingTimer = setInterval(pick, 5000);
 
-            // 2. 构造指令 (支持改图强化提示)
+            _messageDomRegistry.set(msg.id, div);
+            scrollToBottom();
+            return div;
+        }
+
+        function stopBotLoading(div) {
+            if (div && div.__loadingTimer) {
+                clearInterval(div.__loadingTimer);
+                div.__loadingTimer = null;
+            }
+        }
+
+        function renderBotDone(msg) {
+            _resultImages.set(Number(msg.id), { imgSrc: msg.resultImgSrc, fileName: msg.fileName });
+            const div = document.createElement('div');
+            div.className = 'flex gap-4 items-start w-full';
+            div.dataset.messageId = String(msg.id);
+            div.innerHTML = botShellHTML(buildBotResultHTML(msg));
+            chatContainer.appendChild(div);
+            _messageDomRegistry.set(msg.id, div);
+        }
+
+        function renderBotErrorMsg(msg) {
+            const div = document.createElement('div');
+            div.className = 'flex gap-4 items-start w-full';
+            div.dataset.messageId = String(msg.id);
+            div.innerHTML = botShellHTML(buildBotErrorHTML(msg.errorMessage));
+            chatContainer.appendChild(div);
+            _messageDomRegistry.set(msg.id, div);
+        }
+
+        function renderBotCancelled(msg) {
+            const div = document.createElement('div');
+            div.className = 'flex gap-4 items-start w-full';
+            div.dataset.messageId = String(msg.id);
+            div.innerHTML = botShellHTML(buildBotCancelledHTML(msg.errorMessage));
+            chatContainer.appendChild(div);
+            _messageDomRegistry.set(msg.id, div);
+        }
+
+        function buildBotResultHTML(msg) {
+            const imgSrc = msg.resultImgSrc;
+            const msgId = msg.id;
+            return `
+                <div class="inline-block max-w-full">
+                    <img src="${imgSrc}" class="rounded-xl max-w-full max-h-[400px] object-contain shadow-sm border border-gray-200 block">
+                    <div class="flex flex-wrap gap-2 mt-2">
+                        <button onclick="downloadResultImage(${msgId})" class="bg-gray-100 text-gray-700 hover:bg-gray-200 px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-1 transition-colors">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                            下载
+                        </button>
+                        <button onclick="copyResultImageToClipboard(${msgId})" class="bg-gray-100 text-gray-700 hover:bg-gray-200 px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-1 transition-colors" title="复制图片到剪贴板">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                            复制图片
+                        </button>
+                        <button onclick="rerollFromMessage(${msgId})" class="bg-indigo-50 text-indigo-600 hover:bg-indigo-100 px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-1 transition-colors">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h5M20 20v-5h-5M4 9a8 8 0 0115-3M20 15a8 8 0 01-15 3"></path></svg>
+                            重新生成
+                        </button>
+                        <button onclick="enhanceResultImage()" title="新标签页打开 iLoveIMG 图片放大工具（不会自动上传你的图）" class="bg-amber-50 text-amber-700 hover:bg-amber-100 px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-1 transition-colors">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m-3-3h6"></path></svg>
+                            增强图片
+                        </button>
+                        <button onclick="markResultImage(${msgId})" title="在图上画红圈标记要改的位置" class="bg-rose-50 text-rose-600 hover:bg-rose-100 px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-1 transition-colors">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                            标记图片
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function buildBotErrorHTML(msg) {
+            return `
+                <div class="bg-red-50 text-red-600 px-4 py-3 rounded-lg border border-red-200 text-sm">
+                    <div class="font-bold flex items-center gap-1 mb-1">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        生成失败
+                    </div>
+                    <div class="break-words whitespace-pre-wrap">${escapeHTML(msg || '')}</div>
+                </div>
+            `;
+        }
+
+        function buildBotCancelledHTML(extra) {
+            const hint = extra ? ` <span class="text-gray-400 text-xs">(${escapeHTML(extra)})</span>` : '';
+            return `
+                <div class="bg-gray-100 text-gray-500 px-4 py-2 rounded-lg border border-gray-200 text-sm inline-flex items-center gap-1">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    已取消生成${hint}
+                </div>
+            `;
+        }
+
+        // Loading 原位替换为结果/错误/取消
+        function replaceLoadingDom(msgId, innerHTML) {
+            const div = _messageDomRegistry.get(msgId);
+            if (!div) return;
+            stopBotLoading(div);
+            div.innerHTML = botShellHTML(innerHTML);
+            scrollToBottom();
+        }
+        function replaceLoadingWithResult(msg) {
+            _resultImages.set(Number(msg.id), { imgSrc: msg.resultImgSrc, fileName: msg.fileName });
+            replaceLoadingDom(msg.id, buildBotResultHTML(msg));
+        }
+        function replaceLoadingWithError(msgId, errMsg) {
+            replaceLoadingDom(msgId, buildBotErrorHTML(errMsg));
+        }
+        function replaceLoadingWithCancelled(msgId, extra) {
+            replaceLoadingDom(msgId, buildBotCancelledHTML(extra));
+        }
+
+        // ============== API 请求（纯数据层，带 signal） ==============
+        async function generateImageFromRequest(record, signal) {
+            const apiKey = localStorage.getItem('vsllm_api_key');
+            if (!apiKey) throw new Error('未配置 API Key');
+            const { promptText, inputImages, size, quality, format } = record;
+
             let instruction = `Use the image_generation tool to generate exactly one image. 不要输出长篇文字说明，只生成图片。`;
             if (promptText) instruction += `\n提示词：${promptText}`;
-            if (imagesToSend.length > 0) instruction += `\n【重要指令】：请务必参考我附带的图片特征进行画面的修改、变体或延续生成。`;
+            if (inputImages && inputImages.length > 0) instruction += `\n【重要指令】：请务必参考我附带的图片特征进行画面的修改、变体或延续生成。`;
 
-            let contentArray = [{ type: 'input_text', text: instruction }];
+            const contentArray = [{ type: 'input_text', text: instruction }];
+            (inputImages || []).forEach(b64 => contentArray.push(buildImageContent(b64)));
 
-            // 注入 Base64 图像 —— Responses API 格式：input_image + image_url 字符串
-            imagesToSend.forEach(b64 => {
-                contentArray.push(buildImageContent(b64));
-            });
-
-            // 读用户选的生成参数
-            const selectedSize = document.getElementById('param-size').value;
-            const selectedQuality = document.getElementById('param-quality').value;
-            const selectedFormat = document.getElementById('param-format').value;
-
-            // 组 image_generation tool 配置
             const imageGenTool = {
                 type: 'image_generation',
                 model: 'gpt-image-2',
-                output_format: selectedFormat,
-                quality: selectedQuality
+                output_format: format,
+                quality: quality,
             };
-            // size 选 auto 时直接省略该字段，由服务端按默认策略决定，最兼容；
-            // 选具体尺寸才显式传值。这样即使某些网关对 'auto' 字面量挑剔也不会炸。
-            if (selectedSize && selectedSize !== 'auto') {
-                imageGenTool.size = selectedSize;
-            }
+            if (size && size !== 'auto') imageGenTool.size = size;
 
             const payload = {
                 model: MODEL,
@@ -474,114 +952,276 @@
                 tools: [imageGenTool],
                 instructions: 'You are a helpful assistant. Always call image_generation when the user asks for an image. Do not answer with only text.',
                 tool_choice: { type: 'image_generation' },
-                stream: false, store: false
+                stream: false, store: false,
             };
 
+            let response;
             try {
-                // --- 发请求 ---
-                let response;
+                response = await fetch(BASE_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+                    body: JSON.stringify(payload),
+                    signal,
+                });
+            } catch (networkErr) {
+                // AbortError 直接往上抛，让调用方识别
+                if (networkErr && networkErr.name === 'AbortError') throw networkErr;
+                throw new Error(
+                    `网络请求失败，没连上 ${BASE_URL}\n` +
+                    `可能原因：\n` +
+                    `• 被浏览器 CORS 策略拦截\n` +
+                    `• 本地网络断开 / DNS 解析失败 / SSL 握手失败\n` +
+                    `• API 域名无法到达或服务端未响应\n` +
+                    `• 浏览器扩展或代理拦截了请求\n` +
+                    `原始错误：${networkErr && networkErr.message ? networkErr.message : networkErr}`
+                );
+            }
+
+            const rawText = await response.text().catch(() => '');
+            if (!response.ok) {
+                let serverMsg = '';
                 try {
-                    response = await fetch(BASE_URL, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-                        body: JSON.stringify(payload)
-                    });
-                } catch (networkErr) {
-                    // fetch 本身抛错 = 网络层挂了，浏览器根本没收到 HTTP 响应
-                    throw new Error(
-                        `网络请求失败，没连上 ${BASE_URL}\n` +
-                        `可能原因：\n` +
-                        `• 被浏览器 CORS 策略拦截（接口未允许本页面 Origin）\n` +
-                        `• 本地网络断开 / DNS 解析失败 / SSL 握手失败\n` +
-                        `• API 域名无法到达或服务端未响应\n` +
-                        `• 浏览器扩展或代理拦截了请求\n` +
-                        `原始错误：${networkErr && networkErr.message ? networkErr.message : networkErr}`
-                    );
-                }
+                    const errJson = JSON.parse(rawText);
+                    serverMsg = errJson?.error?.message || errJson?.message || JSON.stringify(errJson);
+                } catch { serverMsg = rawText; }
+                throw new Error(`HTTP ${response.status} ${response.statusText}\n${serverMsg || '(服务端未返回错误正文)'}`);
+            }
 
-                // --- HTTP 状态检查 ---
-                // 先统一把 body 读成文本，再尝试 JSON 解析，避免 body 被消费两次
-                const rawText = await response.text().catch(() => '');
-                if (!response.ok) {
-                    let serverMsg = '';
-                    try {
-                        const errJson = JSON.parse(rawText);
-                        serverMsg = errJson?.error?.message || errJson?.message || JSON.stringify(errJson);
-                    } catch {
-                        serverMsg = rawText;
-                    }
-                    throw new Error(
-                        `HTTP ${response.status} ${response.statusText}\n` +
-                        `${serverMsg || '(服务端未返回错误正文)'}`
-                    );
-                }
+            let data;
+            try { data = JSON.parse(rawText); }
+            catch (parseErr) {
+                throw new Error(`响应解析失败（不是合法 JSON）：${parseErr.message}\n响应内容前 500 字：${rawText.slice(0, 500)}`);
+            }
 
-                // --- 解析 JSON ---
-                let data;
-                try {
-                    data = JSON.parse(rawText);
-                } catch (parseErr) {
-                    throw new Error(
-                        `响应解析失败（不是合法 JSON）：${parseErr.message}\n` +
-                        `响应内容前 500 字：${rawText.slice(0, 500)}`
-                    );
-                }
-
-                // 3. 提取生成的图片 Base64
-                let imgB64 = null;
-                const outputs = data.output || [];
+            let imgB64 = null;
+            const outputs = data.output || [];
+            for (let item of outputs) {
+                if (item.type === 'image_generation_call' && item.result) { imgB64 = item.result; break; }
+            }
+            if (!imgB64) {
                 for (let item of outputs) {
-                    if (item.type === 'image_generation_call' && item.result) { imgB64 = item.result; break; }
-                }
-                if (!imgB64) {
-                    for (let item of outputs) {
-                        if (item.type === 'image_generation_call') { imgB64 = item.image_base64 || item.b64_json; if (imgB64) break; }
+                    if (item.type === 'image_generation_call') {
+                        imgB64 = item.image_base64 || item.b64_json;
+                        if (imgB64) break;
                     }
                 }
-                if (!imgB64) throw new Error("API 返回成功，但未能提取到图片数据。");
+            }
+            if (!imgB64) throw new Error('API 返回成功，但未能提取到图片数据。');
+            return imgB64;
+        }
 
-                // 4. 显示结果
+        // ============== 任务管理 ==============
+        function createTask(conversationId, messageId, controller) {
+            const id = ++_taskCounter;
+            _tasks.set(id, { id, conversationId: Number(conversationId), messageId: Number(messageId), controller });
+            return id;
+        }
+        function completeTask(taskId) {
+            _tasks.delete(taskId);
+        }
+        function cancelTaskById(taskId) {
+            const t = _tasks.get(taskId);
+            if (!t) return;
+            try { t.controller.abort(); } catch {}
+        }
+
+        // 统一生成流程（sendMessage / reroll / edit-regen 共用）
+        // 关键：task 持 conversationId + messageId，完成时只在当前 conv 才更新 DOM，否则只写 DB
+        async function runGeneration({ conversationId, promptText, inputImages, params }) {
+            conversationId = Number(conversationId);
+
+            // 创建 bot message (pending)
+            const botMsg = await createMessage({
+                conversationId,
+                role: 'bot',
+                status: 'pending',
+                text: promptText,        // 留给 reroll 时回读
+                images: inputImages,
+                params,
+            });
+
+            const controller = new AbortController();
+            const taskId = createTask(conversationId, botMsg.id, controller);
+
+            // 如果当前正在看这个 conv，渲染 loading
+            if (currentConversationId === conversationId) {
+                renderBotLoading(botMsg, taskId);
+            }
+            await renderConversationList();
+
+            try {
+                const imgB64 = await generateImageFromRequest({
+                    promptText, inputImages,
+                    size: params.size, quality: params.quality, format: params.format,
+                }, controller.signal);
+
                 const imgSrc = `data:image/png;base64,${imgB64}`;
                 const ts = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14);
                 const fileName = `image-${ts}.png`;
-                
-                const resultHtml = `
-                    <div class="relative group inline-block">
-                        <img src="${imgSrc}" class="rounded-xl max-w-full max-h-[400px] object-contain shadow-sm border border-gray-200">
-                        <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100">
-                            <button onclick="downloadImage('${imgSrc}', '${fileName}')" class="bg-white text-black px-4 py-2 rounded-lg font-medium shadow-lg flex items-center gap-2 hover:bg-gray-50 transition-colors">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-                                下载原图
-                            </button>
-                        </div>
-                    </div>
-                `;
-                updateBotMessage(loadingDiv, resultHtml);
 
-                // 5. 将新图设为上下文（为了防内存溢出先压缩再赋给上下文）
-                const compressedNextContext = await compressDataURL(imgSrc);
-                setContextImage(compressedNextContext);
+                await updateMsg(botMsg.id, { status: 'done', resultImgSrc: imgSrc, fileName });
 
-                // 6. 存入本地图库
-                saveToGallery(imgSrc, promptText || '连续对话修改生成');
+                // 更新所属 conv 的 contextImage（压缩）
+                try {
+                    const compressedCtx = await compressDataURL(imgSrc);
+                    const conv = await getConv(conversationId);
+                    if (conv) {
+                        conv.contextImage = compressedCtx;
+                        conv.updatedAt = Date.now();
+                        await putConv(conv);
+                    }
+                } catch {}
 
-            } catch (error) {
-                console.error("请求失败:", error);
-                updateBotMessage(loadingDiv, `
-                    <div class="bg-red-50 text-red-600 px-4 py-3 rounded-lg border border-red-200 text-sm">
-                        <div class="font-bold flex items-center gap-1 mb-1">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                            生成失败
-                        </div>
-                        <div class="break-words whitespace-pre-wrap">${escapeHTML(error.message || String(error))}</div>
-                    </div>
-                `);
+                // 存本地图库（全局共享）
+                await saveToGallery(imgSrc, promptText || '生成');
+
+                if (currentConversationId === conversationId) {
+                    replaceLoadingWithResult({ id: botMsg.id, resultImgSrc: imgSrc, fileName });
+                    await renderContextBarFromConv();
+                }
+            } catch (err) {
+                if (err && err.name === 'AbortError') {
+                    await updateMsg(botMsg.id, { status: 'cancelled', errorMessage: null });
+                    if (currentConversationId === conversationId) {
+                        replaceLoadingWithCancelled(botMsg.id, null);
+                    }
+                } else {
+                    const emsg = err && err.message ? err.message : String(err);
+                    await updateMsg(botMsg.id, { status: 'error', errorMessage: emsg });
+                    if (currentConversationId === conversationId) {
+                        replaceLoadingWithError(botMsg.id, emsg);
+                    }
+                    console.error('生成失败', err);
+                }
             } finally {
-                sendBtn.disabled = false;
-                promptInput.focus();
+                completeTask(taskId);
+                await renderConversationList();
             }
         }
 
+        // ============== 发送消息入口 ==============
+        async function sendMessage() {
+            const apiKey = localStorage.getItem('vsllm_api_key');
+            if (!apiKey) { openSettings(); return; }
+            if (!currentConversationId) return;
+
+            const convId = currentConversationId;
+            const conv = await getConv(convId);
+            if (!conv) return;
+
+            const promptText = promptInput.value.trim();
+            const imagesToSend = [...(conv.pendingImages || [])];
+            if (conv.contextImage) imagesToSend.push(conv.contextImage);
+
+            if (!promptText && imagesToSend.length === 0) return;
+
+            const size = document.getElementById('param-size').value;
+            const quality = document.getElementById('param-quality').value;
+            const format = document.getElementById('param-format').value;
+            const params = { size, quality, format };
+
+            // 创建 user message + 渲染
+            const userMsg = await createMessage({
+                conversationId: convId,
+                role: 'user',
+                status: 'done',
+                text: promptText,
+                images: imagesToSend,
+                params,
+            });
+            if (currentConversationId === convId) renderUserMessage(userMsg);
+
+            // 清 conv 的 pendingImages 和 contextImage（发送后重置，等生成完承接新图）
+            const convNow = await getConv(convId);
+            convNow.pendingImages = [];
+            convNow.contextImage = null;
+            await putConv(convNow);
+
+            // 清输入框
+            promptInput.value = '';
+            promptInput.style.height = 'auto';
+            if (currentConversationId === convId) {
+                await renderPendingImagesFromConv();
+                await renderContextBarFromConv();
+            }
+
+            // 后台跑生成，不 await，让 UI 立即可继续操作
+            runGeneration({
+                conversationId: convId,
+                promptText,
+                inputImages: imagesToSend,
+                params,
+            });
+        }
+
+        // ============== 重随 / 编辑重生 ==============
+        async function rerollFromMessage(messageId) {
+            const orig = await getMsg(messageId);
+            if (!orig) { alert('消息已丢失，无法重新生成。'); return; }
+            runGeneration({
+                conversationId: orig.conversationId,
+                promptText: orig.text || '',
+                inputImages: orig.images || [],
+                params: orig.params || { size: 'auto', quality: 'high', format: 'png' },
+            });
+        }
+
+        async function startEditUserMessage(btnEl, messageId) {
+            const orig = await getMsg(messageId);
+            if (!orig) { alert('消息已丢失，无法编辑。'); return; }
+
+            const editor = document.createElement('div');
+            editor.className = 'w-full max-w-md bg-white border border-indigo-200 rounded-xl p-3 mt-1 shadow-sm flex flex-col gap-2';
+            editor.innerHTML = `
+                <textarea class="w-full resize-none outline-none border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 focus:ring-1 focus:ring-indigo-300 focus:border-indigo-300" rows="3" placeholder="改一下提示词再试试…"></textarea>
+                <div class="flex justify-end gap-2">
+                    <button type="button" class="px-3 py-1 text-xs text-gray-500 hover:text-gray-800 rounded-md hover:bg-gray-100" data-action="cancel">取消</button>
+                    <button type="button" class="px-3 py-1 text-xs bg-indigo-600 text-white rounded-md hover:bg-indigo-500" data-action="confirm">重生</button>
+                </div>
+            `;
+            const textarea = editor.querySelector('textarea');
+            textarea.value = orig.text || '';
+            btnEl.replaceWith(editor);
+            textarea.focus();
+            textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+
+            editor.querySelector('[data-action=cancel]').onclick = () => {
+                editor.replaceWith(buildEditUserButton(messageId));
+            };
+            editor.querySelector('[data-action=confirm]').onclick = async () => {
+                const newText = textarea.value.trim();
+                if (!newText) { alert('提示词不能为空。'); return; }
+                editor.replaceWith(buildEditUserButton(messageId));
+                // 新建一条 user message（新 prompt + 原图/参数）
+                const convId = orig.conversationId;
+                const newUserMsg = await createMessage({
+                    conversationId: convId,
+                    role: 'user',
+                    status: 'done',
+                    text: newText,
+                    images: orig.images || [],
+                    params: orig.params,
+                });
+                if (currentConversationId === convId) renderUserMessage(newUserMsg);
+                runGeneration({
+                    conversationId: convId,
+                    promptText: newText,
+                    inputImages: orig.images || [],
+                    params: orig.params || { size: 'auto', quality: 'high', format: 'png' },
+                });
+            };
+        }
+
+        function buildEditUserButton(messageId) {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'mt-1 text-xs text-gray-400 hover:text-indigo-600 flex items-center gap-1 self-end user-edit-btn';
+            btn.innerHTML = `<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>编辑并重生`;
+            btn.onclick = () => startEditUserMessage(btn, messageId);
+            return btn;
+        }
+
+        // ============== Bot 图按钮：下载/复制/增强/标记 ==============
         function downloadImage(dataUrl, filename) {
             const link = document.createElement('a');
             link.href = dataUrl;
@@ -591,62 +1231,331 @@
             document.body.removeChild(link);
         }
 
-        // ============== IndexedDB 本地图库逻辑 ==============
-        let db;
-        const DB_NAME = "VsllmGallery";
-        const STORE_NAME = "images";
+        function downloadResultImage(msgId) {
+            const rec = _resultImages.get(Number(msgId));
+            if (!rec) { alert('图片已丢失，无法下载。'); return; }
+            downloadImage(rec.imgSrc, rec.fileName || `image-${msgId}.png`);
+        }
 
-        function initDB() {
-            return new Promise((resolve, reject) => {
-                const request = indexedDB.open(DB_NAME, 1);
-                request.onupgradeneeded = (e) => {
-                    db = e.target.result;
-                    if (!db.objectStoreNames.contains(STORE_NAME)) {
-                        db.createObjectStore(STORE_NAME, { keyPath: "id" });
-                    }
-                };
-                request.onsuccess = (e) => { db = e.target.result; resolve(); };
-                request.onerror = (e) => reject(e);
+        async function copyResultImageToClipboard(msgId) {
+            const rec = _resultImages.get(Number(msgId));
+            if (!rec) { alert('图片已丢失。'); return; }
+            if (!navigator.clipboard || !window.ClipboardItem) {
+                alert('当前浏览器不支持 Clipboard API。\n建议用桌面版 Chrome/Edge，在 HTTPS 或 localhost 环境下访问。');
+                return;
+            }
+            try {
+                const blob = await (await fetch(rec.imgSrc)).blob();
+                await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
+                showToast('已复制图片到剪贴板');
+            } catch (e) {
+                const emsg = e && e.message ? e.message : String(e);
+                alert('复制失败：' + emsg + '\n\n可能原因：\n• 页面不在 HTTPS / localhost\n• 浏览器或系统拒绝了剪贴板权限\n• 浏览器不支持写入 PNG 到剪贴板');
+            }
+        }
+
+        function enhanceResultImage() {
+            window.open('https://www.iloveimg.com/zh-cn/upscale-image', '_blank', 'noopener,noreferrer');
+        }
+
+        // 把 bot 生成图丢进标记编辑器，保存后加到（当时打开所在的）conv 的 pendingImages
+        function markResultImage(msgId) {
+            const rec = _resultImages.get(Number(msgId));
+            if (!rec) { alert('图片已丢失。'); return; }
+            const convIdAtOpen = currentConversationId;
+            openMarkEditor(rec.imgSrc, async (markedDataUrl) => {
+                const conv = await getConv(convIdAtOpen);
+                if (!conv) return;
+                conv.pendingImages = conv.pendingImages || [];
+                conv.pendingImages.push(markedDataUrl);
+                await putConv(conv);
+                if (currentConversationId === convIdAtOpen) {
+                    await renderPendingImagesFromConv();
+                }
             });
         }
 
-        function saveToGallery(base64Data, promptStr) {
-            if (!db) return;
-            const tx = db.transaction(STORE_NAME, "readwrite");
-            const store = tx.objectStore(STORE_NAME);
-            store.put({ id: Date.now(), base64: base64Data, prompt: promptStr, time: new Date().toLocaleString() });
-            tx.oncomplete = () => loadGallery();
+        // ============== 标记编辑器 ==============
+        async function openMarkEditorForPending(index) {
+            const convIdAtOpen = currentConversationId;
+            const conv = await getConv(convIdAtOpen);
+            if (!conv || !conv.pendingImages) return;
+            const src = conv.pendingImages[index];
+            if (!src) return;
+            openMarkEditor(src, async (markedDataUrl) => {
+                const c = await getConv(convIdAtOpen);
+                if (!c || !c.pendingImages) return;
+                c.pendingImages[index] = markedDataUrl;
+                await putConv(c);
+                if (currentConversationId === convIdAtOpen) {
+                    await renderPendingImagesFromConv();
+                }
+            });
         }
 
-        function loadGallery() {
-            if (!db) return;
-            const tx = db.transaction(STORE_NAME, "readonly");
-            const store = tx.objectStore(STORE_NAME);
-            const request = store.getAll();
-            
-            request.onsuccess = () => {
-                const items = request.result.sort((a, b) => b.id - a.id);
-                const container = document.getElementById('gallery-container');
-                if (items.length === 0) {
-                    container.innerHTML = `<div class="col-span-2 text-center text-gray-400 text-sm mt-10">图库为空，快去生成吧</div>`;
-                    return;
+        function openMarkEditor(srcDataUrl, onSave) {
+            const modal = document.getElementById('mark-editor-modal');
+            const canvas = document.getElementById('mark-canvas');
+            const ctx = canvas.getContext('2d');
+            const img = new Image();
+            img.onload = () => {
+                const MAX = 1024;
+                let w = img.naturalWidth || img.width;
+                let h = img.naturalHeight || img.height;
+                if (w > MAX || h > MAX) {
+                    if (w > h) { h = h * MAX / w; w = MAX; }
+                    else { w = w * MAX / h; h = MAX; }
                 }
-                container.innerHTML = items.map(item => `
-                    <div class="relative group rounded-lg overflow-hidden border border-gray-200 aspect-square bg-gray-100 cursor-pointer">
-                        <img src="${item.base64}" class="w-full h-full object-cover" onclick="downloadImage('${item.base64}', 'image-${item.id}.png')" title="${escapeHTML(item.prompt)}">
-                        <button onclick="deleteFromGallery(${item.id})" class="absolute top-1 right-1 bg-white bg-opacity-80 text-red-500 rounded p-1 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50" title="删除">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                        </button>
-                    </div>
-                `).join('');
+                canvas.width = Math.round(w);
+                canvas.height = Math.round(h);
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                _markEditorState = { canvas, ctx, baseImg: img, strokes: [], currentStroke: null, onSave };
+            };
+            img.onerror = () => alert('图片加载失败，无法打开标记编辑器。');
+            img.src = srcDataUrl;
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeMarkEditor() {
+            const modal = document.getElementById('mark-editor-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            _markEditorState = null;
+        }
+
+        function saveMarkEditor() {
+            if (!_markEditorState) return;
+            if (_markEditorState.currentStroke) {
+                _markEditorState.strokes.push(_markEditorState.currentStroke);
+                _markEditorState.currentStroke = null;
+            }
+            const dataUrl = _markEditorState.canvas.toDataURL('image/jpeg', 0.9);
+            const cb = _markEditorState.onSave;
+            closeMarkEditor();
+            if (typeof cb === 'function') cb(dataUrl);
+        }
+
+        function markUndo() {
+            if (!_markEditorState || _markEditorState.strokes.length === 0) return;
+            _markEditorState.strokes.pop();
+            redrawMarkCanvas();
+        }
+        function markClear() {
+            if (!_markEditorState) return;
+            _markEditorState.strokes = [];
+            _markEditorState.currentStroke = null;
+            redrawMarkCanvas();
+        }
+        function redrawMarkCanvas() {
+            const st = _markEditorState;
+            if (!st) return;
+            st.ctx.clearRect(0, 0, st.canvas.width, st.canvas.height);
+            st.ctx.drawImage(st.baseImg, 0, 0, st.canvas.width, st.canvas.height);
+            for (const s of st.strokes) drawMarkStroke(s);
+        }
+        function drawMarkStroke(s) {
+            const ctx = _markEditorState.ctx;
+            ctx.strokeStyle = s.color;
+            ctx.lineWidth = s.size;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            if (s.points.length === 1) {
+                ctx.fillStyle = s.color;
+                ctx.beginPath();
+                ctx.arc(s.points[0].x, s.points[0].y, Math.max(s.size / 2, 1), 0, Math.PI * 2);
+                ctx.fill();
+                return;
+            }
+            ctx.beginPath();
+            ctx.moveTo(s.points[0].x, s.points[0].y);
+            for (let i = 1; i < s.points.length; i++) {
+                ctx.lineTo(s.points[i].x, s.points[i].y);
+            }
+            ctx.stroke();
+        }
+        function initMarkCanvasEvents() {
+            const canvas = document.getElementById('mark-canvas');
+            if (!canvas) return;
+            function getPos(e) {
+                const rect = canvas.getBoundingClientRect();
+                const t = (e.touches && e.touches[0]) || (e.changedTouches && e.changedTouches[0]) || e;
+                const scaleX = canvas.width / (rect.width || 1);
+                const scaleY = canvas.height / (rect.height || 1);
+                return { x: (t.clientX - rect.left) * scaleX, y: (t.clientY - rect.top) * scaleY };
+            }
+            function start(e) {
+                if (!_markEditorState) return;
+                e.preventDefault();
+                const p = getPos(e);
+                const colorEl = document.getElementById('mark-color');
+                const sizeEl = document.getElementById('mark-size');
+                _markEditorState.currentStroke = {
+                    color: (colorEl && colorEl.value) || '#ef4444',
+                    size: parseInt((sizeEl && sizeEl.value) || '10', 10) || 10,
+                    points: [p],
+                };
+                drawMarkStroke(_markEditorState.currentStroke);
+            }
+            function move(e) {
+                if (!_markEditorState || !_markEditorState.currentStroke) return;
+                e.preventDefault();
+                const p = getPos(e);
+                const s = _markEditorState.currentStroke;
+                s.points.push(p);
+                const ctx = _markEditorState.ctx;
+                ctx.strokeStyle = s.color;
+                ctx.lineWidth = s.size;
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                const n = s.points.length;
+                if (n >= 2) {
+                    ctx.beginPath();
+                    ctx.moveTo(s.points[n - 2].x, s.points[n - 2].y);
+                    ctx.lineTo(s.points[n - 1].x, s.points[n - 1].y);
+                    ctx.stroke();
+                }
+            }
+            function end(e) {
+                if (!_markEditorState || !_markEditorState.currentStroke) return;
+                e.preventDefault();
+                _markEditorState.strokes.push(_markEditorState.currentStroke);
+                _markEditorState.currentStroke = null;
+            }
+            canvas.addEventListener('mousedown', start);
+            canvas.addEventListener('mousemove', move);
+            canvas.addEventListener('mouseup', end);
+            canvas.addEventListener('mouseleave', end);
+            canvas.addEventListener('touchstart', start, { passive: false });
+            canvas.addEventListener('touchmove', move, { passive: false });
+            canvas.addEventListener('touchend', end, { passive: false });
+            canvas.addEventListener('touchcancel', end, { passive: false });
+        }
+
+        // ============== 本地图库 ==============
+        function saveToGallery(base64Data, promptStr) {
+            return new Promise((resolve) => {
+                if (!db) { resolve(); return; }
+                const tx = db.transaction(STORE_GALLERY, 'readwrite');
+                tx.objectStore(STORE_GALLERY).put({
+                    id: _newId(), base64: base64Data, prompt: promptStr, time: new Date().toLocaleString(),
+                });
+                tx.oncomplete = () => { loadGallery(); resolve(); };
+                tx.onerror = () => resolve();
+            });
+        }
+        function loadGallery() {
+            return new Promise((resolve) => {
+                if (!db) { resolve(); return; }
+                const tx = db.transaction(STORE_GALLERY, 'readonly');
+                const req = tx.objectStore(STORE_GALLERY).getAll();
+                req.onsuccess = () => {
+                    const items = (req.result || []).sort((a, b) => b.id - a.id);
+                    const container = document.getElementById('gallery-container');
+                    if (!container) { resolve(); return; }
+                    if (items.length === 0) {
+                        container.innerHTML = `<div class="col-span-2 text-center text-gray-400 text-xs mt-4">图库为空</div>`;
+                        resolve(); return;
+                    }
+                    container.innerHTML = items.map(item => `
+                        <div class="relative group rounded-lg overflow-hidden border border-gray-200 aspect-square bg-gray-100 cursor-pointer">
+                            <img src="${item.base64}" class="w-full h-full object-cover" onclick="downloadGalleryItem(${item.id})" title="${escapeHTML(item.prompt || '')}">
+                            <button onclick="deleteFromGallery(${item.id})" class="absolute top-1 right-1 bg-white bg-opacity-80 text-red-500 rounded p-1 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50" title="删除">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                            </button>
+                        </div>
+                    `).join('');
+                    resolve();
+                };
+                req.onerror = () => resolve();
+            });
+        }
+        function downloadGalleryItem(id) {
+            if (!db) return;
+            const req = db.transaction(STORE_GALLERY, 'readonly').objectStore(STORE_GALLERY).get(Number(id));
+            req.onsuccess = () => {
+                const item = req.result;
+                if (item) downloadImage(item.base64, `image-${id}.png`);
             };
         }
-
         function deleteFromGallery(id) {
             if (!confirm('确定删除这张历史图片吗？')) return;
-            const tx = db.transaction(STORE_NAME, "readwrite");
-            tx.objectStore(STORE_NAME).delete(id);
+            const tx = db.transaction(STORE_GALLERY, 'readwrite');
+            tx.objectStore(STORE_GALLERY).delete(Number(id));
             tx.oncomplete = () => loadGallery();
+        }
+        function clearAllGallery() {
+            if (!db) { alert('本地图库还没初始化完。'); return; }
+            if (!confirm('确定清空图库？\n\n这会删除浏览器本地保存的所有图片，无法恢复。\n（只清图库，不清对话；对话里的图不受影响）')) return;
+            const tx = db.transaction(STORE_GALLERY, 'readwrite');
+            const req = tx.objectStore(STORE_GALLERY).clear();
+            req.onsuccess = () => loadGallery();
+            req.onerror = (e) => alert('清空失败：' + ((e.target && e.target.error && e.target.error.message) || '未知错误'));
+        }
+
+        // ============== 设置 + 探活 ==============
+        function openSettings() {
+            document.getElementById('api-key-input').value = localStorage.getItem('vsllm_api_key') || '';
+            showKeyTestResult('', 'info');
+            document.getElementById('settings-modal').classList.remove('hidden');
+        }
+        function closeSettings() {
+            if (!localStorage.getItem('vsllm_api_key')) {
+                alert('请先填写并保存 API 密钥才能正常使用哦！');
+                return;
+            }
+            document.getElementById('settings-modal').classList.add('hidden');
+        }
+        async function saveSettings() {
+            const key = document.getElementById('api-key-input').value.trim();
+            if (!key.startsWith('sk-')) {
+                alert('请填写正确的 API Key (通常以 sk- 开头)');
+                return;
+            }
+            localStorage.setItem('vsllm_api_key', key);
+            // 保存后自动探活；成功才自动关窗，失败时让用户看错原因再改
+            const ok = await testApiKey();
+            if (ok) {
+                setTimeout(() => {
+                    document.getElementById('settings-modal').classList.add('hidden');
+                    showToast('密钥已保存并验证通过');
+                }, 400);
+            }
+        }
+        function showKeyTestResult(text, type) {
+            const el = document.getElementById('api-key-test-result');
+            if (!el) return;
+            el.textContent = text;
+            const color = type === 'success' ? 'text-green-600' : type === 'error' ? 'text-red-600' : 'text-gray-500';
+            el.className = `text-xs min-h-[1em] ${color}`;
+        }
+        // 返回 true=验证通过，false=失败。绝不把 key 打到 console
+        async function testApiKey() {
+            const input = document.getElementById('api-key-input').value.trim();
+            const saved = localStorage.getItem('vsllm_api_key') || '';
+            const key = input || saved;
+            if (!key) { showKeyTestResult('请先填写 API Key', 'error'); return false; }
+            if (!key.startsWith('sk-')) { showKeyTestResult('API Key 通常以 sk- 开头', 'error'); return false; }
+            showKeyTestResult('正在测试连接…', 'info');
+            try {
+                const resp = await fetch(MODELS_URL, {
+                    method: 'GET',
+                    headers: { 'Authorization': `Bearer ${key}` },
+                });
+                if (resp.ok) {
+                    showKeyTestResult('密钥有效，接口可用', 'success');
+                    return true;
+                } else if (resp.status === 401 || resp.status === 403) {
+                    showKeyTestResult(`密钥被拒：HTTP ${resp.status}。请检查是否填错或已过期。`, 'error');
+                    return false;
+                } else {
+                    showKeyTestResult(`接口返回 HTTP ${resp.status} ${resp.statusText || ''}`.trim(), 'error');
+                    return false;
+                }
+            } catch (e) {
+                showKeyTestResult('连不上接口：' + (e && e.message ? e.message : e), 'error');
+                return false;
+            }
         }
     </script>
 </body>
