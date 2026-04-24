@@ -124,7 +124,11 @@
                                 <option value="webp">webp</option>
                             </select>
                         </label>
-                        <button type="button" onclick="openVideoFrameModal()" class="ml-auto flex items-center gap-1 text-xs text-indigo-600 hover:bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded" title="从本地视频截取首帧/尾帧加入参考图（纯前端处理，不上传视频）">
+                        <button type="button" id="enhance-prompt-btn" onclick="openEnhancePromptModal()" class="ml-auto flex items-center gap-1 text-xs text-purple-600 hover:bg-purple-50 border border-purple-200 px-2 py-0.5 rounded" title="用 gpt-oss-120b 把当前输入框的提示词改写成更适合 gpt-image-2 的自然语言描述">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path></svg>
+                            提示词增强
+                        </button>
+                        <button type="button" onclick="openVideoFrameModal()" class="flex items-center gap-1 text-xs text-indigo-600 hover:bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded" title="从本地视频截取首帧/尾帧加入参考图（纯前端处理，不上传视频）">
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
                             截取视频帧
                         </button>
@@ -298,6 +302,39 @@
         </div>
     </div>
 
+    <!-- 提示词增强 modal：拿用户自己的 key 调 gpt-oss-120b 改写 prompt，确认后才写回输入框 -->
+    <div id="enhance-prompt-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden justify-center items-center p-4">
+        <div class="bg-white rounded-2xl w-full max-w-lg p-6 shadow-2xl relative flex flex-col max-h-[90vh]">
+            <h3 class="text-lg font-semibold mb-1 text-gray-800">提示词增强</h3>
+            <p class="text-xs text-gray-500 mb-3 leading-relaxed">用 <code class="font-mono bg-gray-100 px-1 rounded">gpt-oss-120b</code> 把你的想法改写成更适合 <code class="font-mono bg-gray-100 px-1 rounded">gpt-image-2</code> 的自然语言描述。调用用的是你本地保存的 API Key，不会离开你的浏览器直传第三方。</p>
+
+            <div class="space-y-3 overflow-y-auto pr-1 min-h-0 flex-1">
+                <div>
+                    <div class="text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1">原提示词</div>
+                    <pre id="enhance-orig-text" class="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 whitespace-pre-wrap break-words font-sans max-h-40 overflow-y-auto"></pre>
+                </div>
+                <div>
+                    <div class="text-[11px] font-semibold text-purple-600 uppercase tracking-wide mb-1">增强后</div>
+                    <pre id="enhance-result-text" class="bg-purple-50 border border-purple-200 rounded-lg px-3 py-2 text-sm text-gray-800 whitespace-pre-wrap break-words font-sans max-h-60 overflow-y-auto min-h-[4em]"></pre>
+                </div>
+                <div id="enhance-status" class="text-xs text-gray-500 min-h-[1em]"></div>
+            </div>
+
+            <div class="flex gap-2 mt-4 shrink-0">
+                <button type="button" onclick="closeEnhancePromptModal()" class="flex-1 bg-gray-100 text-gray-700 py-2.5 rounded-xl hover:bg-gray-200 transition-colors text-sm">
+                    取消
+                </button>
+                <button type="button" id="enhance-apply-btn" onclick="applyEnhancedPrompt()" disabled class="flex-1 bg-purple-600 text-white py-2.5 rounded-xl hover:bg-purple-500 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors text-sm">
+                    应用到输入框
+                </button>
+            </div>
+
+            <button onclick="closeEnhancePromptModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+    </div>
+
     <script>
         // ============================================================
         // ！！！图片输入格式规范（别再混用了）！！！
@@ -309,6 +346,9 @@
         const BASE_URL = "https://vsllm.com/v1/responses";
         const MODELS_URL = "https://vsllm.com/v1/models";
         const MODEL = "gpt-image-2-chat";
+        // 提示词增强：OpenAI 兼容的 Chat Completions，与图片 Responses API 完全独立
+        const CHAT_URL = "https://vsllm.com/v1/chat/completions";
+        const PROMPT_ENHANCE_MODEL = "gpt-oss-120b";
 
         const DB_NAME = "VsllmGallery";
         const DB_VERSION = 2; // v1 只有 images；v2 加 conversations、messages
@@ -334,6 +374,35 @@
             "画师磨刀三年、出图三秒，马上好…",
             "精修中，别催，催出不来好图…",
         ];
+
+        // 输入框动态 placeholder 示例池：用自然语言描述，贴近 gpt-image-2 的吃法
+        const PLACEHOLDER_EXAMPLES = [
+            '比如：一只穿着黄色雨衣的小狗，在霓虹雨夜的街角等公交',
+            '比如：把这张产品图改成清晨阳光下的高级杂志广告感',
+            '比如：生成一张温暖电影感的家庭厨房场景，蒸汽从咖啡杯里升起',
+            '比如：让人物保持五官不变，换成复古胶片风的海边黄昏',
+            '比如：一座山中木屋，秋日清晨薄雾从谷底升起，远处有飞鸟',
+            '比如：把它改成赛博朋克风格，霓虹灯反射在湿漉漉的路面上',
+            '比如：一只橘猫趴在窗台上晒太阳，柔光质感，自然摄影构图',
+            '比如：把穿搭改成 Y2K 复古未来风，粉紫渐变光，全身人像',
+            '比如：北欧极简客厅，落地窗，傍晚暖色调，生活感氛围',
+            '比如：宠物拟人化成皮克斯风格 3D 角色，大眼睛温暖笑容',
+        ];
+        let _placeholderTimer = null;
+        let _placeholderIdx = 0;
+        // 启动 placeholder 轮播：每 3s 换一条；防重复启动；只改 placeholder 属性，不碰 value
+        function startPlaceholderRotation() {
+            if (_placeholderTimer) return;
+            const el = promptInput;
+            if (!el || !PLACEHOLDER_EXAMPLES.length) return;
+            // 随机起点，避免每次刷新都从第一条
+            _placeholderIdx = Math.floor(Math.random() * PLACEHOLDER_EXAMPLES.length);
+            el.placeholder = PLACEHOLDER_EXAMPLES[_placeholderIdx];
+            _placeholderTimer = setInterval(() => {
+                _placeholderIdx = (_placeholderIdx + 1) % PLACEHOLDER_EXAMPLES.length;
+                el.placeholder = PLACEHOLDER_EXAMPLES[_placeholderIdx];
+            }, 3000);
+        }
 
         // 全项目构造图片 content item 的唯一入口；别的地方一律不能手写 { type: 'image_url', ... }
         function buildImageContent(url) {
@@ -470,6 +539,7 @@
                 return;
             }
             initMarkCanvasEvents();
+            startPlaceholderRotation();
 
             // 加载/创建默认会话
             let convs = await listConvs();
@@ -1071,30 +1141,30 @@
             return `
                 <div class="inline-block max-w-full">
                     <img src="${imgSrc}" class="rounded-xl max-w-full max-h-[400px] object-contain shadow-sm border border-gray-200 block">
-                    <div class="flex flex-wrap gap-2 mt-2">
-                        <button onclick="downloadResultImage(${msgId})" class="bg-gray-100 text-gray-700 hover:bg-gray-200 px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-1 transition-colors">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                    <div class="bot-action-bar flex flex-wrap gap-0.5 mt-2 -ml-1">
+                        <button onclick="downloadResultImage(${msgId})" class="bot-action-btn inline-flex items-center gap-1 px-2 py-1 rounded-md text-[12px] text-gray-500 hover:text-gray-900 hover:bg-gray-100 border border-transparent hover:border-gray-200 transition-all">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
                             下载
                         </button>
-                        <button onclick="copyResultImageToClipboard(${msgId})" class="bg-gray-100 text-gray-700 hover:bg-gray-200 px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-1 transition-colors" title="复制图片到剪贴板">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
-                            复制图片
+                        <button onclick="copyResultImageToClipboard(${msgId})" class="bot-action-btn inline-flex items-center gap-1 px-2 py-1 rounded-md text-[12px] text-gray-500 hover:text-gray-900 hover:bg-gray-100 border border-transparent hover:border-gray-200 transition-all" title="复制图片到剪贴板">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                            复制
                         </button>
-                        <button onclick="rerollFromMessage(${msgId})" class="bg-indigo-50 text-indigo-600 hover:bg-indigo-100 px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-1 transition-colors">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h5M20 20v-5h-5M4 9a8 8 0 0115-3M20 15a8 8 0 01-15 3"></path></svg>
+                        <button onclick="rerollFromMessage(${msgId})" class="bot-action-btn inline-flex items-center gap-1 px-2 py-1 rounded-md text-[12px] text-indigo-500 hover:text-indigo-700 hover:bg-indigo-50 border border-transparent hover:border-indigo-200 transition-all">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h5M20 20v-5h-5M4 9a8 8 0 0115-3M20 15a8 8 0 01-15 3"></path></svg>
                             重新生成
                         </button>
-                        <button onclick="enhanceResultImage()" title="新标签页打开 iLoveIMG 图片放大工具（不会自动上传你的图）" class="bg-amber-50 text-amber-700 hover:bg-amber-100 px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-1 transition-colors">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m-3-3h6"></path></svg>
-                            增强图片
+                        <button onclick="enhanceResultImage()" title="新标签页打开 iLoveIMG 图片放大工具（不会自动上传你的图）" class="bot-action-btn inline-flex items-center gap-1 px-2 py-1 rounded-md text-[12px] text-amber-600 hover:text-amber-700 hover:bg-amber-50 border border-transparent hover:border-amber-200 transition-all">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m-3-3h6"></path></svg>
+                            增强
                         </button>
-                        <button onclick="cutoutBgFromKoukoutu()" title="新标签页打开抠图工具 koukoutu.com（不会自动上传你的图，需要你手动上传）" class="bg-teal-50 text-teal-700 hover:bg-teal-100 px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-1 transition-colors">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.121 14.121L19 19m-7-7l7-7m-7 7l-2.879 2.879M12 12L9.121 9.121m0 5.758a3 3 0 10-4.243 4.243 3 3 0 004.243-4.243zm0-5.758a3 3 0 10-4.243-4.243 3 3 0 004.243 4.243z"></path></svg>
+                        <button onclick="cutoutBgFromKoukoutu()" title="新标签页打开抠图工具 koukoutu.com（不会自动上传你的图，需要你手动上传）" class="bot-action-btn inline-flex items-center gap-1 px-2 py-1 rounded-md text-[12px] text-teal-600 hover:text-teal-700 hover:bg-teal-50 border border-transparent hover:border-teal-200 transition-all">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.121 14.121L19 19m-7-7l7-7m-7 7l-2.879 2.879M12 12L9.121 9.121m0 5.758a3 3 0 10-4.243 4.243 3 3 0 004.243-4.243zm0-5.758a3 3 0 10-4.243-4.243 3 3 0 004.243 4.243z"></path></svg>
                             抠图
                         </button>
-                        <button onclick="markResultImage(${msgId})" title="在图上画红圈标记要改的位置" class="bg-rose-50 text-rose-600 hover:bg-rose-100 px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-1 transition-colors">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
-                            标记图片
+                        <button onclick="markResultImage(${msgId})" title="在图上画红圈标记要改的位置" class="bot-action-btn inline-flex items-center gap-1 px-2 py-1 rounded-md text-[12px] text-rose-500 hover:text-rose-700 hover:bg-rose-50 border border-transparent hover:border-rose-200 transition-all">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                            标记
                         </button>
                     </div>
                     ${tokenMeta}
@@ -1825,6 +1895,176 @@
         // 抠图跳转：新标签页打开 koukoutu.com，不自动传本地图
         function cutoutBgFromKoukoutu() {
             window.open('https://www.koukoutu.com/removebgtool/all', '_blank', 'noopener,noreferrer');
+        }
+
+        // ============== 提示词增强（gpt-oss-120b） ==============
+        // 临时状态：保存本次增强的原文和结果；只在 modal 生命周期内用，不进 DB、不进消息历史
+        let _enhanceState = null;
+        let _enhanceAbortController = null;
+
+        function setEnhanceStatus(text, type) {
+            const el = document.getElementById('enhance-status');
+            if (!el) return;
+            el.textContent = text || '';
+            const color = type === 'error' ? 'text-red-600'
+                : type === 'success' ? 'text-green-600'
+                : type === 'loading' ? 'text-purple-600'
+                : 'text-gray-500';
+            el.className = `text-xs min-h-[1em] ${color}`;
+        }
+
+        function renderEnhancedResult(text) {
+            const pre = document.getElementById('enhance-result-text');
+            if (pre) pre.textContent = text || ''; // textContent 自动转义，无 XSS 风险
+        }
+
+        async function openEnhancePromptModal() {
+            const raw = (promptInput && promptInput.value || '').trim();
+            if (!raw) {
+                alert('请先在输入框里写下你想画什么，再点"提示词增强"。');
+                promptInput && promptInput.focus();
+                return;
+            }
+            const apiKey = localStorage.getItem('vsllm_api_key');
+            if (!apiKey) {
+                alert('还没配置 API Key，先去设置里填一下。');
+                openSettings();
+                return;
+            }
+
+            _enhanceState = { original: raw, enhanced: null };
+            // 填充 modal（pre.textContent 自动 escape）
+            document.getElementById('enhance-orig-text').textContent = raw;
+            renderEnhancedResult('');
+            setEnhanceStatus('正在调用 gpt-oss-120b 改写…', 'loading');
+            document.getElementById('enhance-apply-btn').disabled = true;
+
+            const modal = document.getElementById('enhance-prompt-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+
+            const btn = document.getElementById('enhance-prompt-btn');
+            if (btn) btn.disabled = true;
+
+            // 每次开 modal 起一个独立的 abort controller；关 modal 或重复打开时会 abort 上一次
+            if (_enhanceAbortController) { try { _enhanceAbortController.abort(); } catch {} }
+            _enhanceAbortController = new AbortController();
+
+            try {
+                const enhanced = await callPromptEnhancer(raw, _enhanceAbortController.signal);
+                if (!enhanced) throw new Error('模型返回为空');
+                _enhanceState.enhanced = enhanced;
+                renderEnhancedResult(enhanced);
+                setEnhanceStatus('改写完成。确认效果满意可"应用到输入框"。', 'success');
+                document.getElementById('enhance-apply-btn').disabled = false;
+            } catch (err) {
+                if (err && err.name === 'AbortError') {
+                    setEnhanceStatus('已取消。', 'info');
+                } else {
+                    const emsg = (err && err.message) ? err.message : String(err);
+                    setEnhanceStatus('失败：' + emsg, 'error');
+                }
+                document.getElementById('enhance-apply-btn').disabled = true;
+            } finally {
+                if (btn) btn.disabled = false;
+            }
+        }
+
+        function closeEnhancePromptModal() {
+            if (_enhanceAbortController) { try { _enhanceAbortController.abort(); } catch {} }
+            _enhanceAbortController = null;
+            _enhanceState = null;
+            const modal = document.getElementById('enhance-prompt-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            const btn = document.getElementById('enhance-prompt-btn');
+            if (btn) btn.disabled = false;
+        }
+
+        function applyEnhancedPrompt() {
+            if (!_enhanceState || !_enhanceState.enhanced) return;
+            promptInput.value = _enhanceState.enhanced;
+            // 触发 input 事件让 autoResizeTextarea 重新算高度（它是 oninput 里绑的，但程序式赋值不触发）
+            autoResizeTextarea(promptInput);
+            promptInput.focus();
+            // 光标挪到末尾
+            try { promptInput.setSelectionRange(promptInput.value.length, promptInput.value.length); } catch {}
+            closeEnhancePromptModal();
+            showToast('已应用增强后的提示词');
+        }
+
+        // 给 gpt-oss-120b 的 system prompt；目标是为 gpt-image-2 产出清晰自然语言的图像描述
+        const PROMPT_ENHANCE_SYSTEM = [
+            'You are a prompt-rewriting assistant for the image model "gpt-image-2", which takes natural-language descriptions (NOT comma-separated tag soup like Stable Diffusion).',
+            'Your job: take the user\'s raw idea and rewrite it into ONE clear, specific, vivid natural-language image description that gpt-image-2 can render well.',
+            'Guidelines:',
+            '- Keep the user\'s core intent and subject exactly. Do not add unrelated subjects.',
+            '- Add concrete details when helpful: subject, scene, composition, lighting, materials, camera/angle, style, mood, color palette, texture, important props.',
+            '- Resolve ambiguity with sensible defaults, but do not contradict the user.',
+            '- If the user writes in Chinese, reply in Chinese. If English, reply in English. Otherwise follow the user\'s language.',
+            '- Do not add any unsafe / explicit / policy-violating content that the user did not ask for.',
+            '- Output ONLY the rewritten prompt text. No preface, no explanation, no Markdown, no quotes, no bullet list.',
+        ].join('\n');
+
+        async function callPromptEnhancer(rawPrompt, signal) {
+            const apiKey = localStorage.getItem('vsllm_api_key');
+            if (!apiKey) throw new Error('未配置 API Key');
+
+            const payload = {
+                model: PROMPT_ENHANCE_MODEL,
+                messages: [
+                    { role: 'system', content: PROMPT_ENHANCE_SYSTEM },
+                    { role: 'user', content: rawPrompt },
+                ],
+                temperature: 0.7,
+                stream: false,
+            };
+
+            let response;
+            try {
+                response = await fetch(CHAT_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+                    body: JSON.stringify(payload),
+                    signal,
+                });
+            } catch (networkErr) {
+                if (networkErr && networkErr.name === 'AbortError') throw networkErr;
+                throw new Error(`网络请求失败：${networkErr && networkErr.message ? networkErr.message : networkErr}`);
+            }
+
+            const rawText = await response.text().catch(() => '');
+            if (!response.ok) {
+                let serverMsg = '';
+                try {
+                    const errJson = JSON.parse(rawText);
+                    serverMsg = (errJson && errJson.error && errJson.error.message) || errJson.message || JSON.stringify(errJson);
+                } catch { serverMsg = rawText; }
+                if (response.status === 401 || response.status === 403) {
+                    throw new Error(`密钥被拒 HTTP ${response.status}。请检查 API Key 是否填对、是否在 image_2fen 分组。`);
+                }
+                throw new Error(`HTTP ${response.status} ${response.statusText}\n${serverMsg || '(服务端未返回错误正文)'}`);
+            }
+
+            let data;
+            try { data = JSON.parse(rawText); }
+            catch (parseErr) {
+                throw new Error(`响应不是合法 JSON：${parseErr.message}\n响应前 500 字：${rawText.slice(0, 500)}`);
+            }
+
+            // 兼容 OpenAI 标准格式
+            const choice = data && data.choices && data.choices[0];
+            let content = choice && choice.message && choice.message.content;
+            if (Array.isArray(content)) {
+                // 某些兼容服务会返回数组形态：[{ type:'text', text:'...' }, ...]
+                content = content.map(c => (typeof c === 'string') ? c : (c && c.text) || '').join('');
+            }
+            if (typeof content !== 'string') throw new Error('响应里没找到文本内容（data.choices[0].message.content）');
+            let out = content.trim();
+            // 去掉模型偶发的包裹引号 / 代码围栏
+            out = out.replace(/^```[a-zA-Z]*\n?/, '').replace(/\n?```$/, '').trim();
+            out = out.replace(/^["'“”‘’]+|["'“”‘’]+$/g, '').trim();
+            return out;
         }
 
         // ============== 视频首尾帧提取（纯前端） ==============
