@@ -2512,6 +2512,78 @@
         }
 
         // ============== API 请求（纯数据层，带 signal） ==============
+        // 流式 Responses API 开关。true = 发 stream:true + 解析 SSE；非 SSE 响应自动回退到 JSON 模式
+        const USE_STREAMING_RESPONSES = true;
+
+        // 把 Responses 的最终 response 对象（或流累积对象）里的 image/usage 抽出来；流/非流共用
+        function _extractImgAndUsageFromResponseData(data) {
+            let imgB64 = null;
+            const outputs = (data && (data.output || (data.response && data.response.output))) || [];
+            for (const item of outputs) {
+                if (item && item.type === 'image_generation_call' && item.result) { imgB64 = item.result; break; }
+            }
+            if (!imgB64) {
+                for (const item of outputs) {
+                    if (item && item.type === 'image_generation_call') {
+                        imgB64 = item.image_base64 || item.b64_json;
+                        if (imgB64) break;
+                    }
+                }
+            }
+            return { imgB64, usage: extractUsageTokens(data) };
+        }
+
+        // 逐行解析 SSE 流；按空行分事件，忽略心跳（:）、兼容 event: / data: 多行、识别 [DONE]
+        // 每个事件回调给 onEvent({ type, eventName, data })；中断直接 reject（保留 AbortError 语义）
+        async function _consumeSSEStream(response, signal, onEvent) {
+            if (!response.body || !response.body.getReader) {
+                throw new Error('当前浏览器环境不支持 ReadableStream（无法解析 SSE）');
+            }
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder('utf-8');
+            let buffer = '';
+            const flushEvent = (raw) => {
+                if (!raw) return;
+                let eventName = null;
+                const dataLines = [];
+                for (const line of raw.split(/\r?\n/)) {
+                    if (!line) continue;
+                    if (line.startsWith(':')) continue; // 心跳/注释
+                    if (line.startsWith('event:')) { eventName = line.slice(6).trim(); }
+                    else if (line.startsWith('data:')) { dataLines.push(line.slice(5).replace(/^\s/, '')); }
+                    // id: / retry: 忽略
+                }
+                if (dataLines.length === 0) return;
+                const dataStr = dataLines.join('\n');
+                if (dataStr.trim() === '[DONE]') {
+                    onEvent({ type: '__done__', eventName: eventName || '[DONE]', data: null });
+                    return;
+                }
+                let parsed = null;
+                try { parsed = JSON.parse(dataStr); } catch { return; /* 非 JSON 事件忽略 */ }
+                onEvent({ type: (parsed && parsed.type) || eventName || 'unknown', eventName, data: parsed });
+            };
+            try {
+                while (true) {
+                    if (signal && signal.aborted) {
+                        try { await reader.cancel(); } catch {}
+                        const e = new Error('Aborted'); e.name = 'AbortError'; throw e;
+                    }
+                    const { value, done } = await reader.read();
+                    if (done) break;
+                    buffer += decoder.decode(value, { stream: true });
+                    // 按空行（\n\n 或 \r\n\r\n）切事件；尾部残段留给下轮
+                    const parts = buffer.split(/\r?\n\r?\n/);
+                    buffer = parts.pop();
+                    for (const p of parts) flushEvent(p);
+                }
+                // 流自然结束时 buffer 里可能还有最后一段（部分服务不补尾空行）
+                if (buffer && buffer.trim()) { flushEvent(buffer); buffer = ''; }
+            } finally {
+                try { reader.releaseLock(); } catch {}
+            }
+        }
+
         async function generateImageFromRequest(record, signal) {
             const apiKey = localStorage.getItem('vsllm_api_key');
             if (!apiKey) throw new Error('未配置 API Key');
@@ -2541,22 +2613,28 @@
                 tools: [imageGenTool],
                 instructions: 'You are a helpful assistant. Always call image_generation when the user asks for an image. Do not answer with only text.',
                 tool_choice: { type: 'image_generation' },
-                stream: false, store: false,
+                stream: !!USE_STREAMING_RESPONSES,
+                store: false,
             };
 
             // fetch 前的最后兜底：任何 content item 的 type=='image_url' 都拦住，不发请求
             assertNoChatImageUrlContent(payload);
 
+            const headers = {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`,
+            };
+            if (payload.stream) headers['Accept'] = 'text/event-stream';
+
             let response;
             try {
                 response = await fetch(BASE_URL, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+                    headers,
                     body: JSON.stringify(payload),
                     signal,
                 });
             } catch (networkErr) {
-                // AbortError 直接往上抛，让调用方识别
                 if (networkErr && networkErr.name === 'AbortError') throw networkErr;
                 throw new Error(
                     `网络请求失败，没连上 ${BASE_URL}\n` +
@@ -2569,14 +2647,14 @@
                 );
             }
 
-            const rawText = await response.text().catch(() => '');
+            // HTTP 非 ok：错误 body 以文本读一次即可（error 通常是 JSON 对象，不是 SSE）
             if (!response.ok) {
+                const rawText = await response.text().catch(() => '');
                 let serverMsg = '';
                 try {
                     const errJson = JSON.parse(rawText);
                     serverMsg = errJson?.error?.message || errJson?.message || JSON.stringify(errJson);
                 } catch { serverMsg = rawText; }
-                // 后端明确说 image_url 不合法 → 给用户说人话，这不是 prompt 的问题
                 let prefix = '';
                 if (serverMsg && /image_url/.test(serverMsg) && /(Supported values|invalid_value)/i.test(serverMsg)) {
                     prefix = '【前端图片参数格式错误，不是你 prompt 的问题】\n' +
@@ -2584,32 +2662,106 @@
                              '这通常是老版本残留数据导致的：请刷新页面重试；如仍旧报错，新建对话重新上传图即可。\n\n';
                 }
                 const e = new Error(`HTTP ${response.status} ${response.statusText}\n${prefix}${serverMsg || '(服务端未返回错误正文)'}`);
-                e._httpStatus = response.status; // 用于 isTransientError 判断
+                e._httpStatus = response.status;
                 throw e;
             }
 
-            let data;
-            try { data = JSON.parse(rawText); }
-            catch (parseErr) {
-                throw new Error(`响应解析失败（不是合法 JSON）：${parseErr.message}\n响应内容前 500 字：${rawText.slice(0, 500)}`);
+            const ctype = (response.headers.get('content-type') || '').toLowerCase();
+            const wantsStream = payload.stream
+                && /text\/event-stream/.test(ctype)
+                && response.body && response.body.getReader;
+
+            if (!wantsStream) {
+                // 服务端没按 SSE 回（可能不支持 stream 或代理把 SSE 剥成 JSON）→ 走非流式 JSON 路径
+                const rawText = await response.text().catch(() => '');
+                let data;
+                try { data = JSON.parse(rawText); }
+                catch (parseErr) {
+                    throw new Error(`响应解析失败（不是合法 JSON，也不是 SSE）：${parseErr.message}\n响应内容前 500 字：${rawText.slice(0, 500)}`);
+                }
+                const picked = _extractImgAndUsageFromResponseData(data);
+                if (!picked.imgB64) throw new Error('API 返回成功，但未能提取到图片数据。');
+                return picked;
             }
 
-            let imgB64 = null;
-            const outputs = data.output || [];
-            for (let item of outputs) {
-                if (item.type === 'image_generation_call' && item.result) { imgB64 = item.result; break; }
-            }
-            if (!imgB64) {
-                for (let item of outputs) {
-                    if (item.type === 'image_generation_call') {
-                        imgB64 = item.image_base64 || item.b64_json;
-                        if (imgB64) break;
+            // —— SSE 流式解析 ——
+            // 生图正常需要 1-5 分钟；只要有事件/字节进展就继续等；前端不设短总超时，假死由后端 watchdog 兜底
+            let sawCompleted = false;
+            let latestImg = null;      // 任何途径拿到的 base64（result / image_base64 / b64_json / partial_image_b64）
+            let latestUsage = null;
+            let serverError = null;
+            let finalResponse = null;
+
+            try {
+                await _consumeSSEStream(response, signal, (evt) => {
+                    const t = evt.type || '';
+                    const d = evt.data;
+                    if (!d) return;
+                    // 完成
+                    if (t === 'response.completed' || d.type === 'response.completed') {
+                        sawCompleted = true;
+                        finalResponse = d.response || d;
+                        return;
                     }
-                }
+                    // 失败 / 带 error
+                    if (t === 'response.failed' || d.type === 'response.failed' || d.error) {
+                        const em = (d.error && (d.error.message || d.error))
+                            || (d.response && d.response.error && d.response.error.message)
+                            || 'upstream failure';
+                        serverError = typeof em === 'string' ? em : JSON.stringify(em);
+                        return;
+                    }
+                    // 图片结果累积：多种事件形态都兼容
+                    const it = d.item;
+                    if (it && it.type === 'image_generation_call') {
+                        if (it.result) latestImg = it.result;
+                        else if (it.image_base64) latestImg = it.image_base64;
+                        else if (it.b64_json) latestImg = it.b64_json;
+                    }
+                    if (!latestImg && typeof d.partial_image_b64 === 'string') latestImg = d.partial_image_b64;
+                    if (d.response) {
+                        if (d.response.output) {
+                            for (const oi of d.response.output) {
+                                if (oi && oi.type === 'image_generation_call' && oi.result) { latestImg = oi.result; break; }
+                            }
+                        }
+                        if (d.response.usage && !latestUsage) latestUsage = d.response.usage;
+                    }
+                    if (d.usage && !latestUsage) latestUsage = d.usage;
+                });
+            } catch (streamErr) {
+                if (streamErr && streamErr.name === 'AbortError') throw streamErr;
+                const e = new Error(
+                    '上游流式生成中断（stream disconnected before completion）：'
+                    + ((streamErr && streamErr.message) ? streamErr.message : streamErr)
+                    + '\n通常不是提示词问题，可点重试或稍后再试。'
+                );
+                e._streamIncomplete = true;
+                throw e;
             }
-            if (!imgB64) throw new Error('API 返回成功，但未能提取到图片数据。');
-            // 同时返回 usage 给上层做 token 统计（可能为 null，上层会 fallback 估算）
-            return { imgB64, usage: extractUsageTokens(data) };
+
+            if (serverError) {
+                throw new Error(`服务端返回失败：${serverError}`);
+            }
+
+            // 用最终 response 再保底抽一遍（有些事件里只带增量，result 只出现在 response.completed）
+            if (finalResponse) {
+                const picked = _extractImgAndUsageFromResponseData(finalResponse);
+                if (picked.imgB64 && !latestImg) latestImg = picked.imgB64;
+                if (picked.usage && !latestUsage) latestUsage = picked.usage;
+            }
+
+            if (!sawCompleted && !latestImg) {
+                const e = new Error('上游流式生成中断（未收到 response.completed）。\n通常不是提示词问题，可点重试或稍后再试。');
+                e._streamIncomplete = true;
+                throw e;
+            }
+            if (!latestImg) throw new Error('API 流结束，但未能提取到图片数据。');
+
+            return {
+                imgB64: latestImg,
+                usage: latestUsage ? extractUsageTokens({ usage: latestUsage }) : null,
+            };
         }
 
         // ============== 任务管理 ==============
@@ -2661,13 +2813,16 @@
             if (timedOut) return true; // 自动超时算 transient
             if (!err) return false;
             if (err.name === 'AbortError') return false; // 手动取消不重试
+            if (err._streamIncomplete) return true;      // SSE 流中断 = transient，watchdog 场景
             const status = err._httpStatus || 0;
-            if (status >= 500 && status < 600) return true; // 5xx
-            if (status >= 400 && status < 500) return false; // 4xx 都不重试（参数/鉴权/限流）
+            if (status === 408) return true;              // 请求超时（上游 watchdog 常返回）
+            if (status >= 500 && status < 600) return true;
+            if (status >= 400 && status < 500) return false;
             const msg = (err.message || '').toString();
             if (/invalid_request_error|invalid_value|image_url/i.test(msg)) return false;
+            if (/stream disconnected|response\.completed|stream incomplete|上游流式生成中断/i.test(msg)) return true;
             if (/网络请求失败|Failed to fetch|NetworkError|ENOTFOUND|ECONNRESET/i.test(msg)) return true;
-            return false; // 不明错误默认不重试，免得循环放大问题
+            return false;
         }
 
         // 统一生成流程（sendMessage / reroll / edit-regen / retry 共用）
