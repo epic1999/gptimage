@@ -922,11 +922,22 @@
                     <div id="params-content" class="hidden flex items-center flex-wrap gap-x-3 gap-y-1 px-3 pt-0.5 pb-2 text-xs text-gray-500">
                         <label class="flex items-center gap-1">
                             <span>尺寸</span>
-                            <select id="param-size" class="bg-white border border-gray-200 rounded px-1.5 py-0.5 text-xs focus:outline-none focus:ring-1 focus:ring-black cursor-pointer">
+                            <select id="param-size" class="bg-white border border-gray-200 rounded px-1.5 py-0.5 text-xs focus:outline-none focus:ring-1 focus:ring-black cursor-pointer" title="auto 由模型自决；2K/4K 体积大、生成更慢">
                                 <option value="auto" selected>auto</option>
-                                <option value="1024x1024">1024×1024</option>
-                                <option value="1024x1536">1024×1536 (竖)</option>
-                                <option value="1536x1024">1536×1024 (横)</option>
+                                <optgroup label="标准">
+                                    <option value="1024x1024">1024×1024</option>
+                                    <option value="1024x1536">1024×1536 (竖)</option>
+                                    <option value="1536x1024">1536×1024 (横)</option>
+                                </optgroup>
+                                <optgroup label="2K · 较慢">
+                                    <option value="2048x2048">2048×2048</option>
+                                    <option value="1152x2048">1152×2048 (竖)</option>
+                                    <option value="2048x1152">2048×1152 (横)</option>
+                                </optgroup>
+                                <optgroup label="4K · 实验性 · 很慢">
+                                    <option value="2160x3840">2160×3840 (竖 · 实验)</option>
+                                    <option value="3840x2160">3840×2160 (横 · 实验)</option>
+                                </optgroup>
                             </select>
                         </label>
                         <label class="flex items-center gap-1">
@@ -1007,6 +1018,31 @@
                 <div>
                     <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1.5">API Key</label>
                     <input type="password" id="api-key-input" placeholder="sk-..." class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:border-gray-400 outline-none text-sm transition-colors font-mono">
+                </div>
+                <div class="border border-gray-200 rounded-xl overflow-hidden bg-gray-50/60">
+                    <button type="button" id="custom-api-toggle" onclick="toggleCustomApiSection()" class="w-full px-3 py-2 flex items-center justify-between gap-2 text-left hover:bg-gray-100 transition-colors" aria-expanded="false">
+                        <span class="min-w-0">
+                            <span class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider">自定义 API 端点</span>
+                            <span id="custom-api-summary" class="block text-[11px] text-gray-400 truncate mt-0.5">当前：默认 vsllm.com</span>
+                        </span>
+                        <svg id="custom-api-chevron" class="w-3.5 h-3.5 text-gray-400 shrink-0 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+                    </button>
+                    <div id="custom-api-panel" class="hidden px-3 pb-3 pt-1 border-t border-gray-200 bg-white space-y-2.5">
+                        <div>
+                            <label class="block text-[11px] font-medium text-gray-500 mb-1.5">API Base URL</label>
+                            <input type="url" id="custom-api-base-input" placeholder="https://your-provider.com/v1" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:border-gray-400 outline-none text-sm transition-colors font-mono">
+                            <p class="text-[11px] text-gray-400 mt-1 leading-relaxed">留空使用内置 vsllm.com。自定义端点只开放 gpt-5.x / gpt-5 模型选择。</p>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="validateCustomApiEndpoint()" type="button" class="flex-1 px-3 py-1.5 text-xs text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors">
+                                验证连接
+                            </button>
+                            <button onclick="restoreDefaultApiBase()" type="button" class="flex-1 px-3 py-1.5 text-xs text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-lg font-medium transition-colors">
+                                恢复默认(vsllm.com)
+                            </button>
+                        </div>
+                        <div id="custom-api-result" class="text-xs min-h-[1em] text-gray-500"></div>
+                    </div>
                 </div>
                 <div>
                     <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1.5">生成超时</label>
@@ -1409,30 +1445,77 @@
         //   image_url 是字符串！文本用 input_text。
         // Chat Completions 那套 { type:'image_url', image_url:{url} } 不认，会炸。
         // ============================================================
-        const BASE_URL = "https://vsllm.com/v1/responses";
-        const MODELS_URL = "https://vsllm.com/v1/models";
+        const DEFAULT_API_BASE_URL = "https://vsllm.com/v1";
+        const API_BASE_LS_KEY = 'vsllm_api_base_url';
         // 可选的图像生成模型（请求格式完全相同，只是模型名不同）
         const IMAGE_MODELS = [
             { id: 'gpt-image-2-chat',          name: 'gpt-image-2-chat',          desc: '默认 · 便宜 · 慢',           premium: false },
             { id: 'gpt-image-2-chat-priority', name: 'gpt-image-2-chat-priority', desc: '官转 · 更快更稳 · 价格更高', premium: true },
         ];
+        const CUSTOM_GPT5_MODELS = [
+            { id: 'gpt-5.5', name: 'gpt-5.5', desc: '自定义端点 · Responses API 原生生图', premium: false },
+            { id: 'gpt-5.4', name: 'gpt-5.4', desc: '自定义端点 · 常见 gpt-5.x 版本', premium: false },
+            { id: 'gpt-5.3', name: 'gpt-5.3', desc: '自定义端点 · 常见 gpt-5.x 版本', premium: false },
+            { id: 'gpt-5.2', name: 'gpt-5.2', desc: '自定义端点 · 常见 gpt-5.x 版本', premium: false },
+            { id: 'gpt-5.1', name: 'gpt-5.1', desc: '自定义端点 · 常见 gpt-5.x 版本', premium: false },
+            { id: 'gpt-5',   name: 'gpt-5',   desc: '自定义端点 · gpt-5 基础版本', premium: false },
+        ];
         const MODEL_LS_KEY = 'vsllm_current_model';
         const DEFAULT_IMAGE_MODEL = 'gpt-image-2-chat';
+        const DEFAULT_CUSTOM_MODEL = 'gpt-5.5';
+        function normalizeApiBaseUrl(raw) {
+            let url = String(raw || '').trim();
+            if (!url) return '';
+            if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+            url = url.replace(/\/+$/, '');
+            url = url.replace(/\/(responses|models|chat\/completions)$/i, '');
+            if (!/\/v1$/i.test(url)) url += '/v1';
+            return url;
+        }
+        function isDefaultApiBaseUrl(baseUrl) {
+            const normalized = normalizeApiBaseUrl(baseUrl || getApiBaseUrl());
+            return normalized.toLowerCase() === DEFAULT_API_BASE_URL.toLowerCase();
+        }
+        function getApiBaseUrl() {
+            const saved = normalizeApiBaseUrl(localStorage.getItem(API_BASE_LS_KEY) || '');
+            return saved || DEFAULT_API_BASE_URL;
+        }
+        function buildApiUrl(baseUrl, path) {
+            return normalizeApiBaseUrl(baseUrl || getApiBaseUrl()) + '/' + String(path || '').replace(/^\/+/, '');
+        }
+        function getResponsesUrl() { return buildApiUrl(getApiBaseUrl(), 'responses'); }
+        function getModelsUrl(baseUrl) { return buildApiUrl(baseUrl || getApiBaseUrl(), 'models'); }
+        function getActiveImageModels() {
+            return isDefaultApiBaseUrl() ? IMAGE_MODELS : CUSTOM_GPT5_MODELS;
+        }
+        function isGpt5ModelId(id) {
+            return /^gpt-5(?:$|[.-])/i.test(String(id || ''));
+        }
+        function extractGpt5ModelIds(data) {
+            const rows = data && Array.isArray(data.data) ? data.data : [];
+            const ids = rows.map(m => typeof m === 'string' ? m : (m && m.id)).filter(isGpt5ModelId);
+            return Array.from(new Set(ids));
+        }
+        function ensureCurrentModelPersisted() {
+            try { localStorage.setItem(MODEL_LS_KEY, getCurrentModel()); } catch {}
+        }
         function getCurrentModel() {
+            const models = getActiveImageModels();
             const saved = localStorage.getItem(MODEL_LS_KEY);
-            if (saved && IMAGE_MODELS.some(m => m.id === saved)) return saved;
-            return DEFAULT_IMAGE_MODEL;
+            if (saved && models.some(m => m.id === saved)) return saved;
+            return isDefaultApiBaseUrl() ? DEFAULT_IMAGE_MODEL : DEFAULT_CUSTOM_MODEL;
         }
         // 兼容旧引用：MODEL 变成 getter 一样的字符串（仅在初始化时取一次默认值）；新代码请用 getCurrentModel()
         const MODEL = DEFAULT_IMAGE_MODEL;
 
         // ---- 模型选择器 UI ----
         function setCurrentModel(id) {
-            if (!IMAGE_MODELS.some(m => m.id === id)) return;
+            const models = getActiveImageModels();
+            if (!models.some(m => m.id === id)) return;
             try { localStorage.setItem(MODEL_LS_KEY, id); } catch {}
             refreshModelDisplay();
             closeModelDropdown();
-            const m = IMAGE_MODELS.find(x => x.id === id);
+            const m = models.find(x => x.id === id);
             if (typeof showToast === 'function') showToast(`已切换到 ${m.name}`);
         }
         function refreshModelDisplay() {
@@ -1440,7 +1523,7 @@
             const crown = document.getElementById('current-model-crown');
             const footer = document.getElementById('footer-current-model');
             const cur = getCurrentModel();
-            const m = IMAGE_MODELS.find(x => x.id === cur);
+            const m = getActiveImageModels().find(x => x.id === cur);
             if (display && m) display.textContent = m.name;
             if (footer && m) footer.textContent = m.name;
             if (crown) crown.classList.toggle('hidden', !(m && m.premium));
@@ -1450,7 +1533,8 @@
             const list = document.getElementById('model-dropdown-list');
             if (!list) return;
             const cur = getCurrentModel();
-            list.innerHTML = IMAGE_MODELS.map(m => {
+            const models = getActiveImageModels();
+            list.innerHTML = models.map(m => {
                 const isActive = m.id === cur;
                 const crownIcon = m.premium
                     ? `<svg class="w-3.5 h-3.5 text-amber-500 shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M5 16L3 7l4.5 3L12 4l4.5 6L21 7l-2 9H5zm0 2h14v1H5z"/></svg>`
@@ -1729,7 +1813,7 @@
             await preloadWorldviews();
             await preloadProps();
             // 初始化模型选择器（恢复 LS 中保存的模型选择 + 刷新顶部显示）
-            try { refreshModelDisplay(); } catch {}
+            try { ensureCurrentModelPersisted(); refreshModelDisplay(); } catch {}
             initMentionEvents();
             initSeedUI();
             initParamsToggle();
@@ -4272,8 +4356,13 @@
         // 按 params.size 推出占位图比例；auto/不认识的都走 1:1（现在 gpt-image-2 的默认横竖比）
         function _placeholderAspectRatioFromParams(params) {
             const size = params && params.size;
-            if (size === '1024x1536') return '2 / 3';
-            if (size === '1536x1024') return '3 / 2';
+            // 竖图：2:3 比例（标准 / 2K）
+            if (size === '1024x1536' || size === '1152x2048') return '2 / 3';
+            // 横图：3:2 比例（标准 / 2K）
+            if (size === '1536x1024' || size === '2048x1152') return '3 / 2';
+            // 4K 实验性宽屏：16:9
+            if (size === '3840x2160') return '16 / 9';
+            if (size === '2160x3840') return '9 / 16';
             return '1 / 1';
         }
 
@@ -4929,10 +5018,11 @@
                 'Authorization': `Bearer ${apiKey}`,
             };
             if (payload.stream) headers['Accept'] = 'text/event-stream';
+            const responsesUrl = getResponsesUrl();
 
             let response;
             try {
-                response = await fetch(BASE_URL, {
+                response = await fetch(responsesUrl, {
                     method: 'POST',
                     headers,
                     body: JSON.stringify(payload),
@@ -4941,7 +5031,7 @@
             } catch (networkErr) {
                 if (networkErr && networkErr.name === 'AbortError') throw networkErr;
                 throw new Error(
-                    `网络请求失败，没连上 ${BASE_URL}\n` +
+                    `网络请求失败，没连上 ${responsesUrl}\n` +
                     `可能原因：\n` +
                     `• 被浏览器 CORS 策略拦截\n` +
                     `• 本地网络断开 / DNS 解析失败 / SSL 握手失败\n` +
@@ -6568,8 +6658,124 @@
         }
 
         // ============== 设置 + 探活 ==============
+        function getSettingsApiBaseCandidate() {
+            const input = document.getElementById('custom-api-base-input');
+            const fromInput = input ? normalizeApiBaseUrl(input.value) : '';
+            return fromInput || DEFAULT_API_BASE_URL;
+        }
+        function isValidApiBaseUrl(url) {
+            try {
+                const u = new URL(url);
+                return /^https?:$/.test(u.protocol) && !!u.hostname;
+            } catch { return false; }
+        }
+        function setCustomApiSectionOpen(open) {
+            const panel = document.getElementById('custom-api-panel');
+            const toggle = document.getElementById('custom-api-toggle');
+            const chev = document.getElementById('custom-api-chevron');
+            if (panel) panel.classList.toggle('hidden', !open);
+            if (toggle) toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+            if (chev) chev.style.transform = open ? 'rotate(180deg)' : '';
+        }
+        function toggleCustomApiSection() {
+            const panel = document.getElementById('custom-api-panel');
+            setCustomApiSectionOpen(!!panel && panel.classList.contains('hidden'));
+        }
+        function updateCustomApiSummary(baseUrl) {
+            const el = document.getElementById('custom-api-summary');
+            if (!el) return;
+            const base = normalizeApiBaseUrl(baseUrl || getApiBaseUrl()) || DEFAULT_API_BASE_URL;
+            el.textContent = isDefaultApiBaseUrl(base) ? '当前：默认 vsllm.com' : `当前：${base}`;
+        }
+        function showCustomApiResult(text, type) {
+            const el = document.getElementById('custom-api-result');
+            if (!el) return;
+            el.textContent = text;
+            const color = type === 'success' ? 'text-green-600' : type === 'error' ? 'text-red-600' : type === 'warning' ? 'text-amber-600' : 'text-gray-500';
+            el.className = `text-xs min-h-[1em] ${color}`;
+        }
+        function persistApiBaseUrl(baseUrl) {
+            const normalized = normalizeApiBaseUrl(baseUrl);
+            if (!normalized || isDefaultApiBaseUrl(normalized)) localStorage.removeItem(API_BASE_LS_KEY);
+            else localStorage.setItem(API_BASE_LS_KEY, normalized);
+            ensureCurrentModelPersisted();
+            refreshModelDisplay();
+            updateCustomApiSummary(normalized || DEFAULT_API_BASE_URL);
+        }
+        async function validateModelsEndpoint(baseUrl, key, resultTarget) {
+            const modelsUrl = getModelsUrl(baseUrl);
+            const headers = key ? { 'Authorization': `Bearer ${key}` } : {};
+            const resp = await fetch(modelsUrl, { method: 'GET', headers });
+            if (!resp.ok) {
+                return { ok: false, status: resp.status, statusText: resp.statusText || '', modelsUrl };
+            }
+            const rawText = await resp.text().catch(() => '');
+            let data;
+            try { data = JSON.parse(rawText); }
+            catch (e) {
+                throw new Error(`响应不是合法 JSON：${e.message}`);
+            }
+            const gpt5Ids = extractGpt5ModelIds(data);
+            const custom = !isDefaultApiBaseUrl(baseUrl);
+            if (custom && gpt5Ids.length === 0) {
+                const message = '未找到 gpt-5.x。此提供商可能不支持原生图片生成，是否继续？';
+                if (resultTarget === 'custom') showCustomApiResult('提醒：未找到 gpt-5.x 模型', 'warning');
+                showKeyTestResult('提醒：未找到 gpt-5.x 模型', 'warning');
+                return { ok: true, hasWarning: true, continue: confirm(message), gpt5Ids, modelsUrl };
+            }
+            return { ok: true, hasWarning: false, continue: true, gpt5Ids, modelsUrl };
+        }
+        async function validateCustomApiEndpoint() {
+            const base = getSettingsApiBaseCandidate();
+            const key = (document.getElementById('api-key-input')?.value || localStorage.getItem('vsllm_api_key') || '').trim();
+            if (isDefaultApiBaseUrl(base)) {
+                showCustomApiResult('当前是默认 vsllm.com，无需验证自定义端点', 'info');
+                return true;
+            }
+            if (!isValidApiBaseUrl(base)) {
+                showCustomApiResult('失败：API Base URL 格式不正确', 'error');
+                return false;
+            }
+            if (!key) {
+                showCustomApiResult('失败：请先填写 API Key', 'error');
+                return false;
+            }
+            showCustomApiResult('正在请求 /models 检查 gpt-5.x…', 'info');
+            try {
+                const result = await validateModelsEndpoint(base, key, 'custom');
+                if (!result.ok) {
+                    showCustomApiResult(`失败：/models 返回 HTTP ${result.status} ${result.statusText}`.trim(), 'error');
+                    return false;
+                }
+                if (result.hasWarning) {
+                    showCustomApiResult(result.continue ? '提醒：未找到 gpt-5.x，已允许继续' : '提醒：未找到 gpt-5.x，已取消继续', 'warning');
+                    return result.continue;
+                }
+                showCustomApiResult(`成功：找到 gpt-5.x：${result.gpt5Ids.join(', ')}`, 'success');
+                return true;
+            } catch (e) {
+                showCustomApiResult('失败：连接失败，' + (e && e.message ? e.message : e), 'error');
+                return false;
+            }
+        }
+        function restoreDefaultApiBase() {
+            const input = document.getElementById('custom-api-base-input');
+            if (input) input.value = '';
+            localStorage.removeItem(API_BASE_LS_KEY);
+            localStorage.setItem(MODEL_LS_KEY, DEFAULT_IMAGE_MODEL);
+            refreshModelDisplay();
+            updateCustomApiSummary(DEFAULT_API_BASE_URL);
+            showCustomApiResult('已恢复默认 vsllm.com，API Key 保持不变', 'success');
+            if (typeof showToast === 'function') showToast('已恢复默认 vsllm.com');
+        }
         function openSettings() {
             document.getElementById('api-key-input').value = localStorage.getItem('vsllm_api_key') || '';
+            const currentBase = getApiBaseUrl();
+            const apiBaseInput = document.getElementById('custom-api-base-input');
+            if (apiBaseInput) apiBaseInput.value = isDefaultApiBaseUrl(currentBase) ? '' : currentBase;
+            updateCustomApiSummary(currentBase);
+            setCustomApiSectionOpen(false);
+            showCustomApiResult('', 'info');
             // 回填超时设置；默认永不
             const savedTimeout = localStorage.getItem('vsllm_timeout_ms');
             document.getElementById('setting-timeout').value = savedTimeout || 'never';
@@ -6588,6 +6794,12 @@
                 alert('请填写正确的 API Key (通常以 sk- 开头)');
                 return;
             }
+            const apiBase = getSettingsApiBaseCandidate();
+            if (!isValidApiBaseUrl(apiBase)) {
+                alert('请填写正确的 API Base URL');
+                setCustomApiSectionOpen(true);
+                return;
+            }
             localStorage.setItem('vsllm_api_key', key);
             // 同时保存超时和重试设置；两项都已有默认值（never / 0）
             const timeoutVal = document.getElementById('setting-timeout').value || 'never';
@@ -6595,8 +6807,9 @@
             localStorage.setItem('vsllm_timeout_ms', timeoutVal);
             localStorage.setItem('vsllm_retry_count', retryVal);
             // 保存后自动探活；成功才自动关窗，失败时让用户看错原因再改
-            const ok = await testApiKey();
+            const ok = await testApiKey(apiBase);
             if (ok) {
+                persistApiBaseUrl(apiBase);
                 setTimeout(() => {
                     document.getElementById('settings-modal').classList.add('hidden');
                     showToast('设置已保存并验证');
@@ -6607,30 +6820,36 @@
             const el = document.getElementById('api-key-test-result');
             if (!el) return;
             el.textContent = text;
-            const color = type === 'success' ? 'text-green-600' : type === 'error' ? 'text-red-600' : 'text-gray-500';
+            const color = type === 'success' ? 'text-green-600' : type === 'error' ? 'text-red-600' : type === 'warning' ? 'text-amber-600' : 'text-gray-500';
             el.className = `text-xs min-h-[1em] ${color}`;
         }
         // 返回 true=验证通过，false=失败。绝不把 key 打到 console
-        async function testApiKey() {
+        async function testApiKey(baseOverride) {
             const input = document.getElementById('api-key-input').value.trim();
             const saved = localStorage.getItem('vsllm_api_key') || '';
             const key = input || saved;
+            const apiBase = normalizeApiBaseUrl(baseOverride || getSettingsApiBaseCandidate());
             if (!key) { showKeyTestResult('请先填写 API Key', 'error'); return false; }
             if (!key.startsWith('sk-')) { showKeyTestResult('API Key 通常以 sk- 开头', 'error'); return false; }
+            if (!isValidApiBaseUrl(apiBase)) { showKeyTestResult('API Base URL 格式不正确', 'error'); return false; }
             showKeyTestResult('正在测试连接…', 'info');
             try {
-                const resp = await fetch(MODELS_URL, {
-                    method: 'GET',
-                    headers: { 'Authorization': `Bearer ${key}` },
-                });
-                if (resp.ok) {
+                const result = await validateModelsEndpoint(apiBase, key, isDefaultApiBaseUrl(apiBase) ? 'key' : 'custom');
+                if (result.ok) {
+                    if (result.hasWarning) {
+                        showKeyTestResult(result.continue ? '接口可用，但未找到 gpt-5.x，已允许继续' : '接口可用，但未找到 gpt-5.x，已取消继续', 'warning');
+                        return result.continue;
+                    }
+                    if (!isDefaultApiBaseUrl(apiBase)) {
+                        showCustomApiResult(`成功：找到 gpt-5.x：${result.gpt5Ids.join(', ')}`, 'success');
+                    }
                     showKeyTestResult('密钥有效，接口可用', 'success');
                     return true;
-                } else if (resp.status === 401 || resp.status === 403) {
-                    showKeyTestResult(`密钥被拒：HTTP ${resp.status}。请检查是否填错或已过期。`, 'error');
+                } else if (result.status === 401 || result.status === 403) {
+                    showKeyTestResult(`密钥被拒：HTTP ${result.status}。请检查是否填错或已过期。`, 'error');
                     return false;
                 } else {
-                    showKeyTestResult(`接口返回 HTTP ${resp.status} ${resp.statusText || ''}`.trim(), 'error');
+                    showKeyTestResult(`接口返回 HTTP ${result.status} ${result.statusText || ''}`.trim(), 'error');
                     return false;
                 }
             } catch (e) {
