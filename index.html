@@ -995,7 +995,7 @@
 
     <!-- 设置模态框 -->
     <div id="settings-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex justify-center items-center p-4">
-        <div class="bg-white rounded-2xl w-full max-w-sm p-5 shadow-2xl relative">
+        <div class="bg-white rounded-2xl w-full max-w-sm p-5 shadow-2xl relative overflow-y-auto overscroll-contain" style="max-height: calc(100vh - 2rem); max-height: calc(100dvh - 2rem);">
             <!-- 头部：紧凑标题 + 右上 X -->
             <div class="flex items-center justify-between mb-1">
                 <h3 class="text-base font-semibold text-gray-900">配置</h3>
@@ -1032,6 +1032,11 @@
                             <label class="block text-[11px] font-medium text-gray-500 mb-1.5">API Base URL</label>
                             <input type="url" id="custom-api-base-input" placeholder="https://your-provider.com/v1" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:border-gray-400 outline-none text-sm transition-colors font-mono">
                             <p class="text-[11px] text-gray-400 mt-1 leading-relaxed">留空使用内置 vsllm.com。自定义端点只开放 gpt-5.x / gpt-5 模型选择。</p>
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-medium text-gray-500 mb-1.5">辅助 AI 模型 (Chat)</label>
+                            <input type="text" id="custom-enhance-model-input" placeholder="gpt-oss-120b" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:border-gray-400 outline-none text-sm transition-colors font-mono">
+                            <p class="text-[11px] text-gray-400 mt-1 leading-relaxed">提示词增强 / AI 字段 / 剧情推演 / 欢迎语共用。默认 gpt-oss-120b；自定义端点请填该端点支持的 chat 模型（例如 gpt-4o-mini）。</p>
                         </div>
                         <div class="flex gap-2">
                             <button onclick="validateCustomApiEndpoint()" type="button" class="flex-1 px-3 py-1.5 text-xs text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors">
@@ -1580,9 +1585,17 @@
             if (dd.contains(e.target)) return;
             closeModelDropdown();
         });
-        // 提示词增强：OpenAI 兼容的 Chat Completions，与图片 Responses API 完全独立
-        const CHAT_URL = "https://vsllm.com/v1/chat/completions";
-        const PROMPT_ENHANCE_MODEL = "gpt-oss-120b";
+        // 提示词增强 / AI 字段 / 剧情推演 / 欢迎语：OpenAI 兼容的 Chat Completions，与图片 Responses API 完全独立
+        // 端点跟着当前 API Base URL 走（默认 vsllm.com，自定义端点也支持），模型名走 LS 设置（默认 gpt-oss-120b）
+        const ENHANCE_MODEL_LS_KEY = 'vsllm_enhance_model';
+        const DEFAULT_ENHANCE_MODEL = 'gpt-oss-120b';
+        // 全局唯一入口：所有走 chat completions 的辅助 AI 调用都拿这个 cfg
+        function getEnhanceConfig() {
+            return {
+                chatUrl: buildApiUrl(getApiBaseUrl(), 'chat/completions'),
+                model: (localStorage.getItem(ENHANCE_MODEL_LS_KEY) || '').trim() || DEFAULT_ENHANCE_MODEL,
+            };
+        }
 
         const DB_NAME = "VsllmGallery";
         const DB_VERSION = 6; // v1 images；v2 conversations/messages；v3 characters；v4 favorites；v5 scenes/worldviews；v6 props
@@ -4221,7 +4234,7 @@
         // 默认兜底文案（API 没 key / 全新用户 / gen 失败时显示）
         const WELCOME_DEFAULT_HTML = `你好！我是绘图助手。我支持<strong>连续对话改图</strong>：<br>生成图片后直接发送"给它带上口罩"、"换成黑白风格"等指令，我会基于上一张图为您修改！`;
         const WELCOME_CACHE_KEY = 'vsllm_welcome_v1';
-        const WELCOME_GEN_MODEL = 'gpt-oss-120b';
+        // 模型走 getEnhanceConfig() 默认值；自定义端点切换时不需要改这里
         const WELCOME_SYSTEM = [
             'You are a friendly AI image generation assistant ("绘图助手") for a tool called vsllm.',
             'Write ONE short, casual welcome line in Chinese based on the context block the user provides.',
@@ -4304,7 +4317,6 @@
                 const text = await postChatCompletion({
                     system: WELCOME_SYSTEM,
                     user: userBlock,
-                    model: WELCOME_GEN_MODEL,
                     temperature: 0.75,
                 });
                 let cleaned = (text || '').trim();
@@ -6072,8 +6084,10 @@
         async function postChatCompletion({ system, user, model, temperature = 0.7, signal }) {
             const apiKey = localStorage.getItem('vsllm_api_key');
             if (!apiKey) throw new Error('未配置 API Key');
+            // 所有辅助 AI 调用都从这里拿端点 + 默认模型；调用方传 model 则优先用调用方的
+            const cfg = getEnhanceConfig();
             const payload = {
-                model: model || PROMPT_ENHANCE_MODEL,
+                model: model || cfg.model,
                 messages: [
                     { role: 'system', content: system || '' },
                     { role: 'user', content: user || '' },
@@ -6083,7 +6097,7 @@
             };
             let response;
             try {
-                response = await fetch(CHAT_URL, {
+                response = await fetch(cfg.chatUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
                     body: JSON.stringify(payload),
@@ -6761,7 +6775,11 @@
         function restoreDefaultApiBase() {
             const input = document.getElementById('custom-api-base-input');
             if (input) input.value = '';
+            // 一并清掉辅助 AI 模型自定义，回到默认 gpt-oss-120b
+            const enhanceInput = document.getElementById('custom-enhance-model-input');
+            if (enhanceInput) enhanceInput.value = '';
             localStorage.removeItem(API_BASE_LS_KEY);
+            localStorage.removeItem(ENHANCE_MODEL_LS_KEY);
             localStorage.setItem(MODEL_LS_KEY, DEFAULT_IMAGE_MODEL);
             refreshModelDisplay();
             updateCustomApiSummary(DEFAULT_API_BASE_URL);
@@ -6773,6 +6791,9 @@
             const currentBase = getApiBaseUrl();
             const apiBaseInput = document.getElementById('custom-api-base-input');
             if (apiBaseInput) apiBaseInput.value = isDefaultApiBaseUrl(currentBase) ? '' : currentBase;
+            // 回填辅助 AI 模型（留空走默认 gpt-oss-120b）
+            const enhanceModelInput = document.getElementById('custom-enhance-model-input');
+            if (enhanceModelInput) enhanceModelInput.value = (localStorage.getItem(ENHANCE_MODEL_LS_KEY) || '').trim();
             updateCustomApiSummary(currentBase);
             setCustomApiSectionOpen(false);
             showCustomApiResult('', 'info');
@@ -6806,6 +6827,11 @@
             const retryVal = document.getElementById('setting-retry').value || '0';
             localStorage.setItem('vsllm_timeout_ms', timeoutVal);
             localStorage.setItem('vsllm_retry_count', retryVal);
+            // 辅助 AI 模型：填了就存，留空就清掉走默认 gpt-oss-120b
+            const enhanceModelEl = document.getElementById('custom-enhance-model-input');
+            const enhanceModelVal = enhanceModelEl ? (enhanceModelEl.value || '').trim() : '';
+            if (enhanceModelVal) localStorage.setItem(ENHANCE_MODEL_LS_KEY, enhanceModelVal);
+            else localStorage.removeItem(ENHANCE_MODEL_LS_KEY);
             // 保存后自动探活；成功才自动关窗，失败时让用户看错原因再改
             const ok = await testApiKey(apiBase);
             if (ok) {
@@ -7891,7 +7917,7 @@
         const PLOT_S2_CACHE_TTL_MS = 5 * 60 * 1000;
         const PLOT_CANDIDATE_CAP = 500;
         const PLOT_S2_PICK_MAX = 10;
-        const PLOT_INFER_MODEL = 'gpt-oss-120b';
+        // 模型走 getEnhanceConfig() 默认值；自定义端点切换时不需要改这里
         const PLOT_STYLE_LABELS = {
             cinematic:  '电影感（广角、灯光戏剧化、电影色彩）',
             anime:      '日漫风（清晰线条、cel-shading、动漫场景构图）',
@@ -8390,7 +8416,6 @@
                 const raw = await postChatCompletion({
                     system: PLOT_S2_SYSTEM,
                     user: userMsg,
-                    model: PLOT_INFER_MODEL,
                     temperature: 0.1,
                     signal,
                 });
@@ -8470,7 +8495,6 @@
             const raw = await postChatCompletion({
                 system: _buildPlotS3System({ includeDialogue }),
                 user: userMsg,
-                model: PLOT_INFER_MODEL,
                 temperature: 0.7,
                 signal,
             });
