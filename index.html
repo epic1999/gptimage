@@ -4,13 +4,89 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>vsllm GPT绘图工作台</title>
+
+    <!-- ========== SEO 基础 ========== -->
+    <title>vsllm GPT绘图工作台 - 在线 AI 图像生成 | gpt-image-2 中转站</title>
+    <meta name="description" content="vsllm GPT绘图工作台：基于 OpenAI gpt-image-2 的在线 AI 绘图工具。支持流式生成进度、思维链展示、角色卡、提示词增强、本地图库、多会话管理。纯前端 IndexedDB 本地存储，数据不上传第三方。">
+    <meta name="keywords" content="vsllm,GPT绘图,AI绘图工作台,gpt-image-2,gpt-image-2-chat,OpenAI图像生成,在线AI画图,文生图,图生图,角色卡,提示词增强,流式生成,思维链,免费AI绘图,中转站">
+    <meta name="author" content="vsllm">
+    <meta name="robots" content="index, follow, max-image-preview:large">
+    <meta name="theme-color" content="#6366f1">
+    <meta name="application-name" content="vsllm GPT绘图工作台">
+    <meta name="format-detection" content="telephone=no">
+
+    <!-- 规范链接 -->
+    <link rel="canonical" href="https://vsllm.com/">
+
+    <!-- ========== Open Graph (Facebook / 微信 / Telegram 等) ========== -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="vsllm GPT绘图工作台 - 在线 AI 图像生成">
+    <meta property="og:description" content="基于 OpenAI gpt-image-2 的高质量 AI 绘图工具：流式生成进度、思维链展示、角色卡、提示词增强、本地图库一站式。">
+    <meta property="og:url" content="https://vsllm.com/">
+    <meta property="og:site_name" content="vsllm GPT绘图工作台">
+    <meta property="og:image" content="https://vsllm.com/og-image.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="vsllm GPT绘图工作台界面预览">
+    <meta property="og:locale" content="zh_CN">
+
+    <!-- ========== Twitter / X Card ========== -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="vsllm GPT绘图工作台 - 在线 AI 图像生成">
+    <meta name="twitter:description" content="基于 OpenAI gpt-image-2 的高质量 AI 绘图工具，流式进度 + 角色卡 + 提示词增强一站式。">
+    <meta name="twitter:image" content="https://vsllm.com/og-image.png">
+
+    <!-- 移动端 PWA 提示 -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="vsllm 绘图">
+    <meta name="mobile-web-app-capable" content="yes">
+
+    <!-- 结构化数据：让搜索引擎理解站点性质 -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "vsllm GPT绘图工作台",
+        "alternateName": "vsllm AI 绘图",
+        "url": "https://vsllm.com/",
+        "applicationCategory": "DesignApplication",
+        "operatingSystem": "Any",
+        "browserRequirements": "Requires modern browser with IndexedDB support",
+        "description": "基于 OpenAI gpt-image-2 的在线 AI 图像生成工具，支持流式生成、角色卡、提示词增强、本地图库管理。",
+        "inLanguage": "zh-CN",
+        "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "CNY"
+        },
+        "featureList": [
+            "流式 SSE 生成进度展示",
+            "渐进式部分预览图（模糊到清晰）",
+            "思维链折叠展示",
+            "角色卡一致性",
+            "提示词收藏与增强",
+            "种子控制（无 / 1-5 / 自定义）",
+            "本地 IndexedDB 图库",
+            "多会话管理",
+            "键盘快捷键",
+            "失败自动重试"
+        ]
+    }
+    </script>
+
+    <link id="favicon" rel="icon" type="image/svg+xml" href='data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect x=%2212%22 y=%2212%22 width=%2276%22 height=%2276%22 rx=%2218%22 fill=%22%236366f1%22/><path d=%22M30 70 L46 50 L58 64 L70 50 L82 70 Z%22 fill=%22white%22/><circle cx=%2266%22 cy=%2238%22 r=%226%22 fill=%22white%22/></svg>'>
+    <link rel="apple-touch-icon" href='data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2222%22 fill=%22%236366f1%22/><path d=%22M30 70 L46 50 L58 64 L70 50 L82 70 Z%22 fill=%22white%22/><circle cx=%2266%22 cy=%2238%22 r=%226%22 fill=%22white%22/></svg>'>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 10px; }
         ::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+
+        /* 输入框滚动条藏掉（多行时仍可滚） */
+        #prompt-input::-webkit-scrollbar { width: 0; height: 0; display: none; }
+        #prompt-input { scrollbar-width: none; -ms-overflow-style: none; }
 
         .loader-dots div { animation-timing-function: cubic-bezier(0, 1, 1, 0); }
         .loader-dots div:nth-child(1) { left: 8px; animation: loader-dots1 0.6s infinite; }
@@ -361,6 +437,134 @@
             .cost-reminder.is-shown { animation: none; }
         }
 
+        /* ========== 图库选择面板：grid 项的勾选态 ========== */
+        .gp-item { transition: border-color 0.12s, box-shadow 0.12s; }
+        .gp-item .gp-check {
+            background: rgba(255,255,255,0.85);
+            border: 1px solid #d1d5db;
+            color: transparent;
+            backdrop-filter: blur(2px);
+        }
+        .gp-item:hover .gp-check { background: #fff; }
+        .gp-item.is-selected {
+            border-color: #4f46e5;
+            box-shadow: 0 0 0 1px #4f46e5, 0 4px 10px rgba(79,70,229,0.12);
+        }
+        .gp-item.is-selected .gp-check {
+            background: #4f46e5;
+            border-color: #4f46e5;
+            color: #fff;
+        }
+        .gp-item:active { transform: scale(0.985); }
+
+        /* ========== 种子 / 参数 折叠 toggle（统一 inline 紧凑样式，工具栏并行使用） ========== */
+        .input-toggle {
+            display: inline-flex; align-items: center; gap: 5px;
+            padding: 3px 8px;
+            background: transparent;
+            border: 0;
+            cursor: pointer;
+            font-size: 11.5px;
+            color: #6b7280;
+            border-radius: 5px;
+            transition: background-color 0.12s;
+            line-height: 1.2;
+            min-height: 22px;
+            flex-shrink: 0;
+        }
+        .input-toggle:hover { background: #f3f4f6; }
+        .input-toggle .label { font-weight: 500; color: #4b5563; }
+        .input-toggle .summary {
+            color: #6b7280;
+            font-variant-numeric: tabular-nums;
+            white-space: nowrap;
+            max-width: 180px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .input-toggle .chevron {
+            width: 11px; height: 11px;
+            color: #9ca3af;
+            transition: transform 0.18s ease;
+            flex-shrink: 0;
+        }
+        .input-toggle.is-expanded .chevron { transform: rotate(180deg); }
+        .input-toggle.is-expanded .summary { display: none; }
+        /* 宽版（被 flex-1 拉伸时用）：chevron 自动推到右端，label/summary 仍紧贴左边 */
+        .input-toggle.is-wide {
+            flex: 1 1 0%;
+            flex-shrink: 1;
+        }
+        .input-toggle.is-wide .chevron { margin-left: auto; }
+        .seed-row {
+            display: flex; align-items: center; gap: 6px;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+        }
+        .seed-row::-webkit-scrollbar { display: none; }
+        .seed-row .seed-label {
+            color: #6b7280;
+            font-size: 11px;
+            font-weight: 500;
+            flex-shrink: 0;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        .seed-chip {
+            padding: 5px 11px;
+            min-height: 28px;
+            border-radius: 999px;
+            font-size: 12px;
+            line-height: 1;
+            background: #f3f4f6;
+            color: #4b5563;
+            border: 1px solid transparent;
+            cursor: pointer;
+            transition: background-color 0.15s, color 0.15s, border-color 0.15s;
+            user-select: none;
+            white-space: nowrap;
+            display: inline-flex;
+            align-items: center;
+            font-variant-numeric: tabular-nums;
+            flex-shrink: 0;
+        }
+        .seed-chip:hover { background: #e5e7eb; color: #1f2937; }
+        .seed-chip.is-active {
+            background: #4f46e5;
+            color: #fff;
+            border-color: #4f46e5;
+        }
+        .seed-chip:active { transform: scale(0.96); }
+        .seed-custom-input {
+            width: 70px;
+            padding: 4px 10px;
+            min-height: 28px;
+            border-radius: 999px;
+            border: 1px solid #e5e7eb;
+            font-size: 12px;
+            background: #f9fafb;
+            color: #4b5563;
+            text-align: center;
+            outline: none;
+            transition: background-color 0.15s, color 0.15s, border-color 0.15s;
+            -moz-appearance: textfield;
+            font-variant-numeric: tabular-nums;
+            flex-shrink: 0;
+        }
+        .seed-custom-input::-webkit-outer-spin-button,
+        .seed-custom-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        .seed-custom-input:focus { border-color: #c7d2fe; background: #fff; }
+        .seed-custom-input.is-active {
+            background: #4f46e5; color: #fff; border-color: #4f46e5;
+        }
+        .seed-custom-input.is-active::placeholder { color: rgba(255,255,255,0.7); }
+        .seed-custom-input::placeholder { color: #9ca3af; }
+        @media (max-width: 480px) {
+            .seed-chip { padding: 6px 12px; min-height: 30px; }
+            .seed-custom-input { padding: 5px 10px; min-height: 30px; width: 78px; }
+        }
+
         /* ========== 键盘快捷键浮按钮 + 帮助弹层（仅桌面） ========== */
         #kbd-help-btn {
             position: fixed; bottom: 14px; right: 14px;
@@ -462,9 +666,27 @@
 </head>
 <body class="bg-white text-gray-800 h-screen w-screen overflow-hidden flex font-sans">
 
+    <!-- SEO 友好结构：搜索引擎与无障碍读屏可读，视觉上隐藏 -->
+    <h1 class="sr-only">vsllm GPT绘图工作台 - 在线 AI 图像生成</h1>
+    <div class="sr-only">
+        <p>vsllm GPT绘图工作台是一个基于 OpenAI gpt-image-2 模型的在线 AI 图像生成应用。
+        支持流式 SSE 生成进度、渐进式部分预览图、思维链折叠展示、角色卡一致性、提示词收藏与增强、
+        种子控制、本地 IndexedDB 图库、多会话管理、键盘快捷键、失败自动重试。
+        所有生成历史与图库数据完全保存在浏览器本地，不会上传第三方服务器，保护隐私。</p>
+        <h2>核心功能</h2>
+        <ul>
+            <li>文生图：直接输入提示词生成高质量图像</li>
+            <li>图生图：上传参考图加提示词生成变体</li>
+            <li>角色卡：保持人物在多次生成中样貌一致</li>
+            <li>提示词增强：用 LLM 改写提示词以贴合 gpt-image-2 习惯</li>
+            <li>种子控制：同提示词不同种子获得不同变体</li>
+            <li>提示词收藏：常用提示词一键复用</li>
+        </ul>
+    </div>
+
     <!-- 侧边栏：对话列表 + 本地图库 -->
-    <aside id="sidebar" class="fixed md:relative z-40 h-full w-64 bg-gray-50 border-r border-gray-200 flex flex-col transition-transform duration-300 -translate-x-full md:translate-x-0">
-        <div class="h-14 flex items-center justify-between px-4 border-b border-gray-200 shrink-0">
+    <aside id="sidebar" class="fixed md:relative z-40 h-full w-64 bg-gray-50 border-r border-gray-100 flex flex-col transition-transform duration-300 -translate-x-full md:translate-x-0">
+        <div class="h-14 flex items-center justify-between px-4 shrink-0">
             <span class="font-semibold text-gray-700 flex items-center gap-2">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
                 工作台
@@ -475,19 +697,19 @@
         </div>
 
         <!-- 对话列表 section -->
-        <div class="flex flex-col min-h-0 flex-1">
+        <nav class="flex flex-col min-h-0 flex-1" aria-label="对话列表">
             <div class="px-3 pt-3 pb-2 flex items-center justify-between shrink-0">
-                <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide">对话</span>
+                <h2 class="text-xs font-semibold text-gray-500 uppercase tracking-wide">对话</h2>
                 <button onclick="newConversation()" class="text-xs text-indigo-600 hover:bg-indigo-50 px-2 py-1 rounded flex items-center gap-1" title="新建对话">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
                     新建
                 </button>
             </div>
             <div id="conversation-list" class="flex-1 overflow-y-auto px-2 pb-2 flex flex-col gap-1 min-h-0"></div>
-        </div>
+        </nav>
 
         <!-- 我的提示词 section（默认折叠） -->
-        <div id="fav-section" class="border-t border-gray-200 shrink-0">
+        <div id="fav-section" class="shrink-0">
             <div onclick="toggleFavorites()" class="px-3 py-2 flex items-center justify-between cursor-pointer hover:bg-gray-100 select-none">
                 <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-1.5">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.562.562 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.562.562 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z"/></svg>
@@ -500,7 +722,7 @@
         </div>
 
         <!-- 图库 section -->
-        <div class="flex flex-col min-h-0 flex-1 border-t border-gray-200">
+        <div class="flex flex-col min-h-0 flex-1">
             <div class="px-3 pt-3 pb-2 shrink-0 flex items-center gap-1">
                 <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
                 <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide">图库</span>
@@ -509,7 +731,7 @@
         </div>
 
         <!-- 底部：清空按钮两枚 -->
-        <div class="p-3 border-t border-gray-200 shrink-0 flex flex-col gap-1.5">
+        <div class="p-3 shrink-0 flex flex-col gap-1.5">
             <div class="flex gap-1.5">
                 <button onclick="clearAllConversations()" class="flex-1 text-[11px] text-red-600 hover:bg-red-50 border border-red-200 px-2 py-1 rounded" title="清空所有对话和消息">
                     清空对话
@@ -526,7 +748,7 @@
 
     <!-- 主对话区 -->
     <main class="flex-1 flex flex-col h-full relative min-w-0">
-        <header class="h-14 flex items-center justify-between px-4 border-b border-gray-200 shrink-0 bg-white z-10">
+        <header class="h-14 flex items-center justify-between px-4 shrink-0 bg-white z-10">
             <button onclick="toggleSidebar()" class="p-2 text-gray-600 hover:text-gray-900 md:hidden rounded-md hover:bg-gray-100">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
             </button>
@@ -541,12 +763,53 @@
 
         <div id="chat-container" class="flex-1 overflow-y-auto p-4 flex flex-col gap-6 w-full max-w-4xl mx-auto scroll-smooth"></div>
 
-        <div id="input-container" class="w-full shrink-0 bg-white border-t border-gray-100 md:border-transparent pt-2 pb-4 px-4">
+        <div id="input-container" class="w-full shrink-0 bg-white border-t border-gray-100 md:border-transparent pt-1 pb-3 px-4">
             <div class="max-w-4xl mx-auto">
-                <div class="flex flex-col bg-gray-50 border border-gray-300 rounded-2xl shadow-sm focus-within:ring-1 focus-within:ring-black focus-within:border-black transition-all overflow-hidden relative">
+                <div class="flex flex-col bg-gray-50 border border-gray-300 rounded-3xl shadow-[0_4px_12px_-3px_rgba(15,23,42,0.07)] transition-all overflow-hidden relative">
 
-                    <div class="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 pt-2 pb-2 text-xs text-gray-500 border-b border-gray-100">
-                        <span class="font-medium text-gray-600">参数</span>
+                    <!-- 工具栏：种子 + 参数 一行（各占一半），下方一行三个工具按钮 -->
+                    <div class="input-toolbar px-2 pt-1.5 pb-1 text-xs text-gray-500">
+                        <!-- 第 1 行：种子 + 参数 50/50 -->
+                        <div class="flex items-center gap-1.5">
+                            <button type="button" class="input-toggle is-wide flex-1" onclick="toggleSeedSection()" aria-expanded="false" title="种子：同提示词不同种子会得到不同图">
+                                <span class="label">种子</span>
+                                <span id="seed-toggle-current" class="summary">无</span>
+                                <svg class="chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+                            </button>
+                            <button type="button" class="input-toggle is-wide flex-1" onclick="toggleParamsSection()" aria-expanded="false" title="尺寸 / 质量 / 格式">
+                                <span class="label">参数</span>
+                                <span id="params-summary" class="summary">auto · high · png</span>
+                                <svg class="chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+                            </button>
+                        </div>
+                        <!-- 第 2 行：3 个工具按钮 -->
+                        <div class="flex flex-wrap items-center gap-1.5 mt-1">
+                            <button type="button" id="character-btn" onclick="openCharacterManager()" class="flex items-center gap-1 text-xs text-emerald-600 hover:bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded" title="管理角色卡；输入框内 @名字 会自动带入该角色的外貌/服饰/武器/设定">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                                角色卡<span id="character-count-badge" class="hidden ml-0.5 text-[10px] bg-emerald-100 rounded px-1"></span>
+                            </button>
+                            <button type="button" id="enhance-prompt-btn" onclick="openEnhancePromptModal()" class="flex items-center gap-1 text-xs text-purple-600 hover:bg-purple-50 border border-purple-200 px-2 py-0.5 rounded" title="用 gpt-oss-120b 把当前输入框的提示词改写成更适合 gpt-image-2 的自然语言描述">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path></svg>
+                                提示词增强
+                            </button>
+                            <button type="button" onclick="openVideoFrameModal()" class="flex items-center gap-1 text-xs text-indigo-600 hover:bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded" title="从本地视频截取首帧/尾帧加入参考图（纯前端处理，不上传视频）">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                                截取视频帧
+                            </button>
+                        </div>
+                    </div>
+                    <!-- 种子展开内容（toggle 后下挂） -->
+                    <div id="seed-row-content" class="seed-row px-3 pt-0.5 pb-2 hidden">
+                        <button type="button" class="seed-chip" data-seed="0" title="不注入种子，提示词原样发送">无</button>
+                        <button type="button" class="seed-chip" data-seed="1">1</button>
+                        <button type="button" class="seed-chip" data-seed="2">2</button>
+                        <button type="button" class="seed-chip" data-seed="3">3</button>
+                        <button type="button" class="seed-chip" data-seed="4">4</button>
+                        <button type="button" class="seed-chip" data-seed="5">5</button>
+                        <input type="number" id="seed-custom-input" class="seed-custom-input" placeholder="自定义" min="0" max="999999" inputmode="numeric" title="输入任意正整数作为种子">
+                    </div>
+                    <!-- 参数展开内容 -->
+                    <div id="params-content" class="hidden flex items-center flex-wrap gap-x-3 gap-y-1 px-3 pt-0.5 pb-2 text-xs text-gray-500">
                         <label class="flex items-center gap-1">
                             <span>尺寸</span>
                             <select id="param-size" class="bg-white border border-gray-200 rounded px-1.5 py-0.5 text-xs focus:outline-none focus:ring-1 focus:ring-black cursor-pointer">
@@ -573,18 +836,6 @@
                                 <option value="webp">webp</option>
                             </select>
                         </label>
-                        <button type="button" id="character-btn" onclick="openCharacterManager()" class="ml-auto flex items-center gap-1 text-xs text-emerald-600 hover:bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded" title="管理角色卡；输入框内 @名字 会自动带入该角色的外貌/服饰/武器/设定">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
-                            角色卡<span id="character-count-badge" class="hidden ml-0.5 text-[10px] bg-emerald-100 rounded px-1"></span>
-                        </button>
-                        <button type="button" id="enhance-prompt-btn" onclick="openEnhancePromptModal()" class="flex items-center gap-1 text-xs text-purple-600 hover:bg-purple-50 border border-purple-200 px-2 py-0.5 rounded" title="用 gpt-oss-120b 把当前输入框的提示词改写成更适合 gpt-image-2 的自然语言描述">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path></svg>
-                            提示词增强
-                        </button>
-                        <button type="button" onclick="openVideoFrameModal()" class="flex items-center gap-1 text-xs text-indigo-600 hover:bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded" title="从本地视频截取首帧/尾帧加入参考图（纯前端处理，不上传视频）">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
-                            截取视频帧
-                        </button>
                     </div>
 
                     <div id="context-bar" class="hidden bg-indigo-50/50 border-b border-indigo-100 px-3 py-2 flex items-center justify-between">
@@ -601,14 +852,14 @@
                     <div id="image-preview-bar" class="hidden flex gap-2 px-3 pt-3 overflow-x-auto"></div>
 
                     <div class="flex items-end gap-2 p-2 relative bg-gray-50">
-                        <button onclick="document.getElementById('file-upload').click()" class="p-2 text-gray-500 hover:text-black rounded-lg hover:bg-gray-200 transition-colors shrink-0" title="上传参考图">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg>
+                        <button onclick="openAttachPicker()" class="w-9 h-9 text-gray-500 hover:text-black rounded-full hover:bg-gray-200 transition-colors shrink-0 flex items-center justify-center" title="添加参考图（图库 / 本地）" aria-label="添加参考图">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
                         </button>
                         <input type="file" id="file-upload" multiple accept="image/*" class="hidden" onchange="handleFilesSelect(event)">
 
-                        <textarea id="prompt-input" rows="1" placeholder="发送指令，例如：生成一只猪猪侠" class="flex-1 max-h-40 bg-transparent resize-none outline-none py-2 text-gray-800 text-[15px] leading-normal" oninput="autoResizeTextarea(this)" onkeydown="handleEnter(event)"></textarea>
+                        <textarea id="prompt-input" rows="1" placeholder="描述或编辑图片" class="flex-1 max-h-40 bg-transparent resize-none outline-none py-2 text-gray-800 text-[15px] leading-normal" oninput="autoResizeTextarea(this)" onkeydown="handleEnter(event)" autofocus></textarea>
 
-                        <button id="send-btn" onclick="sendMessage()" class="p-2 bg-black text-white rounded-xl hover:bg-gray-800 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors shrink-0 flex items-center justify-center">
+                        <button id="send-btn" onclick="sendMessage()" class="w-9 h-9 bg-black text-white rounded-full hover:bg-gray-800 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors shrink-0 flex items-center justify-center">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>
                         </button>
                     </div>
@@ -623,56 +874,70 @@
 
     <!-- 设置模态框 -->
     <div id="settings-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex justify-center items-center p-4">
-        <div class="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl transform transition-all relative">
-            <h3 class="text-xl font-semibold mb-2 text-gray-800 text-center">配置 API 密钥</h3>
-            <p class="text-sm text-gray-500 text-center mb-3">
-                请前往 <a href="https://vsllm.com" target="_blank" class="text-indigo-600 hover:underline font-medium">https://vsllm.com</a> 获取您的专属密钥<br>密钥仅保存在您的本地浏览器中。
-            </p>
-            <div class="mb-5 px-3 py-2.5 rounded-lg bg-red-50 border border-red-300 text-red-700 text-sm flex items-start gap-2">
-                <svg class="w-5 h-5 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"></path></svg>
-                <span class="leading-relaxed">
-                    <strong class="font-semibold">必须创建新令牌，并选择 <code class="font-mono bg-red-100 px-1 rounded">image_2fen</code> 分组。</strong>
-                </span>
+        <div class="bg-white rounded-2xl w-full max-w-sm p-5 shadow-2xl relative">
+            <!-- 头部：紧凑标题 + 右上 X -->
+            <div class="flex items-center justify-between mb-1">
+                <h3 class="text-base font-semibold text-gray-900">配置</h3>
+                <button onclick="closeSettings()" class="w-7 h-7 -mr-1 flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors" aria-label="关闭">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
             </div>
-            <div class="space-y-3">
+            <p class="text-xs text-gray-500 mb-3 leading-relaxed">
+                密钥仅存于本地浏览器。前往 <a href="https://vsllm.com" target="_blank" class="text-gray-700 hover:text-black underline underline-offset-2 decoration-gray-300 hover:decoration-black">vsllm.com</a> 获取。
+            </p>
+
+            <!-- 关键提示：柔化的 amber，不像红色 alert 那么吓人 -->
+            <div class="mb-4 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-[12px] flex items-start gap-2 leading-relaxed">
+                <svg class="w-3.5 h-3.5 shrink-0 mt-0.5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/></svg>
+                <span>新令牌须选 <code class="font-mono bg-amber-100 px-1 rounded text-[11px]">image_2fen</code> 分组</span>
+            </div>
+
+            <!-- 配置项：ChatGPT 风格 label + input -->
+            <div class="space-y-3.5">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">API Key</label>
-                    <input type="password" id="api-key-input" placeholder="sk-..." class="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-xl focus:ring-2 focus:ring-black focus:border-black outline-none transition-all">
+                    <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1.5">API Key</label>
+                    <input type="password" id="api-key-input" placeholder="sk-..." class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:border-gray-400 outline-none text-sm transition-colors font-mono">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">生成自动超时</label>
-                    <select id="setting-timeout" class="w-full px-3 py-2.5 bg-gray-50 border border-gray-300 rounded-xl focus:ring-2 focus:ring-black focus:border-black outline-none transition-all">
+                    <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1.5">生成超时</label>
+                    <select id="setting-timeout" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:border-gray-400 outline-none text-sm transition-colors cursor-pointer">
                         <option value="never">永不（默认）</option>
                         <option value="300000">5 分钟</option>
                         <option value="600000">10 分钟</option>
                         <option value="900000">15 分钟</option>
                         <option value="1800000">30 分钟</option>
                     </select>
-                    <p class="text-[11px] text-gray-400 mt-1">到时间会自动停止并提示可重试。默认永不超时，一直等后端返回。</p>
+                    <p class="text-[11px] text-gray-400 mt-1 leading-relaxed">到时自动停止，可重试。默认永不超时</p>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">失败自动重试次数</label>
-                    <select id="setting-retry" class="w-full px-3 py-2.5 bg-gray-50 border border-gray-300 rounded-xl focus:ring-2 focus:ring-black focus:border-black outline-none transition-all">
-                        <option value="0">0（不自动重试，默认）</option>
+                    <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1.5">失败自动重试</label>
+                    <select id="setting-retry" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:border-gray-400 outline-none text-sm transition-colors cursor-pointer">
+                        <option value="0">0（不重试，默认）</option>
                         <option value="1">最多 1 次</option>
                         <option value="2">最多 2 次</option>
                         <option value="3">最多 3 次</option>
                     </select>
-                    <p class="text-[11px] text-gray-400 mt-1">仅对网络错误、HTTP 5xx、超时自动重试；参数错误 / 401 / 403 / 400 不重试；手动取消不重试。</p>
+                    <p class="text-[11px] text-gray-400 mt-1 leading-relaxed">仅对网络 / 5xx / 超时；参数错误和 401/403 不重试</p>
                 </div>
-                <div class="flex gap-2">
-                    <button onclick="testApiKey()" class="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl hover:bg-gray-200 transition-colors font-medium">
-                        测试连接
-                    </button>
-                    <button onclick="saveSettings()" class="flex-1 bg-black text-white py-3 rounded-xl hover:bg-gray-800 transition-colors font-medium">
-                        保存
-                    </button>
-                </div>
-                <div id="api-key-test-result" class="text-xs min-h-[1em] text-gray-500"></div>
             </div>
-            <button onclick="closeSettings()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-            </button>
+
+            <!-- 操作按钮：ChatGPT 风圆角小尺寸 -->
+            <div class="flex gap-2 mt-4">
+                <button onclick="testApiKey()" type="button" class="flex-1 px-4 py-2 text-sm text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors">
+                    测试连接
+                </button>
+                <button onclick="saveSettings()" type="button" class="flex-1 px-4 py-2 text-sm bg-gray-900 text-white hover:bg-black rounded-lg font-medium transition-colors">
+                    保存
+                </button>
+            </div>
+            <div id="api-key-test-result" class="text-xs min-h-[1em] text-gray-500 mt-2"></div>
+
+            <!-- 底部"路过看看"小字，点关弹窗 -->
+            <div class="text-center mt-3">
+                <button onclick="closeSettings()" type="button" class="text-[11px] text-gray-400 hover:text-gray-700 transition-colors py-1 px-2 rounded">
+                    我只是路过看看 →
+                </button>
+            </div>
         </div>
     </div>
 
@@ -1040,6 +1305,35 @@
         const sendBtn = document.getElementById('send-btn');
         const imagePreviewBar = document.getElementById('image-preview-bar');
 
+        // ============== 标题 / favicon 忙碌指示（生成中给用户视觉反馈，避免不知情就刷掉） ==============
+        const _FAVICON_IDLE = 'data:image/svg+xml;utf8,' + encodeURIComponent(
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">' +
+            '<rect x="12" y="12" width="76" height="76" rx="18" fill="#6366f1"/>' +
+            '<path d="M30 70 L46 50 L58 64 L70 50 L82 70 Z" fill="white"/>' +
+            '<circle cx="66" cy="38" r="6" fill="white"/>' +
+            '</svg>'
+        );
+        const _FAVICON_BUSY = 'data:image/svg+xml;utf8,' + encodeURIComponent(
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">' +
+            '<rect x="12" y="12" width="76" height="76" rx="18" fill="#6366f1"/>' +
+            '<path d="M30 70 L46 50 L58 64 L70 50 L82 70 Z" fill="white"/>' +
+            '<circle cx="66" cy="38" r="6" fill="white"/>' +
+            '<circle cx="82" cy="18" r="15" fill="#ef4444" stroke="white" stroke-width="3"/>' +
+            '</svg>'
+        );
+        let _baseTitle = null;
+        function updateBusyIndicators() {
+            if (_baseTitle === null) _baseTitle = document.title.replace(/^\(生成中\)\s*/, '');
+            const busy = !!(_tasks && _tasks.size > 0);
+            const desired = busy ? '(生成中) ' + _baseTitle : _baseTitle;
+            if (document.title !== desired) document.title = desired;
+            const link = document.getElementById('favicon');
+            if (link) {
+                const targetHref = busy ? _FAVICON_BUSY : _FAVICON_IDLE;
+                if (link.getAttribute('href') !== targetHref) link.setAttribute('href', targetHref);
+            }
+        }
+
         // ============== 初始化 ==============
         window.onload = async () => {
             try {
@@ -1049,9 +1343,11 @@
                 return;
             }
             initMarkCanvasEvents();
-            startPlaceholderRotation();
+            // 不再轮播 placeholder：保留 HTML 里的静态文本"描述或编辑图片"
             await preloadCharacters();
             initMentionEvents();
+            initSeedUI();
+            initParamsToggle();
 
             // 加载/创建默认会话
             let convs = await listConvs();
@@ -1064,9 +1360,26 @@
             // 初始拉一次收藏数量，让 sidebar 标题旁的 (N) 显示
             renderFavorites();
 
+            // 初始化 favicon 和标题状态（也固化 _baseTitle）
+            updateBusyIndicators();
+
             const apiKey = localStorage.getItem('vsllm_api_key');
-            if (!apiKey) openSettings();
+            if (!apiKey) {
+                openSettings();
+            } else if (promptInput) {
+                // 没弹设置面板时，主动聚焦输入框，省一次点击
+                promptInput.focus();
+            }
         };
+
+        // 生成中刷新/关闭页面 → 浏览器原生确认弹窗
+        // 现代浏览器忽略 returnValue 文本，只能给出标准提示，但拦截依然有效
+        window.addEventListener('beforeunload', (e) => {
+            if (!_tasks || _tasks.size === 0) return;
+            e.preventDefault();
+            e.returnValue = '有 ' + _tasks.size + ' 个生成正在进行中，离开会丢失结果（已扣费不退）。';
+            return e.returnValue;
+        });
 
         // ============== IndexedDB ==============
         function initDB() {
@@ -1265,6 +1578,8 @@
                 recvTokensEstimated: data.recvTokensEstimated !== false,
                 // 角色卡注入快照：{ id, name, updatedAt }[]；空数组/undefined 等价"无注入"
                 injectedCharacters: Array.isArray(data.injectedCharacters) ? data.injectedCharacters : [],
+                // 种子（0 = 无种子）；reroll 时复用以重现同一变体
+                seed: Number.isFinite(+data.seed) && +data.seed >= 0 ? Math.floor(+data.seed) : 0,
             };
             await putMsg(m);
             await _touchConversation(data.conversationId, m);
@@ -2435,17 +2750,8 @@
             const titleEl = document.getElementById('header-conv-title');
             if (titleEl) titleEl.textContent = conv ? (conv.title || '新对话') : 'vsllm 绘图工作台';
 
-            // 聊天流：先渲染欢迎
-            chatContainer.innerHTML = `
-                <div class="flex gap-4 items-start w-full">
-                    <div class="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center shrink-0 border border-indigo-200">
-                        <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"></path></svg>
-                    </div>
-                    <div class="flex-1 pt-1 text-gray-800 leading-relaxed max-w-prose">
-                        你好！我是绘图助手。我支持<strong>连续对话改图</strong>：<br>生成图片后直接发送"给它带上口罩"、"换成黑白风格"等指令，我会基于上一张图为您修改！
-                    </div>
-                </div>
-            `;
+            // 聊天流：先渲染欢迎（cache 命中直接用；否则默认文案 + 后台 gen 替换）
+            renderWelcomeMessage();
 
             // 渲染消息
             const msgs = await listMsgsByConv(currentConversationId);
@@ -2467,12 +2773,14 @@
                         if (task) {
                             renderBotLoading(m, task.id);
                         } else {
-                            // task 丢了（刷新过），改成 cancelled
-                            await updateMsg(m.id, { status: 'cancelled', errorMessage: '页面已刷新，任务丢失' });
-                            m.status = 'cancelled';
-                            m.errorMessage = '页面已刷新，任务丢失';
-                            renderBotCancelled(m);
+                            // task 丢了（刷新过），转 'lost' 状态：状态未知，给用户两个 close-out 按钮
+                            await updateMsg(m.id, { status: 'lost', errorMessage: '页面刷新前的生成结果未取回' });
+                            m.status = 'lost';
+                            m.errorMessage = '页面刷新前的生成结果未取回';
+                            renderBotLost(m);
                         }
+                    } else if (m.status === 'lost') {
+                        renderBotLost(m);
                     }
                 }
             }
@@ -2738,7 +3046,125 @@
             el.style.height = (el.scrollHeight < 160 ? el.scrollHeight : 160) + 'px';
         }
         function handleEnter(e) {
-            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+            // 普通 Enter / Shift+Enter → 换行（保持浏览器默认）
+            // ⌘/Ctrl + Enter → 发送
+            if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                e.preventDefault();
+                sendMessage();
+            }
+        }
+
+        // ============== 种子选择器 ==============
+        // 0 = 无种子（提示词原样发送）；>0 = 末尾隐藏式追加 "\n种子:N"
+        // 同提示词 + 不同种子 → 模型推理出不同变体
+        let _currentSeed = 0;
+        function loadSavedSeed() {
+            const saved = localStorage.getItem('vsllm_seed');
+            if (saved == null) return;
+            const n = parseInt(saved, 10);
+            if (Number.isFinite(n) && n >= 0) _currentSeed = n;
+        }
+        function saveSeed() { localStorage.setItem('vsllm_seed', String(_currentSeed)); }
+        function setSeed(n) {
+            n = Number.isFinite(+n) && +n >= 0 ? Math.floor(+n) : 0;
+            if (n > 999999) n = 999999;
+            _currentSeed = n;
+            saveSeed();
+            refreshSeedUI();
+        }
+        function refreshSeedUI() {
+            const chips = document.querySelectorAll('.seed-chip');
+            const customInput = document.getElementById('seed-custom-input');
+            let matched = false;
+            chips.forEach(chip => {
+                const v = parseInt(chip.dataset.seed, 10);
+                const active = (v === _currentSeed);
+                chip.classList.toggle('is-active', active);
+                if (active) matched = true;
+            });
+            if (customInput) {
+                if (!matched && _currentSeed > 0) {
+                    if (parseInt(customInput.value, 10) !== _currentSeed) customInput.value = String(_currentSeed);
+                    customInput.classList.add('is-active');
+                } else {
+                    customInput.classList.remove('is-active');
+                }
+            }
+            // 同步 toggle 标签：显示当前种子值
+            const labelEl = document.getElementById('seed-toggle-current');
+            if (labelEl) labelEl.textContent = (_currentSeed > 0) ? String(_currentSeed) : '无';
+        }
+        // 折叠/展开种子选项区（is-expanded 直接挂在 toggle 按钮上）
+        function toggleSeedSection() {
+            const content = document.getElementById('seed-row-content');
+            const btn = document.querySelector('button[onclick="toggleSeedSection()"]');
+            if (!content || !btn) return;
+            const willExpand = content.classList.contains('hidden');
+            content.classList.toggle('hidden', !willExpand);
+            btn.classList.toggle('is-expanded', willExpand);
+            btn.setAttribute('aria-expanded', willExpand ? 'true' : 'false');
+        }
+
+        // ============== 参数选择器折叠（独立于种子折叠） ==============
+        function toggleParamsSection() {
+            const content = document.getElementById('params-content');
+            const btn = document.querySelector('button[onclick="toggleParamsSection()"]');
+            if (!content || !btn) return;
+            const willExpand = content.classList.contains('hidden');
+            content.classList.toggle('hidden', !willExpand);
+            btn.classList.toggle('is-expanded', willExpand);
+            btn.setAttribute('aria-expanded', willExpand ? 'true' : 'false');
+        }
+        // 折叠态下显示当前 size · quality · format 摘要；select 一改就刷新
+        function updateParamsSummary() {
+            const s = document.getElementById('param-size');
+            const q = document.getElementById('param-quality');
+            const f = document.getElementById('param-format');
+            const sum = document.getElementById('params-summary');
+            if (!s || !q || !f || !sum) return;
+            sum.textContent = `${s.value} · ${q.value} · ${f.value}`;
+        }
+        function initParamsToggle() {
+            ['param-size', 'param-quality', 'param-format'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.addEventListener('change', updateParamsSummary);
+            });
+            updateParamsSummary();
+        }
+        function initSeedUI() {
+            loadSavedSeed();
+            document.querySelectorAll('.seed-chip').forEach(chip => {
+                chip.addEventListener('click', () => {
+                    const v = parseInt(chip.dataset.seed, 10);
+                    setSeed(v);
+                });
+            });
+            const customInput = document.getElementById('seed-custom-input');
+            if (customInput) {
+                customInput.addEventListener('input', () => {
+                    const raw = customInput.value.trim();
+                    if (raw === '') return; // 空字符串 blur 时再处理
+                    const v = parseInt(raw, 10);
+                    if (Number.isFinite(v) && v >= 0) setSeed(v);
+                });
+                customInput.addEventListener('blur', () => {
+                    if (customInput.value.trim() === '') {
+                        // 空了：如果当前选的是预设值，刷新让它显示数字；如果是自定义且已清空，回退到 0
+                        if (_currentSeed > 5) setSeed(0);
+                        else refreshSeedUI();
+                    }
+                });
+                // Enter 直接 blur 提交
+                customInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') { e.preventDefault(); customInput.blur(); }
+                });
+            }
+            refreshSeedUI();
+        }
+        // 把种子隐藏式注入到提示词末尾；seed=0 / undefined → 原样返回
+        function injectSeedIntoPrompt(prompt, seed) {
+            if (!seed || seed <= 0) return prompt;
+            return (prompt || '') + '\n种子:' + seed;
         }
         function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
@@ -2766,13 +3192,123 @@
         }
 
         // ============== 消息渲染 ==============
+        // GPT 风头像（黑底白 OpenAI blossom logo）；pulse=true 用于 loading 状态
+        function botAvatarHTML(opts) {
+            const pulse = (opts && opts.pulse) ? 'animate-pulse' : '';
+            return `
+                <div class="w-8 h-8 rounded-full bg-black flex items-center justify-center shrink-0 ${pulse}">
+                    <svg class="w-4 h-4 text-white" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M22.282 9.821a5.985 5.985 0 0 0-.516-4.91 6.046 6.046 0 0 0-6.51-2.9A6.065 6.065 0 0 0 4.981 4.18a5.985 5.985 0 0 0-3.998 2.9 6.046 6.046 0 0 0 .743 7.097 5.98 5.98 0 0 0 .51 4.911 6.051 6.051 0 0 0 6.515 2.9A5.985 5.985 0 0 0 13.26 24a6.056 6.056 0 0 0 5.772-4.206 5.99 5.99 0 0 0 3.997-2.9 6.056 6.056 0 0 0-.747-7.073zM13.26 22.43a4.476 4.476 0 0 1-2.876-1.04l.141-.081 4.779-2.758a.795.795 0 0 0 .392-.681v-6.737l2.02 1.168a.071.071 0 0 1 .038.052v5.583a4.504 4.504 0 0 1-4.494 4.494zM3.6 18.304a4.47 4.47 0 0 1-.535-3.014l.142.085 4.783 2.759a.771.771 0 0 0 .78 0l5.843-3.369v2.332a.08.08 0 0 1-.033.062L9.74 19.95a4.5 4.5 0 0 1-6.14-1.646zM2.34 7.896a4.485 4.485 0 0 1 2.366-1.973V11.6a.766.766 0 0 0 .388.676l5.815 3.355-2.02 1.168a.076.076 0 0 1-.071 0l-4.83-2.786A4.504 4.504 0 0 1 2.34 7.872zm16.597 3.855l-5.833-3.387L15.119 7.2a.076.076 0 0 1 .071 0l4.83 2.791a4.494 4.494 0 0 1-.676 8.105v-5.678a.79.79 0 0 0-.407-.667zm2.01-3.023l-.141-.085-4.774-2.782a.776.776 0 0 0-.785 0L9.409 9.23V6.897a.066.066 0 0 1 .028-.061l4.83-2.787a4.5 4.5 0 0 1 6.68 4.66zm-12.64 4.135l-2.02-1.164a.08.08 0 0 1-.038-.057V6.075a4.5 4.5 0 0 1 7.375-3.453l-.142.08L8.704 5.46a.795.795 0 0 0-.393.681zm1.097-2.365L11.09 9.211l2.602 1.5v3.001l-2.598 1.5-2.601-1.5z"/></svg>
+                </div>
+            `;
+        }
+
         function botShellHTML(inner) {
             return `
-                <div class="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center shrink-0 border border-indigo-200">
-                    <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"></path></svg>
-                </div>
+                ${botAvatarHTML()}
                 <div class="flex-1">${inner}</div>
             `;
+        }
+
+        // ============== 智能欢迎语 ==============
+        // 默认兜底文案（API 没 key / 全新用户 / gen 失败时显示）
+        const WELCOME_DEFAULT_HTML = `你好！我是绘图助手。我支持<strong>连续对话改图</strong>：<br>生成图片后直接发送"给它带上口罩"、"换成黑白风格"等指令，我会基于上一张图为您修改！`;
+        const WELCOME_CACHE_KEY = 'vsllm_welcome_v1';
+        const WELCOME_GEN_MODEL = 'gpt-oss-120b';
+        const WELCOME_SYSTEM = [
+            'You are a friendly AI image generation assistant ("绘图助手") for a tool called vsllm.',
+            'Write ONE short, casual welcome line in Chinese based on the context block the user provides.',
+            'Two scenarios:',
+            '  A) Returning user with recent prompts → personalize on their style/theme they\'ve been into.',
+            '  B) Brand new user (no history) → warm onboarding hint, like "第一次来" / "刚到的话"。',
+            'Hard rules (apply to BOTH scenarios):',
+            '- ≤ 2 short sentences, ≤ 70 Chinese characters total',
+            '- Mention ONE relevant capability (e.g., 连续改图 / 风格变换 / @角色卡 / 提示词增强)',
+            '- Casual + warm tone, NOT formal, NOT 客套话',
+            '- Plain text only; <strong>X</strong> for at most one keyword',
+            '- No markdown / no quotes / no lists / no preface / no explanation',
+            '- Output ONLY the welcome text itself',
+        ].join('\n');
+
+        function loadCachedWelcome() {
+            try {
+                const raw = localStorage.getItem(WELCOME_CACHE_KEY);
+                if (!raw) return null;
+                const obj = JSON.parse(raw);
+                if (obj && typeof obj.text === 'string' && obj.text.length > 0) return obj;
+            } catch {}
+            return null;
+        }
+        function saveCachedWelcome(text, hash) {
+            try { localStorage.setItem(WELCOME_CACHE_KEY, JSON.stringify({ text, hash, ts: Date.now() })); } catch {}
+        }
+        // 简单 djb2 哈希；用最近 prompts 的拼接判断"风格是否变了"
+        function hashWelcomePrompts(prompts) {
+            const s = prompts.map(p => (p || '').slice(0, 80)).join('|');
+            let h = 5381;
+            for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0;
+            return String(h >>> 0);
+        }
+        // 跨会话拉最近 N 条 user 消息文本，按时间倒序（最新在前）
+        async function getRecentUserPromptsAcrossConvs(limit) {
+            limit = limit || 8;
+            if (!db) return [];
+            try {
+                const convs = await listConvs();
+                const out = [];
+                for (const c of convs.slice(0, 6)) {
+                    const msgs = await listMsgsByConv(c.id);
+                    for (let i = msgs.length - 1; i >= 0; i--) {
+                        const m = msgs[i];
+                        if (m.role === 'user' && m.text && m.text.trim()) {
+                            out.push(m.text.trim());
+                            if (out.length >= limit) return out;
+                        }
+                    }
+                }
+                return out;
+            } catch { return []; }
+        }
+        // 渲染欢迎消息（cache 命中即刻显示；后台 gen 完成后替换）
+        function renderWelcomeMessage() {
+            const cached = loadCachedWelcome();
+            const initialText = (cached && cached.text) ? cached.text : WELCOME_DEFAULT_HTML;
+            chatContainer.innerHTML = `
+                <div class="flex gap-4 items-start w-full" data-welcome>
+                    ${botAvatarHTML()}
+                    <div class="flex-1 pt-1 text-gray-800 leading-relaxed max-w-prose welcome-text">${initialText}</div>
+                </div>
+            `;
+            // 后台拉，避免阻塞首屏
+            setTimeout(() => trySmartWelcome(cached), 80);
+        }
+        // 检查是否需要重 gen；满足条件就调 gpt-oss-120b 并替换 DOM + 缓存
+        // 包含全新用户路径：没历史 prompt 就以"第一次来"上下文 gen，缓存命中 hash __new_user__ 就复用
+        async function trySmartWelcome(cached) {
+            if (!localStorage.getItem('vsllm_api_key')) return;
+            const prompts = await getRecentUserPromptsAcrossConvs(8);
+            const isNewUser = prompts.length === 0;
+            const hash = isNewUser ? '__new_user__' : hashWelcomePrompts(prompts);
+            if (cached && cached.hash === hash) return; // 风格没变 / 仍然是新用户，复用 cache
+            try {
+                const userBlock = isNewUser
+                    ? '【场景 B：全新用户】这是用户第一次使用 vsllm 绘图助手，IndexedDB 里还没有任何历史对话或生成记录。\n请按"新用户上手"场景写一句友好欢迎，让 ta 知道可以直接描述想生成的画面，并提一个常用能力（比如连续改图、@角色卡、或者提示词增强其中一个）。'
+                    : '【场景 A：老用户】用户最近的提示词（最新在前）：\n' + prompts.map((p, i) => `${i + 1}. ${p}`).join('\n');
+                const text = await postChatCompletion({
+                    system: WELCOME_SYSTEM,
+                    user: userBlock,
+                    model: WELCOME_GEN_MODEL,
+                    temperature: 0.75,
+                });
+                let cleaned = (text || '').trim();
+                if (!cleaned) return;
+                if (cleaned.length > 200) cleaned = cleaned.slice(0, 200);
+                // 替换当前 DOM（如果欢迎块还在）
+                const welcomeEl = document.querySelector('[data-welcome] .welcome-text');
+                if (welcomeEl) welcomeEl.innerHTML = cleaned;
+                saveCachedWelcome(cleaned, hash);
+            } catch {
+                // 静默失败：保留默认文案，不打扰用户
+            }
         }
 
         function renderUserMessage(msg) {
@@ -2839,9 +3375,7 @@
             div.className = 'flex gap-4 items-start w-full';
             div.dataset.messageId = String(msg.id);
             div.innerHTML = `
-                <div class="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center shrink-0 border border-indigo-200">
-                    <svg class="w-5 h-5 text-indigo-600 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"></path></svg>
-                </div>
+                ${botAvatarHTML({ pulse: true })}
                 <div class="flex-1 pt-1 min-w-0">
                     ${buildThinkingBlockHTML({ state: 'thinking', collapsed: false, reasoningText: '', responseText: '' })}
                     <div class="ai-placeholder-frame" style="aspect-ratio: ${aspect};">
@@ -2961,6 +3495,9 @@
             const msgId = msg.id;
             const tokenMeta = botTokenMetaHTML(msg.recvTokens, msg.recvTokensEstimated !== false, null);
             const charsBadge = buildInjectedCharsBadgeHTML(msg.injectedCharacters);
+            const seedBadge = (msg.seed && msg.seed > 0)
+                ? `<div class="mt-1.5 inline-flex items-center gap-1 text-[11px] text-indigo-500/80"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z"/></svg>种子 ${msg.seed}</div>`
+                : '';
             // 思维链块：done 状态默认折叠；完全没内容则不渲染
             const thinkingHTML = (msg.reasoningText || msg.responseText)
                 ? buildThinkingBlockHTML({
@@ -3006,6 +3543,7 @@
                         </button>
                     </div>
                     ${charsBadge}
+                    ${seedBadge}
                     ${tokenMeta}
                 </div>
             `;
@@ -3083,6 +3621,44 @@
                             已取消生成${hint}
                         </span>
                         ${retry}
+                    </div>
+                    ${charsBadge}
+                    ${tokenMeta}
+                </div>
+            `;
+        }
+
+        // lost：刷新后状态未知；给用户两个 close-out 按钮（标失败 / 重新提交）
+        function renderBotLost(msg) {
+            const div = document.createElement('div');
+            div.className = 'flex gap-4 items-start w-full';
+            div.dataset.messageId = String(msg.id);
+            div.innerHTML = botShellHTML(buildBotLostHTML(msg));
+            chatContainer.appendChild(div);
+            _messageDomRegistry.set(msg.id, div);
+        }
+        function buildBotLostHTML(msg) {
+            const tokenMeta = botTokenMetaHTML(msg.recvTokens, msg.recvTokensEstimated !== false, null);
+            const charsBadge = buildInjectedCharsBadgeHTML(msg.injectedCharacters);
+            const msgId = msg.id;
+            return `
+                <div>
+                    <div class="bg-amber-50 text-amber-800 px-4 py-3 rounded-lg border border-amber-200 text-sm max-w-md">
+                        <div class="font-medium flex items-center gap-1.5 mb-1.5">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/></svg>
+                            生成状态未知
+                        </div>
+                        <div class="text-amber-700 mb-3 text-[13px] leading-relaxed">
+                            页面刷新前可能已扣费，但浏览器没接到结果。可以放弃这次记录，或者再提交一次（会再次扣费）。
+                        </div>
+                        <div class="flex gap-2 flex-wrap">
+                            <button onclick="lostMarkFailed(${msgId})" class="px-3 py-1 rounded-md text-xs bg-white border border-amber-300 text-amber-700 hover:bg-amber-100 transition-colors">
+                                标为失败
+                            </button>
+                            <button onclick="lostResubmit(${msgId})" class="px-3 py-1 rounded-md text-xs bg-amber-600 text-white hover:bg-amber-500 transition-colors">
+                                重新提交
+                            </button>
+                        </div>
                     </div>
                     ${charsBadge}
                     ${tokenMeta}
@@ -3796,10 +4372,12 @@
                 attempt: 0,      // 第几次尝试（0 初次，1..N 为自动重试）
                 maxAttempts: 1,  // 总共允许的尝试次数 = 1 + retryCount
             });
+            updateBusyIndicators();
             return id;
         }
         function completeTask(taskId) {
             _tasks.delete(taskId);
+            updateBusyIndicators();
         }
         function cancelTaskById(taskId) {
             const t = _tasks.get(taskId);
@@ -3846,13 +4424,15 @@
         // 统一生成流程（sendMessage / reroll / edit-regen / retry 共用）
         // 每次调用只创建一条 bot message，内部循环处理"自动重试"；每一轮有独立 AbortController 和 timeout timer
         // 用户设置快照：任务启动时读一次 timeoutMs / maxRetries，后续不再受设置修改影响
-        async function runGeneration({ conversationId, promptText, inputImages, params }) {
+        async function runGeneration({ conversationId, promptText, inputImages, params, seed }) {
             conversationId = Number(conversationId);
+            seed = Number.isFinite(+seed) && +seed >= 0 ? Math.floor(+seed) : 0;
 
             // 单点注入：在这里把用户原文里的 @角色 解析并拼角色一致性指令
             // promptText 保留给 bot message 展示（含 @），finalPrompt 发给 API
             const composed = composeFinalPromptWithCharacters(promptText || '');
-            const finalPrompt = composed.finalPrompt;
+            // 种子是隐藏式注入，发给 API 但不展示给用户：在 finalPrompt 末尾追加 "\n种子:N"
+            const finalPrompt = injectSeedIntoPrompt(composed.finalPrompt, seed);
             const injectedCharacters = composed.injectedCharacters;
             const missingNames = composed.missingNames;
 
@@ -3872,6 +4452,7 @@
                 recvTokens: null,
                 recvTokensEstimated: true,
                 injectedCharacters,          // 持久化本次注入了哪些角色
+                seed,                        // 持久化种子，reroll 时复用
             });
 
             // 快照当前设置，一次生成整个生命周期都用这份
@@ -4145,6 +4726,7 @@
                 params,
                 sendTokens: estSendForUser,
                 sendTokensEstimated: true,
+                seed: _currentSeed,
             });
             if (currentConversationId === convId) renderUserMessage(userMsg);
 
@@ -4168,6 +4750,7 @@
                 promptText,
                 inputImages: imagesToSend,
                 params,
+                seed: _currentSeed,
             });
         }
 
@@ -4180,7 +4763,52 @@
                 promptText: orig.text || '',
                 inputImages: orig.images || [],
                 params: orig.params || { size: 'auto', quality: 'high', format: 'png' },
+                seed: orig.seed || 0,   // reroll 复用原种子
             });
+        }
+
+        // lost 卡片"标为失败"：把状态从 lost 转为 error，避免用户再纠结
+        async function lostMarkFailed(msgId) {
+            const id = Number(msgId);
+            await updateMsg(id, {
+                status: 'error',
+                errorMessage: '已确认放弃：页面刷新前的生成结果未取回',
+            });
+            const m = await getMsg(id);
+            if (!m) return;
+            if (currentConversationId === m.conversationId) {
+                const div = _messageDomRegistry.get(id);
+                if (div) {
+                    div.innerHTML = botShellHTML(buildBotErrorHTML(
+                        m.errorMessage, m.id,
+                        { recvTokens: m.recvTokens, recvTokensEstimated: m.recvTokensEstimated },
+                        m.injectedCharacters
+                    ));
+                }
+            }
+        }
+        // lost 卡片"重新提交"：把当前 lost 标记为 cancelled 留作历史，再用原参数在同对话里发起一次新生成
+        async function lostResubmit(msgId) {
+            const id = Number(msgId);
+            const orig = await getMsg(id);
+            if (!orig) { alert('消息已丢失，无法重新提交'); return; }
+            await updateMsg(id, {
+                status: 'cancelled',
+                errorMessage: '已重新提交（原结果未取回）',
+            });
+            const m = await getMsg(id);
+            if (m && currentConversationId === m.conversationId) {
+                const div = _messageDomRegistry.get(id);
+                if (div) {
+                    div.innerHTML = botShellHTML(buildBotCancelledHTML(
+                        m.errorMessage, m.id,
+                        { recvTokens: m.recvTokens, recvTokensEstimated: m.recvTokensEstimated },
+                        m.injectedCharacters
+                    ));
+                }
+            }
+            // 复用现成的 retry 流程，原 conversation 追加一次新生成
+            retryFromFailedMessage(id);
         }
 
         // 失败/超时/取消消息点"重试"：用原参数在原对话里追加一次新生成
@@ -4194,6 +4822,7 @@
                 promptText: orig.text || '',
                 inputImages: orig.images || [],
                 params: orig.params || { size: 'auto', quality: 'high', format: 'png' },
+                seed: orig.seed || 0,
             });
             if (currentConversationId !== convId) {
                 const conv = await getConv(convId);
@@ -4239,6 +4868,7 @@
                     params: orig.params,
                     sendTokens: estSendEdit,
                     sendTokensEstimated: true,
+                    seed: orig.seed || 0,
                 });
                 if (currentConversationId === convId) renderUserMessage(newUserMsg);
                 runGeneration({
@@ -4246,6 +4876,7 @@
                     promptText: newText,
                     inputImages: orig.images || [],
                     params: orig.params || { size: 'auto', quality: 'high', format: 'png' },
+                    seed: orig.seed || 0,
                 });
             };
         }
@@ -4925,6 +5556,87 @@
             req.onerror = (e) => alert('清空失败：' + ((e.target && e.target.error && e.target.error.message) || '未知错误'));
         }
 
+        // ============== 附件来源选择（图库 / 本地） ==============
+        const _galleryPickSet = new Set();
+
+        function openAttachPicker() {
+            const m = document.getElementById('attach-picker-modal');
+            if (m) { m.classList.remove('hidden'); m.classList.add('flex'); }
+        }
+        function closeAttachPicker() {
+            const m = document.getElementById('attach-picker-modal');
+            if (m) { m.classList.add('hidden'); m.classList.remove('flex'); }
+        }
+
+        // 拉所有图库项；按 id DESC（最新在前）
+        function listGalleryItems() {
+            return new Promise((resolve) => {
+                if (!db) { resolve([]); return; }
+                const tx = db.transaction(STORE_GALLERY, 'readonly');
+                const req = tx.objectStore(STORE_GALLERY).getAll();
+                req.onsuccess = () => {
+                    const items = (req.result || []).sort((a, b) => b.id - a.id);
+                    resolve(items);
+                };
+                req.onerror = () => resolve([]);
+            });
+        }
+
+        async function openGalleryPicker() {
+            closeAttachPicker();
+            _galleryPickSet.clear();
+            const modal = document.getElementById('gallery-picker-modal');
+            const grid = document.getElementById('gp-grid');
+            if (!modal || !grid) return;
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            grid.innerHTML = '<div class="col-span-full text-center text-gray-400 text-xs py-8">加载中…</div>';
+            const items = await listGalleryItems();
+            if (!items.length) {
+                grid.innerHTML = '<div class="col-span-full text-center text-gray-400 text-sm py-12">图库为空，先去生成几张吧</div>';
+                refreshGalleryPickHeader();
+                return;
+            }
+            grid.innerHTML = items.map(item => `
+                <div class="gp-item relative aspect-square rounded-lg overflow-hidden border-2 border-transparent cursor-pointer hover:border-gray-300" data-id="${item.id}" onclick="toggleGalleryPick(this, ${item.id})" title="${escapeHTML((item.prompt || '').slice(0, 120))}">
+                    <img src="${item.base64}" class="w-full h-full object-cover pointer-events-none" loading="lazy" alt="${escapeHTML((item.prompt || '').slice(0, 80))}">
+                    <div class="gp-check absolute top-1.5 right-1.5 w-5 h-5 rounded-full flex items-center justify-center">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                    </div>
+                </div>
+            `).join('');
+            refreshGalleryPickHeader();
+        }
+        function closeGalleryPicker() {
+            const m = document.getElementById('gallery-picker-modal');
+            if (m) { m.classList.add('hidden'); m.classList.remove('flex'); }
+            _galleryPickSet.clear();
+        }
+        function toggleGalleryPick(el, id) {
+            id = Number(id);
+            if (_galleryPickSet.has(id)) { _galleryPickSet.delete(id); el.classList.remove('is-selected'); }
+            else { _galleryPickSet.add(id); el.classList.add('is-selected'); }
+            refreshGalleryPickHeader();
+        }
+        function refreshGalleryPickHeader() {
+            const count = _galleryPickSet.size;
+            const countEl = document.getElementById('gp-count');
+            const btn = document.getElementById('gp-confirm-btn');
+            if (countEl) countEl.textContent = count > 0 ? `(已选 ${count})` : '';
+            if (btn) btn.disabled = count === 0;
+        }
+        // 把选中的图库项 base64 加入当前会话 pendingImages
+        async function confirmGalleryPick() {
+            if (_galleryPickSet.size === 0) return;
+            const items = await listGalleryItems();
+            const map = new Map(items.map(i => [i.id, i.base64]));
+            for (const id of _galleryPickSet) {
+                const b64 = map.get(id);
+                if (b64) await addPendingImage(b64);
+            }
+            closeGalleryPicker();
+        }
+
         // ============== 设置 + 探活 ==============
         function openSettings() {
             document.getElementById('api-key-input').value = localStorage.getItem('vsllm_api_key') || '';
@@ -5026,14 +5738,19 @@
                 const inInput = tag === 'INPUT' || tag === 'TEXTAREA' || (ae && ae.isContentEditable);
                 const cmd = e.metaKey || e.ctrlKey;
 
-                // Esc：优先取消生成；没任务就让浏览器默认（如 blur 输入框、关 modal）
+                // Esc：优先关 modal，再取消生成；都没就让浏览器默认（如 blur 输入框）
                 if (e.key === 'Escape') {
-                    // 先关帮助弹层（如果开着）
                     const help = document.getElementById('kbd-help-modal');
                     if (help && help.classList.contains('is-open')) {
-                        e.preventDefault();
-                        help.classList.remove('is-open');
-                        return;
+                        e.preventDefault(); help.classList.remove('is-open'); return;
+                    }
+                    const galleryModal = document.getElementById('gallery-picker-modal');
+                    if (galleryModal && !galleryModal.classList.contains('hidden')) {
+                        e.preventDefault(); closeGalleryPicker(); return;
+                    }
+                    const attachModal = document.getElementById('attach-picker-modal');
+                    if (attachModal && !attachModal.classList.contains('hidden')) {
+                        e.preventDefault(); closeAttachPicker(); return;
                     }
                     if (cancelMostRecentTask()) e.preventDefault();
                     return;
@@ -5073,13 +5790,54 @@
         }
     </script>
 
+    <!-- 附件来源选择 modal（点附件按钮先弹这个） -->
+    <div id="attach-picker-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden justify-center items-center p-4" onclick="if(event.target===this) closeAttachPicker()">
+        <div class="bg-white rounded-2xl w-full max-w-sm p-5 shadow-2xl">
+            <h3 class="text-base font-semibold text-gray-800 mb-1">添加参考图</h3>
+            <p class="text-xs text-gray-500 mb-4">选择来源</p>
+            <div class="flex flex-col gap-2">
+                <button type="button" onclick="openGalleryPicker()" class="w-full flex items-center gap-3 px-3 py-3 rounded-xl border border-gray-200 hover:bg-gray-50 active:bg-gray-100 transition-colors text-left">
+                    <span class="w-9 h-9 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                    </span>
+                    <span class="flex-1 min-w-0">
+                        <span class="block text-sm font-medium text-gray-800">从图库选择</span>
+                        <span class="block text-[11px] text-gray-500 mt-0.5">用之前生成的图当参考</span>
+                    </span>
+                </button>
+                <button type="button" onclick="closeAttachPicker(); document.getElementById('file-upload').click()" class="w-full flex items-center gap-3 px-3 py-3 rounded-xl border border-gray-200 hover:bg-gray-50 active:bg-gray-100 transition-colors text-left">
+                    <span class="w-9 h-9 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
+                    </span>
+                    <span class="flex-1 min-w-0">
+                        <span class="block text-sm font-medium text-gray-800">从本地上传</span>
+                        <span class="block text-[11px] text-gray-500 mt-0.5">选设备里的图片文件</span>
+                    </span>
+                </button>
+            </div>
+            <button type="button" onclick="closeAttachPicker()" class="mt-4 w-full py-2 text-sm text-gray-500 hover:text-gray-800 hover:bg-gray-50 rounded-lg transition-colors">取消</button>
+        </div>
+    </div>
+
+    <!-- 图库选择 modal（多选） -->
+    <div id="gallery-picker-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden justify-center items-end sm:items-center p-0 sm:p-4">
+        <div class="bg-white w-full h-full sm:h-auto sm:rounded-2xl sm:max-w-3xl sm:max-h-[85vh] shadow-2xl flex flex-col overflow-hidden">
+            <div class="px-4 py-3 border-b border-gray-200 flex items-center gap-2 shrink-0">
+                <h3 class="text-base font-semibold text-gray-800 flex-1 truncate">从图库选择 <span id="gp-count" class="text-xs text-gray-400 font-normal ml-1"></span></h3>
+                <button type="button" onclick="closeGalleryPicker()" class="px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded-md">取消</button>
+                <button type="button" id="gp-confirm-btn" onclick="confirmGalleryPick()" class="px-3 py-1.5 text-sm bg-black text-white rounded-md hover:bg-gray-800 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors" disabled>确认</button>
+            </div>
+            <div id="gp-grid" class="flex-1 overflow-y-auto p-3 grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2 content-start"></div>
+        </div>
+    </div>
+
     <!-- 键盘快捷键浮按钮 + 帮助弹层（移动端 CSS / JS 双重隐藏） -->
     <button id="kbd-help-btn" type="button" onclick="toggleKbdHelp()" title="键盘快捷键 (按 ?)" aria-label="键盘快捷键">?</button>
     <div id="kbd-help-modal" onclick="if(event.target===this) toggleKbdHelp()">
         <div class="panel">
             <h3>键盘快捷键</h3>
             <table>
-                <tr><td>发送</td><td class="kbd-col"><kbd>↵</kbd></td></tr>
+                <tr><td>发送</td><td class="kbd-col"><kbd>⌘/Ctrl</kbd> <kbd>↵</kbd></td></tr>
                 <tr><td>取消生成</td><td class="kbd-col"><kbd>Esc</kbd></td></tr>
                 <tr><td>新对话</td><td class="kbd-col"><kbd>⌘/Ctrl</kbd> <kbd>⇧</kbd> <kbd>N</kbd></td></tr>
                 <tr><td>切换侧边栏</td><td class="kbd-col"><kbd>⌘/Ctrl</kbd> <kbd>B</kbd></td></tr>
