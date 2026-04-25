@@ -771,9 +771,16 @@
             <button onclick="toggleSidebar()" class="p-2 text-gray-600 hover:text-gray-900 md:hidden rounded-md hover:bg-gray-100">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
             </button>
-            <div class="font-medium text-lg flex items-center gap-2 flex-1 justify-center md:justify-start md:pl-4 truncate">
+            <div class="font-medium text-lg flex items-center gap-2 flex-1 justify-center md:justify-start md:pl-4 min-w-0">
                 <svg class="w-5 h-5 text-indigo-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path></svg>
                 <span id="header-conv-title" class="truncate">vsllm 绘图工作台</span>
+                <span id="header-worldview-badge" class="hidden shrink-0 inline-flex items-center gap-1 ml-1 text-[11px] font-normal text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-full pl-2 pr-1 py-0.5">
+                    <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-1.605.42-3.113 1.157-4.418"/></svg>
+                    <span id="header-worldview-name" class="max-w-[100px] truncate"></span>
+                    <button type="button" onclick="clearConvWorldview()" class="text-indigo-400 hover:text-indigo-700 hover:bg-indigo-100 rounded-full w-4 h-4 flex items-center justify-center" title="解除世界观">
+                        <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                </span>
             </div>
             <button onclick="openSettings()" class="p-2 text-gray-600 hover:text-gray-900 rounded-md hover:bg-gray-100" title="设置">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
@@ -1119,12 +1126,30 @@
                     </div>
                 </div>
 
-                <!-- 世界观 placeholder（stage 2 上线） -->
-                <div id="story-tab-worldview" class="story-tab-pane hidden h-full flex items-center justify-center p-8">
-                    <div class="text-center text-gray-400 max-w-sm">
-                        <svg class="w-10 h-10 mx-auto mb-2 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-1.605.42-3.113 1.157-4.418"/></svg>
-                        <div class="text-sm font-medium text-gray-500 mb-1">世界观（开发中）</div>
-                        <div class="text-xs">stage 2 上线：全局世界观库 + 每对话挂一个，自动注入所有生图 prompt</div>
+                <!-- 世界观（stage 2 已开放） -->
+                <div id="story-tab-worldview" class="story-tab-pane hidden h-full flex flex-col">
+                    <div class="shrink-0 px-4 py-2 flex flex-wrap items-center gap-2">
+                        <input type="text" id="worldview-search-input" placeholder="搜索世界观名…" class="flex-1 min-w-[140px] bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400" oninput="onWorldviewSearchInput(this.value)">
+                        <button type="button" onclick="startNewWorldview()" class="text-xs text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-2.5 py-1.5 rounded-md flex items-center gap-1">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+                            新建
+                        </button>
+                        <input type="file" id="worldview-import-input" class="hidden" accept="application/json,.json" onchange="importWorldviewsFromFile(event)">
+                        <button type="button" onclick="document.getElementById('worldview-import-input').click()" class="text-xs text-gray-700 bg-gray-100 hover:bg-gray-200 px-2.5 py-1.5 rounded-md flex items-center gap-1" title="导入单个世界观或整包 JSON">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1M12 12V4m0 0l-4 4m4-4l4 4"/></svg>
+                            导入
+                        </button>
+                        <button type="button" onclick="exportAllWorldviews()" class="text-xs text-gray-700 bg-gray-100 hover:bg-gray-200 px-2.5 py-1.5 rounded-md flex items-center gap-1" title="导出全部世界观为一个 JSON">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0l-4 4m4-4v12"/></svg>
+                            导出全部
+                        </button>
+                        <button type="button" onclick="clearAllWorldviewsWithConfirm()" class="text-xs text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 px-2.5 py-1.5 rounded-md">清空</button>
+                    </div>
+                    <div class="flex-1 min-h-0 overflow-hidden flex flex-col sm:grid sm:grid-cols-[240px_1fr]">
+                        <div id="worldview-list-pane" class="overflow-y-auto max-h-[35vh] sm:max-h-none">
+                            <div id="worldview-list-container" class="p-2 flex flex-col gap-1"></div>
+                        </div>
+                        <div id="worldview-edit-pane" class="flex-1 overflow-y-auto p-4"></div>
                     </div>
                 </div>
 
@@ -2457,13 +2482,15 @@
         }
 
         // 单点组合：给 runGeneration 用；返回最终 prompt + 注入元数据
-        // v5: 同时处理场景卡注入（@场景名）；character 优先级 > scene（同名时归 character）
-        function composeFinalPromptWithCharacters(userText) {
+        // v5: 同时处理场景卡（@场景名）+ 当前对话挂的世界观（隐藏注入）
+        // 优先级：character > scene > worldview（独立来源，不冲突）
+        function composeFinalPromptWithCharacters(userText, worldview) {
             const { characters, missingNames } = extractMentionedCharacters(userText || '');
             const scenes = extractMentionedScenes(userText || '');
             const blocks = [];
             if (characters.length > 0) blocks.push(buildCharacterInjectionBlock(characters));
             if (scenes.length > 0)     blocks.push(buildSceneInjectionBlock(scenes));
+            if (worldview)             blocks.push(buildWorldviewInjectionBlock(worldview));
             const finalPrompt = blocks.length === 0
                 ? (userText || '')
                 : ((userText || '') + '\n\n' + blocks.join('\n\n'));
@@ -2471,6 +2498,7 @@
                 finalPrompt,
                 injectedCharacters: characters.map(c => ({ id: c.id, name: c.name, updatedAt: c.updatedAt })),
                 injectedScenes:     scenes.map(s => ({ id: s.id, name: s.name, updatedAt: s.updatedAt })),
+                injectedWorldview:  worldview ? { id: worldview.id, name: worldview.name, updatedAt: worldview.updatedAt } : null,
                 missingNames,
             };
         }
@@ -2659,6 +2687,68 @@
         async function preloadWorldviews() {
             try { _worldviewsCache = await listWorldviews(); }
             catch { _worldviewsCache = []; }
+        }
+        function clearAllWorldviews() {
+            return new Promise((resolve, reject) => {
+                if (!_worldviewDbOk()) return reject(new Error('世界观存储未就绪'));
+                const req = db.transaction(STORE_WORLDVIEWS, 'readwrite').objectStore(STORE_WORLDVIEWS).clear();
+                req.onsuccess = () => resolve();
+                req.onerror = (e) => reject(e.target.error || e);
+            });
+        }
+        function validateWorldview(w) {
+            const errs = [];
+            if (!w.name) errs.push('世界观名不能为空');
+            if (w.name && w.name.length > 32) errs.push('名字过长（≤32 字）');
+            for (const k of Object.keys(WORLDVIEW_FIELD_LABELS)) {
+                if (w[k] && w[k].length > 3000) errs.push(`${WORLDVIEW_FIELD_LABELS[k]} 过长（≤3000 字）`);
+            }
+            return errs;
+        }
+        async function findWorldviewByName(name, excludeId) {
+            const lower = toNameLower(name);
+            if (!lower) return null;
+            const all = await listWorldviews();
+            for (const w of all) {
+                if (w.nameLower === lower && w.id !== excludeId) return w;
+            }
+            return null;
+        }
+        async function upsertWorldviewFromForm(form, existingId) {
+            const body = normalizeWorldviewForm(form);
+            const errs = validateWorldview(body);
+            if (errs.length) throw new Error(errs.join('；'));
+            const dup = await findWorldviewByName(body.name, existingId);
+            if (dup) throw new Error(`已有同名世界观「${body.name}」，请换个名字或先删除旧的`);
+            const now = Date.now();
+            const w = {
+                id: existingId || _newId(),
+                ...body,
+                createdAt: existingId ? (await getWorldview(existingId))?.createdAt || now : now,
+                updatedAt: now,
+                schemaVersion: WORLDVIEW_SCHEMA_VERSION,
+            };
+            await putWorldview(w);
+            await preloadWorldviews();
+            return w;
+        }
+        // 世界观注入块：当前对话挂的世界观，自动追加到 prompt 末尾
+        function buildWorldviewInjectionBlock(worldview) {
+            if (!worldview) return '';
+            const lines = ['---', '【世界观背景】'];
+            lines.push(`本对话设定的世界观「${worldview.name}」：`);
+            lines.push('');
+            if (worldview.era)       lines.push(`时代：${worldview.era}`);
+            if (worldview.setting)   lines.push(`设定：${worldview.setting}`);
+            if (worldview.mood)      lines.push(`基调：${worldview.mood}`);
+            if (worldview.styleNote) lines.push(`视觉风格：${worldview.styleNote}`);
+            if (worldview.extras)    lines.push(`其他：${worldview.extras}`);
+            lines.push('');
+            lines.push('请按以上世界观背景渲染画面，与角色/场景描述协同。若与提示词冲突以提示词为准。');
+            lines.push('---');
+            let block = lines.join('\n');
+            if (block.length > 3500) block = block.slice(0, 3470) + '\n...（世界观过长已截断）\n---';
+            return block;
         }
 
         // ---- 场景 mention 提取（与角色一样 @ 前缀；同名 character 优先匹配） ----
@@ -3134,6 +3224,8 @@
             await renderPendingImagesFromConv();
             await renderContextBarFromConv();
             await renderConversationList();
+            // 切对话后刷新头部世界观徽章（每对话挂一个，可能不同）
+            try { await renderHeaderWorldviewBadge(); } catch {}
 
             // 移动端：点了对话自动收起菜单
             if (window.innerWidth < 768) {
@@ -4774,9 +4866,15 @@
             conversationId = Number(conversationId);
             seed = Number.isFinite(+seed) && +seed >= 0 ? Math.floor(+seed) : 0;
 
-            // 单点注入：在这里把用户原文里的 @角色 解析并拼角色一致性指令
+            // 单点注入：@角色 / @场景 + 当前对话挂的世界观一起注入
             // promptText 保留给 bot message 展示（含 @），finalPrompt 发给 API
-            const composed = composeFinalPromptWithCharacters(promptText || '');
+            let _convForWorldview = null;
+            try { _convForWorldview = await getConv(conversationId); } catch {}
+            let _attachedWorldview = null;
+            if (_convForWorldview && _convForWorldview.worldviewId) {
+                try { _attachedWorldview = await getWorldview(_convForWorldview.worldviewId); } catch {}
+            }
+            const composed = composeFinalPromptWithCharacters(promptText || '', _attachedWorldview);
             // 种子是隐藏式注入，发给 API 但不展示给用户：在 finalPrompt 末尾追加 "\n种子:N"
             const finalPrompt = injectSeedIntoPrompt(composed.finalPrompt, seed);
             const injectedCharacters = composed.injectedCharacters;
@@ -6170,10 +6268,12 @@
             _currentEditingSceneId = null;
             _scenePendingAvatar = null;
             abortAllSceneFieldEnhancers();
-            // 同时清理角色 tab 的状态
+            // 同时清理角色 + 世界观 tab 的状态
             _currentEditingCharId = null;
             _charPendingAvatar = null;
             try { abortAllCharFieldEnhancers(); } catch {}
+            _currentEditingWorldviewId = null;
+            try { abortAllWorldviewFieldEnhancers(); } catch {}
         }
         function switchStoryTab(tab) {
             document.querySelectorAll('.story-tab').forEach(b => {
@@ -6194,6 +6294,12 @@
                 if (search) search.value = '';
                 renderSceneList();
                 startNewScene();
+            } else if (tab === 'worldview') {
+                _worldviewListFilter = '';
+                const search = document.getElementById('worldview-search-input');
+                if (search) search.value = '';
+                renderWorldviewList();
+                startNewWorldview();
             }
         }
 
@@ -6605,6 +6711,444 @@
                 _setSceneFieldPreview(fieldKey, 'error', { error: (err && err.message) || String(err) });
             } finally {
                 if (_sceneFieldAborters.get(fieldKey) === ac) _sceneFieldAborters.delete(fieldKey);
+            }
+        }
+
+        // ============================================================
+        // 世界观管理 UI（v5 stage 2）
+        // ============================================================
+        let _currentEditingWorldviewId = null;
+        let _worldviewListFilter = '';
+
+        function onWorldviewSearchInput(v) {
+            _worldviewListFilter = (v || '').trim().toLowerCase();
+            renderWorldviewList();
+        }
+        function _filterWorldviews(list, q) {
+            if (!q) return list;
+            return list.filter(w => (w.nameLower || '').includes(q));
+        }
+        function renderWorldviewList() {
+            const container = document.getElementById('worldview-list-container');
+            if (!container) return;
+            const list = _filterWorldviews(_worldviewsCache, _worldviewListFilter);
+            if (list.length === 0) {
+                container.innerHTML = `<div class="text-xs text-gray-400 text-center py-4">${_worldviewListFilter ? '没有匹配的世界观' : '还没有世界观，点上方"新建"创建第一个'}</div>`;
+                return;
+            }
+            // 拿当前对话挂的 worldviewId 高亮"已应用"
+            getConv(currentConversationId).then(conv => {
+                const attachedId = conv && conv.worldviewId;
+                container.innerHTML = list.map(w => {
+                    const active = (_currentEditingWorldviewId === w.id);
+                    const isAttached = attachedId === w.id;
+                    const summary = (w.setting || w.era || w.mood || '').replace(/\s+/g, ' ').slice(0, 40);
+                    return `
+                        <div class="flex items-center gap-2 px-2 py-2 rounded-lg cursor-pointer ${active ? 'bg-indigo-50 border border-indigo-200' : 'hover:bg-gray-50 border border-transparent'}" onclick="selectWorldviewForEdit(${w.id})">
+                            <div class="w-8 h-8 rounded-md bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-semibold shrink-0">${escapeHTML((w.name || '?').slice(0,2))}</div>
+                            <div class="flex-1 min-w-0">
+                                <div class="text-sm text-gray-800 truncate flex items-center gap-1.5">
+                                    <span class="truncate">${escapeHTML(w.name || '未命名')}</span>
+                                    ${isAttached ? `<span class="text-[9px] px-1 py-px rounded bg-indigo-600 text-white shrink-0">已应用</span>` : ''}
+                                </div>
+                                <div class="text-[11px] text-gray-400 truncate">${escapeHTML(summary)}</div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }).catch(() => {
+                container.innerHTML = list.map(w => `<div class="px-2 py-2 text-sm">${escapeHTML(w.name)}</div>`).join('');
+            });
+        }
+        function startNewWorldview() {
+            _currentEditingWorldviewId = null;
+            renderWorldviewEditPane(null);
+            renderWorldviewList();
+        }
+        async function selectWorldviewForEdit(id) {
+            abortAllWorldviewFieldEnhancers();
+            const w = await getWorldview(id);
+            if (!w) { showToast('世界观已丢失'); return; }
+            _currentEditingWorldviewId = w.id;
+            renderWorldviewEditPane(w);
+            renderWorldviewList();
+        }
+        function renderWorldviewEditPane(w) {
+            const pane = document.getElementById('worldview-edit-pane');
+            if (!pane) return;
+            const isNew = !w;
+            const title = isNew ? '新建世界观' : `编辑：${escapeHTML(w.name)}`;
+            const fieldsHTML = Object.keys(WORLDVIEW_FIELD_LABELS).map(k => `
+                <div class="worldview-field-group" data-field="${k}">
+                    <div class="flex items-center mb-1">
+                        <label class="text-sm font-medium text-gray-700">${WORLDVIEW_FIELD_LABELS[k]}</label>
+                        <button type="button" onclick="onWorldviewFieldEnhanceClick('${k}')" class="worldview-ai-btn ml-auto inline-flex items-center gap-1 text-[11px] text-purple-600 hover:bg-purple-50 border border-purple-200 px-2 py-1 sm:py-0.5 rounded-md" title="用 gpt-oss-120b 生成/优化这个字段">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+                            AI
+                        </button>
+                    </div>
+                    <textarea id="worldview-field-${k}" rows="3" class="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 focus:ring-1 focus:ring-indigo-400 focus:outline-none resize-y"></textarea>
+                    <div class="worldview-field-preview hidden mt-2 rounded-lg border border-purple-200 bg-purple-50 p-3">
+                        <div class="flex items-center justify-between text-[11px] text-purple-700 mb-1">
+                            <span class="worldview-field-preview-label">AI 建议</span>
+                            <button type="button" class="worldview-field-preview-close text-gray-400 hover:text-red-500" onclick="discardWorldviewFieldPreview('${k}')" title="关闭">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                            </button>
+                        </div>
+                        <div class="worldview-field-preview-body">
+                            <pre class="worldview-field-preview-text whitespace-pre-wrap break-words text-sm text-gray-800 font-sans"></pre>
+                        </div>
+                        <div class="worldview-field-preview-actions mt-2 flex flex-wrap gap-2">
+                            <button type="button" class="flex-1 min-h-[36px] sm:min-h-0 bg-purple-600 text-white text-xs px-3 py-1.5 rounded-md hover:bg-purple-500" onclick="applyWorldviewFieldPreview('${k}')">应用到此字段</button>
+                            <button type="button" class="flex-1 min-h-[36px] sm:min-h-0 bg-white border border-gray-300 text-gray-600 text-xs px-3 py-1.5 rounded-md hover:bg-gray-50" onclick="discardWorldviewFieldPreview('${k}')">放弃</button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+
+            pane.innerHTML = `
+                <div class="mb-3">
+                    <div class="text-xs text-gray-400 mb-1">${title}</div>
+                    <input id="worldview-field-name" type="text" maxlength="32" placeholder="世界观名（如：末世废土 / 赛博朋克 2099）" class="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-base text-gray-800 focus:ring-1 focus:ring-indigo-400 focus:outline-none">
+                </div>
+                <div class="flex items-center gap-1 mb-3 text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-2 py-1.5">
+                    <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    <span>世界观会被自动追加到所有生图 prompt（仅在挂着该对话时）。每段可点 AI 让 gpt-oss-120b 生成/优化。</span>
+                </div>
+                <div class="space-y-3">${fieldsHTML}</div>
+                <div class="sticky bottom-0 left-0 right-0 -mx-4 mt-4 px-4 py-3 bg-white flex flex-wrap gap-2 shadow-[0_-2px_6px_rgba(0,0,0,0.04)]">
+                    <button type="button" onclick="saveCurrentWorldview()" class="flex-1 min-w-[120px] min-h-[40px] bg-black text-white rounded-lg text-sm hover:bg-gray-800">保存</button>
+                    ${isNew ? '' : `
+                        <button type="button" id="worldview-attach-btn" onclick="toggleAttachCurrentWorldview()" class="min-h-[40px] bg-indigo-600 text-white rounded-lg text-sm px-3 hover:bg-indigo-500">应用到当前对话</button>
+                        <button type="button" onclick="exportCurrentWorldview()" class="min-h-[40px] bg-gray-100 text-gray-700 rounded-lg text-sm px-3 hover:bg-gray-200">导出</button>
+                        <button type="button" onclick="deleteCurrentWorldview()" class="min-h-[40px] bg-red-50 text-red-600 border border-red-200 rounded-lg text-sm px-3 hover:bg-red-100">删除</button>
+                    `}
+                </div>
+            `;
+            document.getElementById('worldview-field-name').value = w ? (w.name || '') : '';
+            for (const k of Object.keys(WORLDVIEW_FIELD_LABELS)) {
+                document.getElementById('worldview-field-' + k).value = w ? (w[k] || '') : '';
+            }
+            // 同步"应用到当前对话"按钮文案（已应用 ✓ / 未应用）
+            _refreshWorldviewAttachBtn();
+        }
+        async function _refreshWorldviewAttachBtn() {
+            const btn = document.getElementById('worldview-attach-btn');
+            if (!btn || !_currentEditingWorldviewId) return;
+            const conv = await getConv(currentConversationId);
+            const isAttached = conv && conv.worldviewId === _currentEditingWorldviewId;
+            if (isAttached) {
+                btn.textContent = '已应用 ✓ 点击解除';
+                btn.classList.remove('bg-indigo-600', 'hover:bg-indigo-500');
+                btn.classList.add('bg-white', 'text-indigo-700', 'border', 'border-indigo-300', 'hover:bg-indigo-50');
+            } else {
+                btn.textContent = '应用到当前对话';
+                btn.classList.add('bg-indigo-600', 'hover:bg-indigo-500');
+                btn.classList.remove('bg-white', 'text-indigo-700', 'border', 'border-indigo-300', 'hover:bg-indigo-50');
+            }
+        }
+        function collectWorldviewFormFromDOM() {
+            const get = (id) => (document.getElementById(id) && document.getElementById(id).value) || '';
+            return {
+                name: get('worldview-field-name'),
+                era: get('worldview-field-era'),
+                setting: get('worldview-field-setting'),
+                mood: get('worldview-field-mood'),
+                styleNote: get('worldview-field-styleNote'),
+                extras: get('worldview-field-extras'),
+            };
+        }
+        async function saveCurrentWorldview() {
+            const form = collectWorldviewFormFromDOM();
+            try {
+                const w = await upsertWorldviewFromForm(form, _currentEditingWorldviewId);
+                _currentEditingWorldviewId = w.id;
+                renderWorldviewList();
+                renderWorldviewEditPane(w);
+                showToast('世界观已保存');
+            } catch (e) {
+                alert('保存失败：' + (e && e.message ? e.message : e));
+            }
+        }
+        async function deleteCurrentWorldview() {
+            if (!_currentEditingWorldviewId) return;
+            const w = (_worldviewsCache || []).find(x => x.id === _currentEditingWorldviewId);
+            if (!confirm(`确定删除世界观「${(w && w.name) || '未命名'}」？\n挂着这个世界观的对话会自动解除。`)) return;
+            try {
+                // 先把所有挂着这个 worldviewId 的 conv 解除
+                const allConvs = await listConvs();
+                for (const c of allConvs) {
+                    if (c.worldviewId === _currentEditingWorldviewId) {
+                        c.worldviewId = null;
+                        c.updatedAt = Date.now();
+                        await putConv(c);
+                    }
+                }
+                await deleteWorldview(_currentEditingWorldviewId);
+                await preloadWorldviews();
+                _currentEditingWorldviewId = null;
+                renderWorldviewList();
+                renderWorldviewEditPane(null);
+                renderHeaderWorldviewBadge();
+                showToast('已删除');
+            } catch (e) {
+                alert('删除失败：' + (e && e.message ? e.message : e));
+            }
+        }
+        async function clearAllWorldviewsWithConfirm() {
+            if (!_worldviewsCache.length) { alert('还没有世界观'); return; }
+            if (!confirm(`确定清空全部 ${_worldviewsCache.length} 个世界观？\n所有挂着世界观的对话会自动解除。`)) return;
+            try {
+                const allConvs = await listConvs();
+                for (const c of allConvs) {
+                    if (c.worldviewId) {
+                        c.worldviewId = null;
+                        c.updatedAt = Date.now();
+                        await putConv(c);
+                    }
+                }
+                await clearAllWorldviews();
+                await preloadWorldviews();
+                _currentEditingWorldviewId = null;
+                renderWorldviewList();
+                renderWorldviewEditPane(null);
+                renderHeaderWorldviewBadge();
+                showToast('已清空');
+            } catch (e) {
+                alert('清空失败：' + (e && e.message ? e.message : e));
+            }
+        }
+
+        // ---- 应用 / 解除 当前对话的世界观 ----
+        async function applyWorldviewToCurrentConv(worldviewId) {
+            if (!currentConversationId) { showToast('请先选择对话'); return; }
+            const conv = await getConv(currentConversationId);
+            if (!conv) return;
+            conv.worldviewId = worldviewId || null;
+            conv.updatedAt = Date.now();
+            await putConv(conv);
+            await renderHeaderWorldviewBadge();
+            renderWorldviewList();
+            _refreshWorldviewAttachBtn();
+            showToast(worldviewId ? '已应用到当前对话' : '已解除世界观');
+        }
+        async function clearConvWorldview() {
+            await applyWorldviewToCurrentConv(null);
+        }
+        async function toggleAttachCurrentWorldview() {
+            if (!_currentEditingWorldviewId) return;
+            const conv = await getConv(currentConversationId);
+            const isAttached = conv && conv.worldviewId === _currentEditingWorldviewId;
+            await applyWorldviewToCurrentConv(isAttached ? null : _currentEditingWorldviewId);
+        }
+        async function renderHeaderWorldviewBadge() {
+            const badge = document.getElementById('header-worldview-badge');
+            const nameEl = document.getElementById('header-worldview-name');
+            if (!badge || !nameEl) return;
+            if (!currentConversationId) { badge.classList.add('hidden'); return; }
+            try {
+                const conv = await getConv(currentConversationId);
+                if (!conv || !conv.worldviewId) { badge.classList.add('hidden'); return; }
+                const w = await getWorldview(conv.worldviewId);
+                if (!w) { badge.classList.add('hidden'); return; }
+                nameEl.textContent = w.name;
+                badge.classList.remove('hidden');
+            } catch {
+                badge.classList.add('hidden');
+            }
+        }
+
+        // ---- 导入导出 ----
+        async function exportCurrentWorldview() {
+            if (!_currentEditingWorldviewId) { alert('请先选择或保存一个世界观再导出'); return; }
+            const w = await getWorldview(_currentEditingWorldviewId);
+            if (!w) { alert('世界观已丢失'); return; }
+            _downloadJSON({ type: 'vsllm-worldview', schemaVersion: WORLDVIEW_SCHEMA_VERSION, worldview: w },
+                `worldview-${safeFilename(w.name)}-${new Date().toISOString().slice(0,10).replace(/-/g,'')}.json`);
+        }
+        async function exportAllWorldviews() {
+            const all = await listWorldviews();
+            if (all.length === 0) { alert('还没有任何世界观可以导出'); return; }
+            _downloadJSON({
+                type: 'vsllm-worldview-pack',
+                schemaVersion: WORLDVIEW_SCHEMA_VERSION,
+                exportedAt: Date.now(),
+                worldviews: all,
+            }, `worldviews-pack-${new Date().toISOString().slice(0,10).replace(/-/g,'')}.json`);
+        }
+        async function importWorldviewsFromFile(e) {
+            const file = e.target.files && e.target.files[0];
+            if (!file) return;
+            if (file.size > 5 * 1024 * 1024) { alert('文件太大（> 5MB）'); e.target.value=''; return; }
+            try {
+                const text = await file.text();
+                let obj;
+                try { obj = JSON.parse(text); }
+                catch (pe) { throw new Error('JSON 解析失败：' + pe.message); }
+
+                let list = [];
+                if (obj && obj.type === 'vsllm-worldview-pack' && Array.isArray(obj.worldviews)) list = obj.worldviews;
+                else if (obj && obj.type === 'vsllm-worldview' && obj.worldview) list = [obj.worldview];
+                else if (obj && (obj.name || obj.setting || obj.era)) list = [obj];
+                else if (Array.isArray(obj) && obj.length && (obj[0].name || obj[0].setting)) list = obj;
+                else throw new Error('文件格式不认识：既不是单卡也不是 worldview-pack');
+
+                const result = await _importWorldviewList(list);
+                showToast(`导入完成：新增 ${result.added}，覆盖 ${result.overwritten}，改名 ${result.renamed}，跳过 ${result.skipped}`);
+                renderWorldviewList();
+            } catch (err) {
+                alert('导入失败：' + (err && err.message ? err.message : err));
+            }
+            e.target.value = '';
+        }
+        async function _importWorldviewList(list) {
+            const stats = { added: 0, overwritten: 0, renamed: 0, skipped: 0 };
+            let globalStrategy = null;
+            for (const raw of list) {
+                const body = normalizeWorldviewForm(raw);
+                const errs = validateWorldview(body);
+                if (errs.length) { stats.skipped++; continue; }
+                const existing = await findWorldviewByName(body.name, null);
+                let strategy = globalStrategy;
+                if (existing && !strategy) {
+                    const ans = prompt(
+                        `世界观「${body.name}」已存在。\n输入 1 覆盖，2 改名导入，3 跳过\n（输入 1!/2!/3! 表示对剩余重名沿用此策略）`,
+                        '2'
+                    );
+                    if (ans == null) { stats.skipped++; continue; }
+                    const sticky = ans.endsWith('!');
+                    const n = ans.replace(/!$/, '').trim();
+                    strategy = n === '1' ? 'overwrite' : n === '3' ? 'skip' : 'rename';
+                    if (sticky) globalStrategy = strategy;
+                }
+                if (existing && strategy === 'skip') { stats.skipped++; continue; }
+                let finalName = body.name;
+                let targetId;
+                if (existing && strategy === 'overwrite') { targetId = existing.id; stats.overwritten++; }
+                else if (existing && strategy === 'rename') {
+                    let k = 2;
+                    while (await findWorldviewByName(`${body.name}-${k}`, null)) k++;
+                    finalName = `${body.name}-${k}`;
+                    stats.renamed++;
+                } else stats.added++;
+                const now = Date.now();
+                const w = {
+                    id: targetId || _newId(),
+                    ...body,
+                    name: finalName,
+                    nameLower: toNameLower(finalName),
+                    createdAt: raw.createdAt || now,
+                    updatedAt: now,
+                    schemaVersion: WORLDVIEW_SCHEMA_VERSION,
+                };
+                try { await putWorldview(w); }
+                catch { stats.skipped++; if (strategy === 'overwrite') stats.overwritten--; else if (strategy === 'rename') stats.renamed--; else stats.added--; }
+            }
+            await preloadWorldviews();
+            return stats;
+        }
+
+        // ---- AI 字段增强 ----
+        const _worldviewFieldAborters = new Map();
+        function abortAllWorldviewFieldEnhancers() {
+            for (const ac of _worldviewFieldAborters.values()) { try { ac.abort(); } catch {} }
+            _worldviewFieldAborters.clear();
+        }
+        const WORLDVIEW_FIELD_ENHANCE_SYSTEM = [
+            '你在帮助用户构建"世界观"，用于 gpt-image-2 系列生图保持背景一致性。',
+            '任务：为指定字段产出或润色一段清晰的自然语言描述（不是关键词堆砌）。',
+            '',
+            '字段语义：',
+            '- era：时代/时期（年代、技术水平、纪元名称）',
+            '- setting：设定/世界规则（物理或魔法规则、社会结构、关键背景事件）',
+            '- mood：基调（整体情绪、压抑/明快/史诗/孤寂等）',
+            '- styleNote：视觉风格（画风、色调、参考美学、电影感）',
+            '- extras：其他备注（可选，自由补充）',
+            '',
+            '硬性规则：',
+            '- 输出必须是自然语言段落，不要 Markdown / 列点 / 引号 / 前后解释。',
+            '- 严格只输出本字段的最终内容本体。',
+            '- 不与用户已填的其他字段矛盾。',
+            '- 中文交流回中文，英文回英文。',
+            '- 不添加敏感/违规内容。',
+            '- 长度约 60~250 字。',
+            '',
+            '判定：当前值为空 → 基于世界观名 + 其他字段合理生成；非空 → 保留用户意图润色补细节。',
+        ].join('\n');
+        async function callWorldviewFieldEnhancer({ worldviewName, fieldKey, currentValue, otherFields, signal }) {
+            const label = WORLDVIEW_FIELD_LABELS[fieldKey] || fieldKey;
+            const isEmpty = !currentValue || !currentValue.trim();
+            const other = [];
+            for (const k of Object.keys(WORLDVIEW_FIELD_LABELS)) {
+                if (k === fieldKey) continue;
+                const v = otherFields && otherFields[k];
+                if (v && v.trim()) other.push(`  ${k}(${WORLDVIEW_FIELD_LABELS[k]}): ${v.trim()}`);
+            }
+            const userMsg = [
+                `世界观名：${worldviewName || '(未命名)'}`,
+                `目标字段：${fieldKey}（${label}）`,
+                `当前值：${isEmpty ? '(空)' : currentValue.trim()}`,
+                `任务：${isEmpty ? '生成一段合理的新描述。' : '在保留用户意图前提下润色、补细节、去歧义。'}`,
+                '',
+                '其他已填字段（仅供参考，保持一致）：',
+                other.length ? other.join('\n') : '  (无)',
+                '',
+                `请只输出 ${fieldKey} 字段的最终自然语言内容本体。`,
+            ].join('\n');
+            return await postChatCompletion({
+                system: WORLDVIEW_FIELD_ENHANCE_SYSTEM,
+                user: userMsg,
+                signal,
+            });
+        }
+        function _setWorldviewFieldPreview(fieldKey, state, opts) {
+            const group = document.querySelector(`.worldview-field-group[data-field="${fieldKey}"]`);
+            if (!group) return;
+            const preview = group.querySelector('.worldview-field-preview');
+            const label = group.querySelector('.worldview-field-preview-label');
+            const text = group.querySelector('.worldview-field-preview-text');
+            if (!preview || !label || !text) return;
+            preview.classList.remove('hidden');
+            if (state === 'loading') { label.textContent = 'AI 生成中…'; text.textContent = ''; }
+            else if (state === 'done')  { label.textContent = 'AI 建议'; text.textContent = (opts && opts.text) || ''; }
+            else if (state === 'error') { label.textContent = '失败'; text.textContent = (opts && opts.error) || '请重试'; }
+        }
+        function discardWorldviewFieldPreview(fieldKey) {
+            const group = document.querySelector(`.worldview-field-group[data-field="${fieldKey}"]`);
+            const preview = group && group.querySelector('.worldview-field-preview');
+            if (preview) preview.classList.add('hidden');
+            const ac = _worldviewFieldAborters.get(fieldKey);
+            if (ac) { try { ac.abort(); } catch {} _worldviewFieldAborters.delete(fieldKey); }
+        }
+        function applyWorldviewFieldPreview(fieldKey) {
+            const group = document.querySelector(`.worldview-field-group[data-field="${fieldKey}"]`);
+            const text = group && group.querySelector('.worldview-field-preview-text');
+            const ta = document.getElementById('worldview-field-' + fieldKey);
+            if (text && ta) ta.value = text.textContent || '';
+            discardWorldviewFieldPreview(fieldKey);
+            showToast(`已应用到【${WORLDVIEW_FIELD_LABELS[fieldKey] || fieldKey}】`);
+        }
+        async function onWorldviewFieldEnhanceClick(fieldKey) {
+            if (!localStorage.getItem('vsllm_api_key')) { showToast('先去设置填 API Key'); openSettings(); return; }
+            const form = collectWorldviewFormFromDOM();
+            const worldviewName = (form.name || '').trim() || '(未命名)';
+            const currentValue = form[fieldKey] || '';
+            const prev = _worldviewFieldAborters.get(fieldKey);
+            if (prev) { try { prev.abort(); } catch {} }
+            const ac = new AbortController();
+            _worldviewFieldAborters.set(fieldKey, ac);
+            _setWorldviewFieldPreview(fieldKey, 'loading');
+            try {
+                const out = await callWorldviewFieldEnhancer({
+                    worldviewName, fieldKey, currentValue, otherFields: form, signal: ac.signal,
+                });
+                if (ac.signal.aborted) return;
+                _setWorldviewFieldPreview(fieldKey, 'done', { text: (out || '').trim() });
+            } catch (err) {
+                if (err && err.name === 'AbortError') return;
+                _setWorldviewFieldPreview(fieldKey, 'error', { error: (err && err.message) || String(err) });
+            } finally {
+                if (_worldviewFieldAborters.get(fieldKey) === ac) _worldviewFieldAborters.delete(fieldKey);
             }
         }
     </script>
