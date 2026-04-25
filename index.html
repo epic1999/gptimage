@@ -644,6 +644,76 @@
             border-bottom-color: #ea580c;  /* orange-600 */
         }
 
+        /* ========== 剧情推演（plot inference） ========== */
+        .plot-mode-seg {
+            display: inline-flex; gap: 0;
+            background: #f3f4f6;
+            border-radius: 8px;
+            padding: 2px;
+        }
+        .plot-mode-seg button {
+            padding: 4px 10px;
+            font-size: 12px;
+            color: #6b7280;
+            background: transparent;
+            border: 0;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.12s, color 0.12s;
+        }
+        .plot-mode-seg button:hover { color: #1f2937; }
+        .plot-mode-seg button.is-active {
+            background: #fff;
+            color: #c2410c;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+        }
+        .plot-progress-row {
+            display: flex; align-items: center; gap: 8px;
+            font-size: 12px; color: #6b7280;
+            padding: 4px 0;
+        }
+        .plot-progress-row .icon { width: 14px; height: 14px; flex-shrink: 0; }
+        .plot-progress-row.is-pending .icon { color: #d1d5db; }
+        .plot-progress-row.is-running .icon { color: #ea580c; animation: plot-spin 1s linear infinite; }
+        .plot-progress-row.is-done .icon { color: #10b981; }
+        .plot-progress-row.is-error .icon { color: #ef4444; }
+        @keyframes plot-spin { to { transform: rotate(360deg); } }
+        .plot-cand-item {
+            display: flex; align-items: flex-start; gap: 8px;
+            padding: 6px 8px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .plot-cand-item:hover { background: #f9fafb; }
+        .plot-cand-item.is-checked { background: #fff7ed; }
+        .plot-cand-type {
+            font-size: 9px; padding: 1px 5px;
+            border-radius: 999px; flex-shrink: 0;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        .plot-cand-type.t-character { background: #d1fae5; color: #065f46; }
+        .plot-cand-type.t-scene     { background: #ffedd5; color: #9a3412; }
+        .plot-cand-type.t-worldview { background: #e0e7ff; color: #3730a3; }
+        .plot-cand-type.t-message   { background: #f3f4f6; color: #374151; }
+        .plot-cand-type.t-favorite  { background: #fef3c7; color: #92400e; }
+        .plot-cand-type.t-gallery   { background: #f3e8ff; color: #6b21a8; }
+        .plot-cand-type.t-prop      { background: #e0f2fe; color: #075985; }
+        .plot-panel-card {
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 12px;
+            background: #fff;
+            display: flex; flex-direction: column; gap: 6px;
+            transition: box-shadow 0.15s, border-color 0.15s;
+        }
+        .plot-panel-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        .plot-panel-card.is-queued { border-color: #fde68a; background: #fffbeb; }
+        .plot-panel-card.is-running { border-color: #fb923c; background: #fff7ed; }
+        .plot-panel-card.is-done { border-color: #6ee7b7; background: #f0fdf4; }
+        .plot-panel-card.is-error { border-color: #fca5a5; background: #fef2f2; }
+
         /* ========== loading 卡片里的 meta 行（计时器 + 事件计数） ========== */
         .loading-meta {
             display: inline-flex;
@@ -1094,6 +1164,7 @@
             <div class="shrink-0 px-2 sm:px-4 flex items-center gap-1 overflow-x-auto">
                 <button data-story-tab="character" class="story-tab is-active" onclick="switchStoryTab('character')">角色卡</button>
                 <button data-story-tab="scene" class="story-tab" onclick="switchStoryTab('scene')">场景卡</button>
+                <button data-story-tab="prop" class="story-tab" onclick="switchStoryTab('prop')">道具卡</button>
                 <button data-story-tab="worldview" class="story-tab" onclick="switchStoryTab('worldview')">世界观</button>
                 <button data-story-tab="plot" class="story-tab" onclick="switchStoryTab('plot')">剧情推演</button>
             </div>
@@ -1180,12 +1251,126 @@
                     </div>
                 </div>
 
-                <!-- 剧情推演 placeholder（stage 3 上线） -->
-                <div id="story-tab-plot" class="story-tab-pane hidden h-full flex items-center justify-center p-8">
-                    <div class="text-center text-gray-400 max-w-sm">
-                        <svg class="w-10 h-10 mx-auto mb-2 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3v11.25A2.25 2.25 0 006 16.5h12a2.25 2.25 0 002.25-2.25V3M3.75 3h16.5M3.75 3l4.5 4.5h7.5l4.5-4.5M9 16.5v3.75m6-3.75v3.75M5.25 21h13.5"/></svg>
-                        <div class="text-sm font-medium text-gray-500 mb-1">剧情推演（开发中）</div>
-                        <div class="text-xs">stage 3 上线：一句话剧情 → AI 推演 N 个分镜 prompt，支持 AI 智能引用历史 / 手动选 / AI+微调</div>
+                <!-- 道具卡（v6） -->
+                <div id="story-tab-prop" class="story-tab-pane hidden h-full flex flex-col">
+                    <div class="shrink-0 px-4 py-2 flex flex-wrap items-center gap-2">
+                        <input type="text" id="prop-search-input" placeholder="搜索道具名/分类/标签…" class="flex-1 min-w-[140px] bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-sky-400" oninput="onPropSearchInput(this.value)">
+                        <select id="prop-category-filter" class="bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 text-sm cursor-pointer" onchange="onPropCategoryFilterChange(this.value)">
+                            <option value="">全部分类</option>
+                        </select>
+                        <button type="button" onclick="startNewProp()" class="text-xs text-sky-700 bg-sky-50 hover:bg-sky-100 border border-sky-200 px-2.5 py-1.5 rounded-md flex items-center gap-1">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+                            新建
+                        </button>
+                        <input type="file" id="prop-import-input" class="hidden" accept="application/json,.json" onchange="importPropsFromFile(event)">
+                        <button type="button" onclick="document.getElementById('prop-import-input').click()" class="text-xs text-gray-700 bg-gray-100 hover:bg-gray-200 px-2.5 py-1.5 rounded-md flex items-center gap-1" title="导入单卡或整包 JSON">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1M12 12V4m0 0l-4 4m4-4l4 4"/></svg>
+                            导入
+                        </button>
+                        <button type="button" onclick="exportAllProps()" class="text-xs text-gray-700 bg-gray-100 hover:bg-gray-200 px-2.5 py-1.5 rounded-md flex items-center gap-1" title="导出全部道具为一个 JSON">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0l-4 4m4-4v12"/></svg>
+                            导出全部
+                        </button>
+                        <button type="button" onclick="clearAllPropsWithConfirm()" class="text-xs text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 px-2.5 py-1.5 rounded-md">清空</button>
+                    </div>
+                    <div class="flex-1 min-h-0 overflow-hidden flex flex-col sm:grid sm:grid-cols-[240px_1fr]">
+                        <div id="prop-list-pane" class="overflow-y-auto max-h-[35vh] sm:max-h-none">
+                            <div id="prop-list-container" class="p-2 flex flex-col gap-1"></div>
+                        </div>
+                        <div id="prop-edit-pane" class="flex-1 overflow-y-auto p-4"></div>
+                    </div>
+                </div>
+
+                <!-- 剧情推演（stage 3 已开放） -->
+                <div id="story-tab-plot" class="story-tab-pane hidden h-full flex flex-col overflow-hidden">
+                    <!-- 输入区（始终可见） -->
+                    <div id="plot-input-section" class="shrink-0 px-4 py-3 space-y-2 overflow-y-auto" style="max-height: 50%;">
+                        <div>
+                            <div class="text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1.5">剧情大纲</div>
+                            <textarea id="plot-outline-input" rows="2" placeholder="比如：少女在末世废墟中寻找父亲，一路遇见疯狂幸存者…" class="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 focus:bg-white focus:border-orange-400 outline-none resize-y" oninput="_plotInputChanged()"></textarea>
+                        </div>
+                        <!-- 自动检测的上下文（只读展示） -->
+                        <div id="plot-detected-ctx" class="text-[11px] text-gray-500 flex flex-wrap items-center gap-1 min-h-[18px]"></div>
+                        <!-- 参数 + 模式 -->
+                        <div class="flex flex-wrap items-center gap-3 text-xs text-gray-500">
+                            <label class="flex items-center gap-1.5">
+                                <span>分镜数</span>
+                                <input type="number" id="plot-panel-count" min="2" max="12" value="6" class="w-14 bg-gray-50 border border-gray-200 rounded px-2 py-0.5 text-center" oninput="_plotInputChanged()">
+                            </label>
+                            <label class="flex items-center gap-1.5">
+                                <span>风格</span>
+                                <select id="plot-style" class="bg-gray-50 border border-gray-200 rounded px-2 py-0.5 cursor-pointer" onchange="_plotInputChanged()">
+                                    <option value="cinematic">电影感</option>
+                                    <option value="anime">日漫风</option>
+                                    <option value="realistic">写实摄影</option>
+                                    <option value="oilpainting">油画质感</option>
+                                    <option value="comic">美漫分镜</option>
+                                    <option value="watercolor">水彩画风</option>
+                                    <option value="custom">自由发挥</option>
+                                </select>
+                            </label>
+                            <div class="ml-auto plot-mode-seg" role="tablist">
+                                <button type="button" data-plot-mode="ai" class="is-active" onclick="_setPlotMode('ai')" title="AI 智能挑选历史上下文">AI 智能</button>
+                                <button type="button" data-plot-mode="manual" onclick="_setPlotMode('manual')" title="手动选历史">手动</button>
+                                <button type="button" data-plot-mode="tune" onclick="_setPlotMode('tune')" title="AI 选完后我再微调">AI+微调</button>
+                            </div>
+                        </div>
+                        <label class="flex items-center gap-1.5 text-xs text-gray-600 select-none cursor-pointer" title="开启后，每个 panel 的 prompt 会嵌入符合角色性格的对话台词（gpt-image-2 支持自然语言渲染对话）">
+                            <input type="checkbox" id="plot-include-dialogue" class="accent-orange-600" onchange="_plotInputChanged()">
+                            <span>生成对话（让画面自带角色台词，按 persona 风格）</span>
+                        </label>
+                        <div class="flex gap-2 pt-1">
+                            <button type="button" id="plot-start-btn" onclick="runPlotInference()" class="flex-1 bg-orange-600 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-orange-500 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors">开始推演 →</button>
+                            <button type="button" id="plot-reset-btn" onclick="resetPlotState()" class="hidden bg-gray-100 text-gray-700 text-sm px-3 py-2 rounded-lg hover:bg-gray-200">重置</button>
+                            <button type="button" id="plot-cancel-btn" onclick="cancelPlotInference()" class="hidden bg-red-50 text-red-600 border border-red-200 text-sm px-3 py-2 rounded-lg hover:bg-red-100">取消</button>
+                        </div>
+                    </div>
+
+                    <!-- 进度区 -->
+                    <div id="plot-progress-section" class="hidden shrink-0 px-4 py-2 border-t border-gray-100">
+                        <div id="plot-progress-stage1" class="plot-progress-row is-pending">
+                            <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg>
+                            <span class="flex-1">收集历史候选</span>
+                            <span class="text-[11px] text-gray-400 plot-progress-meta"></span>
+                        </div>
+                        <div id="plot-progress-stage2" class="plot-progress-row is-pending">
+                            <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg>
+                            <span class="flex-1">AI 精选相关上下文</span>
+                            <span class="text-[11px] text-gray-400 plot-progress-meta"></span>
+                        </div>
+                        <div id="plot-progress-stage3" class="plot-progress-row is-pending">
+                            <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg>
+                            <span class="flex-1">推演分镜</span>
+                            <span class="text-[11px] text-gray-400 plot-progress-meta"></span>
+                        </div>
+                    </div>
+
+                    <!-- 候选选择区（手动 / 微调模式可见） -->
+                    <div id="plot-picker-section" class="hidden flex-1 min-h-0 overflow-y-auto px-4 py-3 border-t border-gray-100">
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="text-[11px] font-medium text-gray-500 uppercase tracking-wider">选择上下文 <span id="plot-picker-count" class="text-gray-400 normal-case font-normal"></span></div>
+                            <div class="flex gap-1">
+                                <button type="button" onclick="_plotPickAll()" class="text-[11px] text-orange-600 hover:bg-orange-50 px-2 py-0.5 rounded">全选</button>
+                                <button type="button" onclick="_plotPickNone()" class="text-[11px] text-gray-600 hover:bg-gray-100 px-2 py-0.5 rounded">全不选</button>
+                                <button type="button" onclick="_plotPickCurrentConv()" class="text-[11px] text-orange-600 hover:bg-orange-50 px-2 py-0.5 rounded">仅当前对话</button>
+                            </div>
+                        </div>
+                        <div id="plot-picker-list" class="flex flex-col gap-1"></div>
+                        <div class="sticky bottom-0 -mx-4 mt-3 px-4 py-2 bg-white border-t border-gray-100 flex gap-2">
+                            <button type="button" onclick="_plotProceedFromPicker()" class="flex-1 bg-orange-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-orange-500">继续推演 →</button>
+                        </div>
+                    </div>
+
+                    <!-- 推演结果区 -->
+                    <div id="plot-panels-section" class="hidden flex-1 min-h-0 overflow-y-auto px-4 py-3 border-t border-gray-100">
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="text-[11px] font-medium text-gray-500 uppercase tracking-wider">推演结果 <span id="plot-panels-count" class="text-gray-400 normal-case font-normal"></span></div>
+                            <div class="flex gap-1.5">
+                                <button type="button" id="plot-batch-all-btn" onclick="generateAllPlotPanels()" class="text-xs text-white bg-gray-900 hover:bg-black px-2.5 py-1 rounded-md">全部生成</button>
+                                <button type="button" id="plot-export-conv-btn" onclick="exportPlotAsNewConv()" class="text-xs text-orange-700 bg-orange-50 hover:bg-orange-100 border border-orange-200 px-2.5 py-1 rounded-md">导出为新对话</button>
+                            </div>
+                        </div>
+                        <div id="plot-panels-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-2"></div>
                     </div>
                 </div>
             </div>
@@ -1199,7 +1384,7 @@
             <span id="mention-popover-hint" class="text-gray-300">↑↓ 选择 · Enter 应用 · Esc 关闭</span>
         </div>
         <ul id="mention-list" class="max-h-64 overflow-y-auto"></ul>
-        <div id="mention-empty" class="hidden px-3 py-3 text-xs text-gray-400">没有匹配的角色或场景，<a onclick="openCharacterManagerForAdd()" class="text-emerald-600 hover:underline cursor-pointer mr-1">+ 角色</a><a onclick="openStoryModalForAddScene()" class="text-orange-600 hover:underline cursor-pointer">+ 场景</a></div>
+        <div id="mention-empty" class="hidden px-3 py-3 text-xs text-gray-400">没有匹配的卡片，<a onclick="openCharacterManagerForAdd()" class="text-emerald-600 hover:underline cursor-pointer mr-1">+ 角色</a><a onclick="openStoryModalForAddScene()" class="text-orange-600 hover:underline cursor-pointer mr-1">+ 场景</a><a onclick="openStoryModalForAddProp()" class="text-sky-600 hover:underline cursor-pointer">+ 道具</a></div>
     </div>
 
     <script>
@@ -1218,7 +1403,7 @@
         const PROMPT_ENHANCE_MODEL = "gpt-oss-120b";
 
         const DB_NAME = "VsllmGallery";
-        const DB_VERSION = 5; // v1 只有 images；v2 加 conversations、messages；v3 加 characters；v4 加 favorites；v5 加 scenes + worldviews
+        const DB_VERSION = 6; // v1 images；v2 conversations/messages；v3 characters；v4 favorites；v5 scenes/worldviews；v6 props
         const STORE_GALLERY = "images";
         const STORE_CONVERSATIONS = "conversations";
         const STORE_MESSAGES = "messages";
@@ -1226,6 +1411,7 @@
         const STORE_FAVORITES = "favorites";
         const STORE_SCENES = "scenes";
         const STORE_WORLDVIEWS = "worldviews";
+        const STORE_PROPS = "props";
 
         // 生成时轮播的等待文案（高质量图 1-5 分钟，给用户点乐子别闲着）
         const LOADING_MESSAGES = [
@@ -1443,6 +1629,7 @@
             await preloadCharacters();
             await preloadScenes();
             await preloadWorldviews();
+            await preloadProps();
             initMentionEvents();
             initSeedUI();
             initParamsToggle();
@@ -1518,6 +1705,13 @@
                         const ws = d.createObjectStore(STORE_WORLDVIEWS, { keyPath: "id" });
                         ws.createIndex("updatedAt", "updatedAt");
                         ws.createIndex("nameLower", "nameLower", { unique: false });
+                    }
+                    // v6 新增：道具卡；幂等
+                    if (!d.objectStoreNames.contains(STORE_PROPS)) {
+                        const ps = d.createObjectStore(STORE_PROPS, { keyPath: "id" });
+                        ps.createIndex("updatedAt", "updatedAt");
+                        ps.createIndex("nameLower", "nameLower", { unique: false });
+                        ps.createIndex("category", "category", { unique: false });
                     }
                 };
                 req.onsuccess = (e) => { db = e.target.result; resolve(); };
@@ -2487,9 +2681,11 @@
         function composeFinalPromptWithCharacters(userText, worldview) {
             const { characters, missingNames } = extractMentionedCharacters(userText || '');
             const scenes = extractMentionedScenes(userText || '');
+            const props  = (typeof extractMentionedProps === 'function') ? extractMentionedProps(userText || '') : [];
             const blocks = [];
             if (characters.length > 0) blocks.push(buildCharacterInjectionBlock(characters));
             if (scenes.length > 0)     blocks.push(buildSceneInjectionBlock(scenes));
+            if (props.length > 0)      blocks.push(buildPropInjectionBlock(props));
             if (worldview)             blocks.push(buildWorldviewInjectionBlock(worldview));
             const finalPrompt = blocks.length === 0
                 ? (userText || '')
@@ -2498,6 +2694,7 @@
                 finalPrompt,
                 injectedCharacters: characters.map(c => ({ id: c.id, name: c.name, updatedAt: c.updatedAt })),
                 injectedScenes:     scenes.map(s => ({ id: s.id, name: s.name, updatedAt: s.updatedAt })),
+                injectedProps:      props.map(p => ({ id: p.id, name: p.name, updatedAt: p.updatedAt })),
                 injectedWorldview:  worldview ? { id: worldview.id, name: worldview.name, updatedAt: worldview.updatedAt } : null,
                 missingNames,
             };
@@ -2751,6 +2948,171 @@
             return block;
         }
 
+        // ============== 道具卡（v6 新增，平行于角色/场景的全局库） ==============
+        const PROP_SCHEMA_VERSION = 1;
+        const PROP_FIELD_LABELS = {
+            description: '概述',
+            appearance:  '外观',
+            properties:  '特性/性能',
+            lore:        '出处/传说',
+            styleNote:   '风格备注',
+        };
+        const PROP_CATEGORIES = ['食物','植物','动物','神物','武器','饰品','工具','载具','服饰道具','其他'];
+        let _propsCache = [];
+
+        function _propDbOk() { return !!(db && db.objectStoreNames && db.objectStoreNames.contains(STORE_PROPS)); }
+
+        function normalizePropForm(raw) {
+            const r = raw || {};
+            const name = normalizeCharacterName(r.name);
+            const pickStr = (v) => (typeof v === 'string' ? v : '');
+            const cat = pickStr(r.category);
+            return {
+                name,
+                nameLower: toNameLower(name),
+                category: PROP_CATEGORIES.includes(cat) ? cat : '其他',
+                description: pickStr(r.description),
+                appearance:  pickStr(r.appearance),
+                properties:  pickStr(r.properties),
+                lore:        pickStr(r.lore),
+                styleNote:   pickStr(r.styleNote),
+                avatar: (typeof r.avatar === 'string' && r.avatar.startsWith('data:')) ? r.avatar : null,
+                tags: Array.isArray(r.tags) ? r.tags.map(x => String(x).trim()).filter(Boolean) :
+                      (typeof r.tags === 'string' ? r.tags.split(',').map(s => s.trim()).filter(Boolean) : []),
+            };
+        }
+        function validateProp(p) {
+            const errs = [];
+            if (!p.name) errs.push('道具名不能为空');
+            if (p.name && p.name.length > 32) errs.push('名字过长（≤32 字）');
+            for (const k of Object.keys(PROP_FIELD_LABELS)) {
+                if (p[k] && p[k].length > 2000) errs.push(`${PROP_FIELD_LABELS[k]} 过长（≤2000 字）`);
+            }
+            return errs;
+        }
+        function putProp(p) {
+            return new Promise((resolve, reject) => {
+                if (!_propDbOk()) return reject(new Error('道具卡存储未就绪'));
+                const req = db.transaction(STORE_PROPS, 'readwrite').objectStore(STORE_PROPS).put(p);
+                req.onsuccess = () => resolve();
+                req.onerror = (e) => reject(e.target.error || e);
+            });
+        }
+        function getProp(id) {
+            return new Promise((resolve, reject) => {
+                if (!_propDbOk()) return resolve(null);
+                const req = db.transaction(STORE_PROPS, 'readonly').objectStore(STORE_PROPS).get(Number(id));
+                req.onsuccess = () => resolve(req.result || null);
+                req.onerror = (e) => reject(e.target.error || e);
+            });
+        }
+        function listProps() {
+            return new Promise((resolve, reject) => {
+                if (!_propDbOk()) return resolve([]);
+                const req = db.transaction(STORE_PROPS, 'readonly').objectStore(STORE_PROPS).getAll();
+                req.onsuccess = () => {
+                    const items = (req.result || []).sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+                    resolve(items);
+                };
+                req.onerror = (e) => reject(e.target.error || e);
+            });
+        }
+        function deleteProp(id) {
+            return new Promise((resolve, reject) => {
+                if (!_propDbOk()) return reject(new Error('道具卡存储未就绪'));
+                const req = db.transaction(STORE_PROPS, 'readwrite').objectStore(STORE_PROPS).delete(Number(id));
+                req.onsuccess = () => resolve();
+                req.onerror = (e) => reject(e.target.error || e);
+            });
+        }
+        function clearAllProps() {
+            return new Promise((resolve, reject) => {
+                if (!_propDbOk()) return reject(new Error('道具卡存储未就绪'));
+                const req = db.transaction(STORE_PROPS, 'readwrite').objectStore(STORE_PROPS).clear();
+                req.onsuccess = () => resolve();
+                req.onerror = (e) => reject(e.target.error || e);
+            });
+        }
+        async function findPropByName(name, excludeId) {
+            const lower = toNameLower(name);
+            if (!lower) return null;
+            const all = await listProps();
+            for (const p of all) {
+                if (p.nameLower === lower && p.id !== excludeId) return p;
+            }
+            return null;
+        }
+        async function preloadProps() {
+            try { _propsCache = await listProps(); }
+            catch { _propsCache = []; }
+        }
+        async function upsertPropFromForm(form, existingId) {
+            const body = normalizePropForm(form);
+            const errs = validateProp(body);
+            if (errs.length) throw new Error(errs.join('；'));
+            const dup = await findPropByName(body.name, existingId);
+            if (dup) throw new Error(`已有同名道具「${body.name}」，请换个名或先删除旧的`);
+            const now = Date.now();
+            const p = {
+                id: existingId || _newId(),
+                ...body,
+                createdAt: existingId ? (await getProp(existingId))?.createdAt || now : now,
+                updatedAt: now,
+                schemaVersion: PROP_SCHEMA_VERSION,
+            };
+            await putProp(p);
+            await preloadProps();
+            return p;
+        }
+        // @道具 提取（character / scene / prop 都用 @ 前缀，按优先级 char > scene > prop）
+        function extractMentionedProps(text) {
+            const out = [];
+            const seen = new Set();
+            if (!text) return out;
+            const charNames  = new Set((_charactersCache || []).map(c => c.nameLower));
+            const sceneNames = new Set((_scenesCache || []).map(s => s.nameLower));
+            const byLower = new Map();
+            for (const p of (_propsCache || [])) byLower.set(p.nameLower, p);
+            const re = /@([^\s@]+)/g;
+            let m;
+            while ((m = re.exec(text)) != null) {
+                const raw = m[1];
+                let matched = null;
+                for (let len = raw.length; len >= 1; len--) {
+                    const sub = raw.slice(0, len).toLowerCase();
+                    if (charNames.has(sub))  break;
+                    if (sceneNames.has(sub)) break;
+                    const p = byLower.get(sub);
+                    if (p) { matched = p; break; }
+                }
+                if (matched && !seen.has(matched.id)) {
+                    seen.add(matched.id);
+                    out.push(matched);
+                }
+            }
+            return out;
+        }
+        function buildPropInjectionBlock(props) {
+            if (!props || props.length === 0) return '';
+            const lines = ['---', '【道具一致性指令】'];
+            lines.push(`本次提示词出现 ${props.map(p => '@' + p.name).join('、')} 等道具代称。请按以下道具设定渲染：`);
+            lines.push('');
+            for (const p of props) {
+                lines.push(`道具「${p.name}」${p.category ? `（${p.category}）` : ''}：`);
+                if (p.description)  lines.push(`  概述：${p.description}`);
+                if (p.appearance)   lines.push(`  外观：${p.appearance}`);
+                if (p.properties)   lines.push(`  特性：${p.properties}`);
+                if (p.lore)         lines.push(`  出处：${p.lore}`);
+                if (p.styleNote)    lines.push(`  风格：${p.styleNote}`);
+                lines.push('');
+            }
+            lines.push('请让画面中的道具精确匹配以上描述。');
+            lines.push('---');
+            let block = lines.join('\n');
+            if (block.length > 3000) block = block.slice(0, 2970) + '\n...（道具过长已截断）\n---';
+            return block;
+        }
+
         // ---- 场景 mention 提取（与角色一样 @ 前缀；同名 character 优先匹配） ----
         function extractMentionedScenes(text, excludeIds) {
             const out = [];
@@ -2805,10 +3167,11 @@
         function renderTextWithMentionsHTML(rawText) {
             const safe = escapeHTML(rawText || '');
             if (!safe) return safe;
-            // v5: 同时高亮 @角色卡（emerald）和 @场景卡（orange）；character 优先匹配
+            // v6: 同时高亮 @角色（emerald）/ @场景（orange）/ @道具（sky）；优先级 char > scene > prop
             const charLowerSet  = new Set((_charactersCache || []).map(c => c.nameLower));
             const sceneLowerSet = new Set((_scenesCache || []).map(s => s.nameLower));
-            if (charLowerSet.size === 0 && sceneLowerSet.size === 0) return safe;
+            const propLowerSet  = new Set(((typeof _propsCache !== 'undefined' ? _propsCache : null) || []).map(p => p.nameLower));
+            if (charLowerSet.size === 0 && sceneLowerSet.size === 0 && propLowerSet.size === 0) return safe;
             let html = '';
             let i = 0;
             const n = (rawText || '').length;
@@ -2816,20 +3179,19 @@
                 const at = (rawText || '').indexOf('@', i);
                 if (at < 0) { html += escapeHTML((rawText || '').slice(i)); break; }
                 html += escapeHTML((rawText || '').slice(i, at));
-                // 向后扫到空白/下一个 @ / 结尾
                 let j = at + 1;
                 while (j < n && !/\s/.test((rawText || '')[j]) && (rawText || '')[j] !== '@') j++;
                 const candidate = (rawText || '').slice(at + 1, j);
-                // 最长匹配；character 优先；character 没中再试 scene
                 let matched = null, maxLen = 0, kind = null;
                 for (let len = candidate.length; len >= 1; len--) {
                     const sub = candidate.slice(0, len).toLowerCase();
                     if (charLowerSet.has(sub))  { matched = candidate.slice(0, len); maxLen = len; kind = 'character'; break; }
                     if (sceneLowerSet.has(sub)) { matched = candidate.slice(0, len); maxLen = len; kind = 'scene';     break; }
+                    if (propLowerSet.has(sub))  { matched = candidate.slice(0, len); maxLen = len; kind = 'prop';      break; }
                 }
                 if (matched) {
-                    const cls = kind === 'scene'
-                        ? 'text-orange-600 bg-orange-50 rounded px-0.5'
+                    const cls = kind === 'scene' ? 'text-orange-600 bg-orange-50 rounded px-0.5'
+                        : kind === 'prop' ? 'text-sky-600 bg-sky-50 rounded px-0.5'
                         : 'text-emerald-600 bg-emerald-50 rounded px-0.5';
                     html += `<span class="${cls}">@${escapeHTML(matched)}</span>`;
                     html += escapeHTML(candidate.slice(maxLen));
@@ -2917,15 +3279,33 @@
             }
             return prefix.concat(substr).slice(0, 8);
         }
-        // 统一搜索：角色 + 场景，character 优先，每条带 _kind 标记
-        // 同名时排除 scene（character 优先匹配，避免歧义）
+        // v6: 道具卡（同 @ 命名空间）
+        function searchPropsForMention(query) {
+            const list = (typeof _propsCache !== 'undefined' ? _propsCache : null) || [];
+            if (!query) return list.slice(0, 8);
+            const q = query.toLowerCase();
+            const prefix = [], substr = [];
+            for (const p of list) {
+                const n = p.nameLower || '';
+                if (n.startsWith(q)) prefix.push(p);
+                else if (n.includes(q)) substr.push(p);
+                else if (Array.isArray(p.tags) && p.tags.some(t => (t || '').toLowerCase().includes(q))) substr.push(p);
+            }
+            return prefix.concat(substr).slice(0, 8);
+        }
+        // 统一搜索：角色 + 场景 + 道具，character 优先，每条带 _kind 标记
+        // 同名时按优先级排除（character > scene > prop），避免歧义
         function searchCardsForMention(query) {
             const chars  = searchCharactersForMention(query).map(c => Object.assign({}, c, { _kind: 'character' }));
             const charNames = new Set(chars.map(c => c.nameLower));
             const scenes = searchScenesForMention(query)
                 .filter(s => !charNames.has(s.nameLower))
                 .map(s => Object.assign({}, s, { _kind: 'scene' }));
-            return chars.concat(scenes).slice(0, 12);
+            const sceneNames = new Set(scenes.map(s => s.nameLower));
+            const props  = searchPropsForMention(query)
+                .filter(p => !charNames.has(p.nameLower) && !sceneNames.has(p.nameLower))
+                .map(p => Object.assign({}, p, { _kind: 'prop' }));
+            return chars.concat(scenes).concat(props).slice(0, 14);
         }
 
         function _matchHighlightHTML(name, query) {
@@ -2955,18 +3335,24 @@
             const q = _mentionState.anchor ? _mentionState.anchor.query : '';
             ul.innerHTML = items.map((c, i) => {
                 const active = (i === _mentionState.activeIdx);
-                const isScene = c._kind === 'scene';
-                const accentBg = isScene ? 'bg-orange-50' : 'bg-emerald-50';
-                const avatarShape = isScene ? 'rounded-md' : 'rounded-full';
-                const avatarBg = isScene ? 'bg-orange-100 text-orange-700' : 'bg-emerald-100 text-emerald-700';
-                const kindBadge = isScene
+                const kind = c._kind || 'character';
+                const accentBg = kind === 'scene' ? 'bg-orange-50' : kind === 'prop' ? 'bg-sky-50' : 'bg-emerald-50';
+                const avatarShape = kind === 'character' ? 'rounded-full' : 'rounded-md';
+                const avatarBg = kind === 'scene' ? 'bg-orange-100 text-orange-700'
+                    : kind === 'prop' ? 'bg-sky-100 text-sky-700'
+                    : 'bg-emerald-100 text-emerald-700';
+                const kindBadge = kind === 'scene'
                     ? `<span class="text-[9px] px-1 py-px rounded bg-orange-100 text-orange-700 shrink-0">场景</span>`
+                    : kind === 'prop'
+                    ? `<span class="text-[9px] px-1 py-px rounded bg-sky-100 text-sky-700 shrink-0">道具${c.category ? '·' + escapeHTML(c.category) : ''}</span>`
                     : `<span class="text-[9px] px-1 py-px rounded bg-emerald-100 text-emerald-700 shrink-0">角色</span>`;
                 const avatar = c.avatar
                     ? `<img src="${c.avatar}" class="w-7 h-7 ${avatarShape} object-cover border border-gray-200 shrink-0">`
                     : `<div class="w-7 h-7 ${avatarShape} ${avatarBg} flex items-center justify-center text-[10px] font-semibold shrink-0">${escapeHTML((c.name || '?').slice(0,2))}</div>`;
-                const summary = isScene
+                const summary = kind === 'scene'
                     ? (c.description || c.lighting || c.mood || c.keyElements || '').replace(/\s+/g, ' ').slice(0, 32)
+                    : kind === 'prop'
+                    ? (c.description || c.appearance || c.properties || '').replace(/\s+/g, ' ').slice(0, 32)
                     : (c.appearance || c.outfit || c.persona || '').replace(/\s+/g, ' ').slice(0, 32);
                 return `
                     <li data-idx="${i}" class="mention-item flex items-center gap-2 px-3 min-h-11 cursor-pointer ${active ? accentBg : 'hover:bg-gray-50'}">
@@ -6260,6 +6646,15 @@
             m.classList.add('flex');
             switchStoryTab('scene');
         }
+        // 从 @ 弹层"+道具"快捷入口
+        function openStoryModalForAddProp() {
+            try { closeMentionPopover(); } catch {}
+            const m = document.getElementById('story-modal');
+            if (!m) return;
+            m.classList.remove('hidden');
+            m.classList.add('flex');
+            switchStoryTab('prop');
+        }
         function closeStoryModal() {
             const m = document.getElementById('story-modal');
             if (!m) return;
@@ -6274,6 +6669,10 @@
             try { abortAllCharFieldEnhancers(); } catch {}
             _currentEditingWorldviewId = null;
             try { abortAllWorldviewFieldEnhancers(); } catch {}
+            // 道具卡 tab 状态清理
+            try { _currentEditingPropId = null; _propPendingAvatar = null; abortAllPropFieldEnhancers(); } catch {}
+            // 取消 plot 进行中的请求；保留 panels 结果以便用户重新打开继续操作
+            try { if (typeof cancelPlotInference === 'function') cancelPlotInference(); } catch {}
         }
         function switchStoryTab(tab) {
             document.querySelectorAll('.story-tab').forEach(b => {
@@ -6300,6 +6699,23 @@
                 if (search) search.value = '';
                 renderWorldviewList();
                 startNewWorldview();
+            } else if (tab === 'prop') {
+                _propListFilter = '';
+                _propCategoryFilter = '';
+                const search = document.getElementById('prop-search-input');
+                if (search) search.value = '';
+                const catSel = document.getElementById('prop-category-filter');
+                if (catSel) catSel.value = '';
+                _populatePropCategoryFilter();
+                renderPropList();
+                startNewProp();
+            } else if (tab === 'plot') {
+                // 第一次进 plot tab：从 LS 恢复输入；刷新自动检测的上下文
+                if (typeof _plotRestoreInputFromLS === 'function') _plotRestoreInputFromLS();
+                if (typeof _plotInputChanged === 'function') _plotInputChanged();
+                if (_plotState && _plotState.phase === 'idle') {
+                    _setPlotPhase('idle');
+                }
             }
         }
 
@@ -6829,7 +7245,7 @@
             for (const k of Object.keys(WORLDVIEW_FIELD_LABELS)) {
                 document.getElementById('worldview-field-' + k).value = w ? (w[k] || '') : '';
             }
-            // 同步"应用到当前对话"按钮文案（已应用 ✓ / 未应用）
+            // 同步"应用到当前对话"按钮文案（已应用 / 未应用）
             _refreshWorldviewAttachBtn();
         }
         async function _refreshWorldviewAttachBtn() {
@@ -6838,7 +7254,7 @@
             const conv = await getConv(currentConversationId);
             const isAttached = conv && conv.worldviewId === _currentEditingWorldviewId;
             if (isAttached) {
-                btn.textContent = '已应用 ✓ 点击解除';
+                btn.textContent = '已应用 · 点击解除';
                 btn.classList.remove('bg-indigo-600', 'hover:bg-indigo-500');
                 btn.classList.add('bg-white', 'text-indigo-700', 'border', 'border-indigo-300', 'hover:bg-indigo-50');
             } else {
@@ -7149,6 +7565,1393 @@
                 _setWorldviewFieldPreview(fieldKey, 'error', { error: (err && err.message) || String(err) });
             } finally {
                 if (_worldviewFieldAborters.get(fieldKey) === ac) _worldviewFieldAborters.delete(fieldKey);
+            }
+        }
+
+        // ============================================================
+        // 剧情推演（v5 stage 3）：三阶段漏斗 + 三种引用模式
+        // ============================================================
+        const PLOT_INPUT_LS_KEY = 'vsllm_plot_input_v1';
+        const PLOT_S2_CACHE_PREFIX = 'vsllm_plot_s2_';
+        const PLOT_S2_CACHE_TTL_MS = 5 * 60 * 1000;
+        const PLOT_CANDIDATE_CAP = 500;
+        const PLOT_S2_PICK_MAX = 10;
+        const PLOT_INFER_MODEL = 'gpt-oss-120b';
+        const PLOT_STYLE_LABELS = {
+            cinematic:  '电影感（广角、灯光戏剧化、电影色彩）',
+            anime:      '日漫风（清晰线条、cel-shading、动漫场景构图）',
+            realistic:  '写实摄影（真实光线、相机参数感）',
+            oilpainting:'油画质感（厚涂、可见笔触、古典色调）',
+            comic:      '美漫分镜（强对比、墨色块面、动作感）',
+            watercolor: '水彩画风（透明色层、湿润渐变）',
+            custom:     '自由发挥（让模型按内容自选最合适风格）',
+        };
+
+        const _plotState = {
+            phase: 'idle',       // idle | collecting | selecting | picking | inferring | done | error
+            mode: 'ai',          // ai | manual | tune
+            outline: '',
+            panelCount: 6,
+            style: 'cinematic',
+            includeDialogue: false, // v6: 是否要求每个 panel 嵌入角色对话
+            abortController: null,
+            candidates: [],      // Stage 1 result
+            selectedIds: new Set(), // chosen item IDs
+            mentionedChars: [],
+            mentionedScenes: [],
+            mentionedProps: [],
+            currentWorldview: null,
+            panels: [],
+            isBatching: false,
+        };
+
+        // ---- 输入区状态读写 + localStorage ----
+        function _plotInputChanged() {
+            const outlineEl = document.getElementById('plot-outline-input');
+            const countEl = document.getElementById('plot-panel-count');
+            const styleEl = document.getElementById('plot-style');
+            const dlgEl = document.getElementById('plot-include-dialogue');
+            _plotState.outline    = (outlineEl && outlineEl.value || '').trim();
+            _plotState.panelCount = Math.max(2, Math.min(12, parseInt(countEl && countEl.value, 10) || 6));
+            _plotState.style      = (styleEl && styleEl.value) || 'cinematic';
+            _plotState.includeDialogue = !!(dlgEl && dlgEl.checked);
+            _plotSaveInputToLS();
+            _plotRenderDetectedCtx();
+        }
+        function _plotSaveInputToLS() {
+            try {
+                localStorage.setItem(PLOT_INPUT_LS_KEY, JSON.stringify({
+                    outline: _plotState.outline,
+                    panelCount: _plotState.panelCount,
+                    style: _plotState.style,
+                    mode: _plotState.mode,
+                    includeDialogue: _plotState.includeDialogue,
+                    ts: Date.now(),
+                }));
+            } catch {}
+        }
+        function _plotRestoreInputFromLS() {
+            try {
+                const raw = localStorage.getItem(PLOT_INPUT_LS_KEY);
+                if (!raw) return;
+                const obj = JSON.parse(raw);
+                if (obj.outline) {
+                    _plotState.outline = obj.outline;
+                    const el = document.getElementById('plot-outline-input');
+                    if (el) el.value = obj.outline;
+                }
+                if (obj.panelCount) {
+                    _plotState.panelCount = obj.panelCount;
+                    const el = document.getElementById('plot-panel-count');
+                    if (el) el.value = obj.panelCount;
+                }
+                if (obj.style) {
+                    _plotState.style = obj.style;
+                    const el = document.getElementById('plot-style');
+                    if (el) el.value = obj.style;
+                }
+                if (typeof obj.includeDialogue === 'boolean') {
+                    _plotState.includeDialogue = obj.includeDialogue;
+                    const el = document.getElementById('plot-include-dialogue');
+                    if (el) el.checked = obj.includeDialogue;
+                }
+                if (obj.mode) _setPlotMode(obj.mode, true);
+            } catch {}
+        }
+        function _setPlotMode(mode, silent) {
+            if (!['ai','manual','tune'].includes(mode)) mode = 'ai';
+            _plotState.mode = mode;
+            document.querySelectorAll('.plot-mode-seg [data-plot-mode]').forEach(b => {
+                b.classList.toggle('is-active', b.getAttribute('data-plot-mode') === mode);
+            });
+            if (!silent) _plotSaveInputToLS();
+        }
+        // 实时显示自动检测的 @角色 / @场景 / @道具 / 当前世界观
+        async function _plotRenderDetectedCtx() {
+            const out = document.getElementById('plot-detected-ctx');
+            if (!out) return;
+            const text = _plotState.outline || '';
+            const chars = extractMentionedCharacters(text).characters || [];
+            const scenes = extractMentionedScenes(text) || [];
+            const props  = (typeof extractMentionedProps === 'function') ? extractMentionedProps(text) : [];
+            _plotState.mentionedChars = chars;
+            _plotState.mentionedScenes = scenes;
+            _plotState.mentionedProps = props;
+            // 当前对话挂的世界观
+            let wv = null;
+            try {
+                const conv = await getConv(currentConversationId);
+                if (conv && conv.worldviewId) wv = await getWorldview(conv.worldviewId);
+            } catch {}
+            _plotState.currentWorldview = wv;
+            const parts = [];
+            if (wv) parts.push(`<span class="text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-full px-2 py-0.5">世界观 · ${escapeHTML(wv.name)}</span>`);
+            for (const c of chars)  parts.push(`<span class="text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-0.5">@${escapeHTML(c.name)}</span>`);
+            for (const s of scenes) parts.push(`<span class="text-orange-700 bg-orange-50 border border-orange-200 rounded-full px-2 py-0.5">@${escapeHTML(s.name)}</span>`);
+            for (const p of props)  parts.push(`<span class="text-sky-700 bg-sky-50 border border-sky-200 rounded-full px-2 py-0.5">@${escapeHTML(p.name)}</span>`);
+            if (parts.length === 0) parts.push('<span class="text-gray-400">未自动检测到上下文（在大纲里 @ 角色/场景/道具，或给当前对话挂世界观）</span>');
+            out.innerHTML = parts.join(' ');
+        }
+
+        // ---- 进度 UI ----
+        function _setPlotPhase(phase) {
+            _plotState.phase = phase;
+            const tab = document.getElementById('story-tab-plot');
+            if (tab) tab.setAttribute('data-plot-phase', phase);
+            const startBtn = document.getElementById('plot-start-btn');
+            const resetBtn = document.getElementById('plot-reset-btn');
+            const cancelBtn = document.getElementById('plot-cancel-btn');
+            const progSec = document.getElementById('plot-progress-section');
+            const pickerSec = document.getElementById('plot-picker-section');
+            const panelsSec = document.getElementById('plot-panels-section');
+            const isWorking = ['collecting','selecting','picking','inferring'].includes(phase);
+            if (startBtn) startBtn.classList.toggle('hidden', isWorking || phase === 'done');
+            if (resetBtn) resetBtn.classList.toggle('hidden', phase === 'idle');
+            if (cancelBtn) cancelBtn.classList.toggle('hidden', !isWorking);
+            if (progSec) progSec.classList.toggle('hidden', phase === 'idle' || phase === 'picking' || phase === 'done');
+            if (pickerSec) pickerSec.classList.toggle('hidden', phase !== 'picking');
+            if (panelsSec) panelsSec.classList.toggle('hidden', phase !== 'done');
+        }
+        function _setPlotProgressRow(stage, state, meta) {
+            const row = document.getElementById('plot-progress-stage' + stage);
+            if (!row) return;
+            row.classList.remove('is-pending','is-running','is-done','is-error');
+            row.classList.add('is-' + state);
+            const metaEl = row.querySelector('.plot-progress-meta');
+            if (metaEl) metaEl.textContent = meta || '';
+            const icon = row.querySelector('.icon');
+            if (!icon) return;
+            if (state === 'done') {
+                icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>';
+            } else if (state === 'error') {
+                icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>';
+            } else if (state === 'running') {
+                icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" d="M12 4v4M12 16v4M4 12h4M16 12h4M6.34 6.34l2.83 2.83M14.83 14.83l2.83 2.83M6.34 17.66l2.83-2.83M14.83 9.17l2.83-2.83"/>';
+            } else {
+                icon.innerHTML = '<circle cx="12" cy="12" r="10"/>';
+            }
+        }
+
+        // ---- 重置 / 取消 ----
+        function resetPlotState() {
+            cancelPlotInference();
+            _plotState.candidates = [];
+            _plotState.selectedIds = new Set();
+            _plotState.panels = [];
+            _setPlotProgressRow(1, 'pending');
+            _setPlotProgressRow(2, 'pending');
+            _setPlotProgressRow(3, 'pending');
+            _setPlotPhase('idle');
+        }
+        function cancelPlotInference() {
+            if (_plotState.abortController) { try { _plotState.abortController.abort(); } catch {} }
+            _plotState.abortController = null;
+        }
+
+        // ---- 主流程：runPlotInference ----
+        async function runPlotInference() {
+            _plotInputChanged(); // sync from form
+            const outline = _plotState.outline;
+            if (!outline) { showToast('请先填剧情大纲'); return; }
+            if (!localStorage.getItem('vsllm_api_key')) { showToast('先去设置填 API Key'); openSettings(); return; }
+            cancelPlotInference();
+            _plotState.abortController = new AbortController();
+            const signal = _plotState.abortController.signal;
+            _setPlotProgressRow(1, 'pending'); _setPlotProgressRow(2, 'pending'); _setPlotProgressRow(3, 'pending');
+
+            try {
+                // ===== Stage 1: 收集候选（同步，纯前端） =====
+                _setPlotPhase('collecting');
+                _setPlotProgressRow(1, 'running');
+                const t1 = Date.now();
+                const candidates = await _plotCollectCandidates(outline);
+                _plotState.candidates = candidates;
+                _setPlotProgressRow(1, 'done', `${candidates.length} 条 · ${Date.now() - t1}ms`);
+                if (signal.aborted) return;
+
+                // ===== Stage 2: AI 精选（仅 ai 模式直接走；tune 模式走完后转 picking；manual 跳过） =====
+                if (_plotState.mode === 'ai') {
+                    _setPlotPhase('selecting');
+                    _setPlotProgressRow(2, 'running');
+                    const t2 = Date.now();
+                    const selected = await _plotAISelect(outline, candidates, signal);
+                    _plotState.selectedIds = new Set(selected);
+                    _setPlotProgressRow(2, 'done', `${selected.length} 条 · ${Date.now() - t2}ms`);
+                    if (signal.aborted) return;
+                } else if (_plotState.mode === 'tune') {
+                    _setPlotPhase('selecting');
+                    _setPlotProgressRow(2, 'running');
+                    const t2 = Date.now();
+                    let selected = [];
+                    try { selected = await _plotAISelect(outline, candidates, signal); }
+                    catch { selected = candidates.slice(0, PLOT_S2_PICK_MAX).map(c => c.id); }
+                    _plotState.selectedIds = new Set(selected);
+                    _setPlotProgressRow(2, 'done', `预选 ${selected.length} 条 · ${Date.now() - t2}ms`);
+                    if (signal.aborted) return;
+                    // 进入 picker，让用户增减
+                    _setPlotPhase('picking');
+                    _renderPlotPickerList();
+                    return;
+                } else {
+                    // manual：跳过 stage 2，直接进 picker
+                    _setPlotProgressRow(2, 'done', '跳过');
+                    _setPlotPhase('picking');
+                    _renderPlotPickerList();
+                    return;
+                }
+
+                // ===== Stage 3: 推演 panels =====
+                await _plotRunStage3(signal);
+            } catch (err) {
+                if (err && err.name === 'AbortError') {
+                    showToast('已取消');
+                    _setPlotPhase('idle');
+                    return;
+                }
+                _setPlotProgressRow(_plotState.phase === 'collecting' ? 1 : _plotState.phase === 'selecting' ? 2 : 3, 'error', (err && err.message) || String(err));
+                showToast('推演失败：' + ((err && err.message) || err));
+            } finally {
+                _plotState.abortController = null;
+            }
+        }
+
+        // 从 picker 进 stage 3（manual / tune 模式用）
+        async function _plotProceedFromPicker() {
+            if (_plotState.selectedIds.size === 0) {
+                if (!confirm('当前没有选中任何上下文条目。要继续推演（仅基于大纲 + 当前对话世界观/@角色/@场景）吗？')) return;
+            }
+            cancelPlotInference();
+            _plotState.abortController = new AbortController();
+            try {
+                await _plotRunStage3(_plotState.abortController.signal);
+            } catch (err) {
+                if (err && err.name === 'AbortError') { _setPlotPhase('idle'); return; }
+                _setPlotProgressRow(3, 'error', (err && err.message) || String(err));
+            } finally {
+                _plotState.abortController = null;
+            }
+        }
+        async function _plotRunStage3(signal) {
+            _setPlotPhase('inferring');
+            _setPlotProgressRow(3, 'running');
+            const t3 = Date.now();
+            const panels = await _plotInferPanels(_plotState.outline, _plotState.selectedIds, signal);
+            if (signal && signal.aborted) return;
+            _plotState.panels = panels;
+            _setPlotProgressRow(3, 'done', `${panels.length} 个 · ${Date.now() - t3}ms`);
+            _setPlotPhase('done');
+            _renderPlotPanels();
+        }
+
+        // ============================================================
+        // Stage 1: 收集候选（启发式打分）
+        // ============================================================
+        function _plotTextSim(a, b) {
+            // 字符级 Jaccard，简单稳健，对中文友好
+            if (!a || !b) return 0;
+            const setA = new Set();
+            const setB = new Set();
+            for (const c of a.slice(0, 200)) if (!/\s/.test(c)) setA.add(c);
+            for (const c of b.slice(0, 600)) if (!/\s/.test(c)) setB.add(c);
+            if (setA.size === 0 || setB.size === 0) return 0;
+            let inter = 0;
+            for (const c of setA) if (setB.has(c)) inter++;
+            return inter / (setA.size + setB.size - inter);
+        }
+        function _listAllMessagesPromise() {
+            return new Promise((resolve) => {
+                if (!db) { resolve([]); return; }
+                try {
+                    const tx = db.transaction(STORE_MESSAGES, 'readonly');
+                    const req = tx.objectStore(STORE_MESSAGES).getAll();
+                    req.onsuccess = () => resolve(req.result || []);
+                    req.onerror = () => resolve([]);
+                } catch { resolve([]); }
+            });
+        }
+        function _listAllFavoritesPromise() {
+            return new Promise((resolve) => {
+                if (!db) { resolve([]); return; }
+                try {
+                    const tx = db.transaction(STORE_FAVORITES, 'readonly');
+                    const req = tx.objectStore(STORE_FAVORITES).getAll();
+                    req.onsuccess = () => resolve(req.result || []);
+                    req.onerror = () => resolve([]);
+                } catch { resolve([]); }
+            });
+        }
+        function _listRecentGalleryPromise(limit) {
+            return new Promise((resolve) => {
+                if (!db) { resolve([]); return; }
+                try {
+                    const tx = db.transaction(STORE_GALLERY, 'readonly');
+                    const req = tx.objectStore(STORE_GALLERY).getAll();
+                    req.onsuccess = () => {
+                        const items = (req.result || []).sort((a, b) => b.id - a.id).slice(0, limit || 50);
+                        resolve(items);
+                    };
+                    req.onerror = () => resolve([]);
+                } catch { resolve([]); }
+            });
+        }
+        async function _plotCollectCandidates(outline) {
+            const now = Date.now();
+            const mentionedCharIds = new Set((_plotState.mentionedChars || []).map(c => c.id));
+            const mentionedSceneIds = new Set((_plotState.mentionedScenes || []).map(s => s.id));
+            const currentConvId = currentConversationId;
+
+            const items = [];
+
+            // 角色卡（全部）
+            for (const c of (_charactersCache || [])) {
+                const summary = (c.appearance || c.outfit || c.persona || '').replace(/\s+/g, ' ').slice(0, 80);
+                let score = 30 + _plotTextSim(outline, c.name + ' ' + summary) * 100;
+                if (mentionedCharIds.has(c.id)) score += 250;
+                items.push({
+                    id: 'char_' + c.id, type: 'character',
+                    title: '@' + c.name, summary,
+                    score, raw: c, createdAt: c.updatedAt || 0,
+                });
+            }
+            // 场景卡（全部）
+            for (const s of (_scenesCache || [])) {
+                const summary = (s.description || s.lighting || s.mood || '').replace(/\s+/g, ' ').slice(0, 80);
+                let score = 30 + _plotTextSim(outline, s.name + ' ' + summary) * 100;
+                if (mentionedSceneIds.has(s.id)) score += 250;
+                items.push({
+                    id: 'scene_' + s.id, type: 'scene',
+                    title: '@' + s.name, summary,
+                    score, raw: s, createdAt: s.updatedAt || 0,
+                });
+            }
+            // 道具卡（全部）
+            const mentionedPropIds = new Set((_plotState.mentionedProps || []).map(p => p.id));
+            for (const p of ((typeof _propsCache !== 'undefined' ? _propsCache : null) || [])) {
+                const summary = (p.description || p.appearance || p.properties || '').replace(/\s+/g, ' ').slice(0, 80);
+                let score = 30 + _plotTextSim(outline, p.name + ' ' + (p.category || '') + ' ' + summary) * 100;
+                if (mentionedPropIds.has(p.id)) score += 250;
+                items.push({
+                    id: 'prop_' + p.id, type: 'prop',
+                    title: '@' + p.name + (p.category ? '·' + p.category : ''), summary,
+                    score, raw: p, createdAt: p.updatedAt || 0,
+                });
+            }
+            // 世界观（全部）
+            for (const w of (_worldviewsCache || [])) {
+                const summary = (w.setting || w.era || w.mood || '').replace(/\s+/g, ' ').slice(0, 80);
+                let score = 20 + _plotTextSim(outline, w.name + ' ' + summary) * 100;
+                if (_plotState.currentWorldview && _plotState.currentWorldview.id === w.id) score += 200;
+                items.push({
+                    id: 'wv_' + w.id, type: 'worldview',
+                    title: w.name, summary,
+                    score, raw: w, createdAt: w.updatedAt || 0,
+                });
+            }
+            // 历史消息：所有 conv 的 user/bot prompt 文本
+            const allMsgs = await _listAllMessagesPromise();
+            const convMap = new Map();
+            for (const c of await listConvs()) convMap.set(c.id, c);
+            for (const m of allMsgs) {
+                if (!m.text || !m.text.trim()) continue;
+                const text = m.text.trim();
+                const sim = _plotTextSim(outline, text);
+                if (sim < 0.04 && m.conversationId !== currentConvId) continue; // 太不相关又非当前对话直接丢
+                let score = sim * 100;
+                if (m.conversationId === currentConvId) score += 80;
+                // 时间近邻：log decay，最近 0~50 分
+                const ageDays = Math.max(0, (now - (m.createdAt || 0)) / 86400000);
+                score += Math.max(0, 50 - Math.log2(1 + ageDays) * 8);
+                // 过长惩罚
+                if (text.length > 200) score -= 5;
+                const conv = convMap.get(m.conversationId);
+                items.push({
+                    id: 'msg_' + m.id, type: 'message',
+                    title: (m.role === 'user' ? '用户·' : '生成·') + (conv ? (conv.title || '对话') : '对话'),
+                    summary: text.length > 100 ? text.slice(0, 100) + '…' : text,
+                    score, raw: m, createdAt: m.createdAt || 0,
+                    convId: m.conversationId,
+                });
+            }
+            // 收藏 prompts
+            const favs = await _listAllFavoritesPromise();
+            for (const f of favs) {
+                const text = (f.text || '').trim();
+                if (!text) continue;
+                let score = 25 + _plotTextSim(outline, text) * 100;
+                if (f.usedCount > 0) score += Math.min(20, f.usedCount * 2);
+                items.push({
+                    id: 'fav_' + f.id, type: 'favorite',
+                    title: '收藏', summary: text.length > 100 ? text.slice(0, 100) + '…' : text,
+                    score, raw: f, createdAt: f.updatedAt || f.createdAt || 0,
+                });
+            }
+            // 最近图库（仅最近 50 张，按 prompt 文本相似度）
+            const galleries = await _listRecentGalleryPromise(50);
+            for (const g of galleries) {
+                const text = (g.prompt || '').trim();
+                if (!text) continue;
+                const sim = _plotTextSim(outline, text);
+                if (sim < 0.06) continue;
+                items.push({
+                    id: 'gal_' + g.id, type: 'gallery',
+                    title: '图库', summary: text.length > 80 ? text.slice(0, 80) + '…' : text,
+                    score: 15 + sim * 100, raw: g, createdAt: g.id || 0,
+                });
+            }
+            items.sort((a, b) => b.score - a.score);
+            return items.slice(0, PLOT_CANDIDATE_CAP);
+        }
+
+        // ============================================================
+        // Stage 2: AI 精选（gpt-oss-120b，temperature 0.1，输出 JSON）
+        // ============================================================
+        function _plotS2CacheKey(outline, candidateIds) {
+            const a = _plotHashStr(outline || '');
+            const b = _plotHashStr(candidateIds.slice(0, 100).join('|'));
+            return PLOT_S2_CACHE_PREFIX + a + '_' + b;
+        }
+        function _plotHashStr(s) {
+            let h = 5381;
+            for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0;
+            return String(h >>> 0);
+        }
+        function _plotS2CacheGet(key) {
+            try {
+                const raw = localStorage.getItem(key);
+                if (!raw) return null;
+                const obj = JSON.parse(raw);
+                if (!obj || !obj.ts || (Date.now() - obj.ts) > PLOT_S2_CACHE_TTL_MS) {
+                    localStorage.removeItem(key);
+                    return null;
+                }
+                return obj.ids || null;
+            } catch { return null; }
+        }
+        function _plotS2CacheSet(key, ids) {
+            try { localStorage.setItem(key, JSON.stringify({ ids, ts: Date.now() })); } catch {}
+        }
+        const PLOT_S2_SYSTEM = [
+            '你是剧情上下文分析助手。用户给你当前剧情大纲 + 候选历史条目清单。',
+            '任务：从候选清单里挑出最能补足当前剧情推演的条目（角色一致性、场景延续、风格延续、世界观对齐）。',
+            '',
+            '选择规则：',
+            '- 优先：剧情大纲提到的角色 / 场景 / 相同主题的历史 prompt / 同对话的近期消息',
+            '- 宁可少不要凑数，最多 ' + PLOT_S2_PICK_MAX + ' 条',
+            '- 完全无关的不要选',
+            '- 如果根本没必要看历史，返回空数组',
+            '',
+            '输出要求：',
+            '- 只输出 JSON，格式固定 {"selectedIds":["msg_12","char_3"]}',
+            '- ID 必须逐字来自候选清单（不允许编造）',
+            '- 不要 markdown / 不要解释 / 不要前后缀',
+        ].join('\n');
+        function _plotParseJson(rawText) {
+            const cleaned = (rawText || '').trim().replace(/^```[\w-]*\r?\n([\s\S]*?)\r?\n```$/, '$1').trim();
+            try { return JSON.parse(cleaned); }
+            catch {
+                const m = cleaned.match(/\{[\s\S]*\}/);
+                if (!m) return null;
+                try { return JSON.parse(m[0]); } catch { return null; }
+            }
+        }
+        async function _plotAISelect(outline, candidates, signal) {
+            if (candidates.length === 0) return [];
+            const ids = candidates.map(c => c.id);
+            const cacheKey = _plotS2CacheKey(outline, ids);
+            const cached = _plotS2CacheGet(cacheKey);
+            if (cached) return cached.filter(id => ids.includes(id)).slice(0, PLOT_S2_PICK_MAX);
+
+            const lines = candidates.map(c => `[id:${c.id}] type:${c.type} | ${c.title} | ${(c.summary || '').replace(/\n/g, ' ').slice(0, 80)}`);
+            const userMsg = [
+                '=== 当前剧情大纲 ===',
+                outline,
+                '',
+                '=== 候选历史条目 ===',
+                lines.join('\n'),
+                '',
+                `请挑出最值得加入推演上下文的条目（最多 ${PLOT_S2_PICK_MAX} 条），返回 JSON。`,
+            ].join('\n');
+            try {
+                const raw = await postChatCompletion({
+                    system: PLOT_S2_SYSTEM,
+                    user: userMsg,
+                    model: PLOT_INFER_MODEL,
+                    temperature: 0.1,
+                    signal,
+                });
+                const parsed = _plotParseJson(raw);
+                let picked = (parsed && Array.isArray(parsed.selectedIds)) ? parsed.selectedIds : [];
+                picked = picked.map(String).filter(id => ids.includes(id)).slice(0, PLOT_S2_PICK_MAX);
+                _plotS2CacheSet(cacheKey, picked);
+                return picked;
+            } catch (err) {
+                if (err && err.name === 'AbortError') throw err;
+                // 失败降级：用 Stage 1 Top N
+                return ids.slice(0, PLOT_S2_PICK_MAX);
+            }
+        }
+
+        // ============================================================
+        // Stage 3: 推演 panels（gpt-oss-120b，temperature 0.7，输出 JSON）
+        // ============================================================
+        // 基础 system prompt 段（始终包含）
+        const PLOT_S3_SYSTEM_BASE = [
+            '你是分镜师 + prompt engineer。用户给你剧情大纲 + 上下文（世界观、角色卡、场景卡、道具卡、相关历史）。',
+            '任务：把剧情拆成 N 个分镜（panel），每个 panel 给出适合 gpt-image-2 的自然语言 prompt。',
+            '',
+            '【关键铁律 · 关于 @ 引用】',
+            '- 你只能使用 "=== 可用 @ 名 ===" 段里列出的名字进行 @ 引用。',
+            '- 绝对不要发明任何不在列表里的 @ 名（不要凭空 @ 主角、@ 场景）。',
+            '- 如果某个 panel 需要的角色 / 场景 / 道具不在可用列表里，用普通中文描述（不加 @）。',
+            '- 写 @ 名时必须逐字精确（包括大小写），前端会基于这个 token 注入完整设定。',
+            '',
+            '【上下文使用要求】',
+            '- "=== 重点角色（详细字段）===" 里的性格/外貌/服饰/道具，必须真实反映在 panel 描述里（不要忽略性格特征）',
+            '- 重点场景的光线/构图/氛围请实际写进 panel；重点道具的外观/特性同样要参与画面',
+            '',
+            '【输出格式硬性规则】',
+            '- 严格输出 JSON：{"panels":[{"title":"短标题","prompt":"自然语言 prompt 文本","characters":["阿岚"],"scenes":["地下避难所"],"props":["光剑"]}]}',
+            '- prompt 必须是中文自然语言段落（不是 tag 堆），适合 gpt-image-2',
+            '- 每个 panel 视觉差异：构图 / 距离 / 光线 / 时间 / 情绪 至少一项变化',
+            '- 整序列有节奏感：开 / 承 / 转 / 合',
+            '- 不输出 markdown / 不解释 / 不前后缀',
+        ].join('\n');
+        // 对话生成补充段（开关开启时附加）
+        const PLOT_S3_DIALOGUE_RIDER = [
+            '',
+            '【对话生成 · 重要】',
+            '- gpt-image-2 是"自然语言"的图像模型，能直接渲染画面里的文字（包括对话气泡、台词），无需特殊符号。',
+            '- 每个 panel 的 prompt 中，必须自然嵌入 1-2 句角色对话（短句即可），形式如：',
+            '  "画面中央，少女 @阿岚 回头喊道：「快跑！」"',
+            '  "@父亲 低声说：「别回头。」"',
+            '- 对话台词必须符合 "=== 重点角色 ===" 中该角色的"性格/设定（persona）"字段：',
+            '  · 沉默冷峻的角色 → 短促硬核句',
+            '  · 活泼少女 → 带语气词',
+            '  · 老人 → 慢条斯理',
+            '- 对话用中文引号「」嵌入；不要超过 2 句话；不要长篇独白。',
+            '- 没有出现角色的画面 panel 可以不写对话（如纯环境镜头）。',
+        ].join('\n');
+        function _buildPlotS3System(opts) {
+            return (opts && opts.includeDialogue)
+                ? PLOT_S3_SYSTEM_BASE + PLOT_S3_DIALOGUE_RIDER
+                : PLOT_S3_SYSTEM_BASE;
+        }
+        async function _plotInferPanels(outline, selectedIdSet, signal) {
+            // 拼上下文 block
+            const ctx = await _plotBuildContextBlock(selectedIdSet);
+            const includeDialogue = !!_plotState.includeDialogue;
+            const userMsg = [
+                ctx ? ctx + '\n' : '',
+                '=== 当前剧情大纲 ===',
+                outline,
+                '',
+                `=== 任务 ===`,
+                `推演 ${_plotState.panelCount} 个分镜。整体风格基调：${PLOT_STYLE_LABELS[_plotState.style] || _plotState.style}`,
+                includeDialogue
+                    ? '★ 本次开启"生成对话"开关：每个 panel 必须按 system prompt 里的"对话生成"规则嵌入 1-2 句角色台词（按 persona 风格）。'
+                    : '本次未开启对话生成：panel 描述只写画面，不要嵌入对话台词。',
+                '严格输出 JSON：{"panels":[{title,prompt,characters,scenes,props}]}',
+            ].join('\n');
+            const raw = await postChatCompletion({
+                system: _buildPlotS3System({ includeDialogue }),
+                user: userMsg,
+                model: PLOT_INFER_MODEL,
+                temperature: 0.7,
+                signal,
+            });
+            const parsed = _plotParseJson(raw);
+            let panels = (parsed && Array.isArray(parsed.panels)) ? parsed.panels : null;
+            if (!panels) {
+                // fallback：尝试正则切分（找 prompt: 字段）
+                panels = _plotRegexFallback(raw, _plotState.panelCount);
+            }
+            // 归一
+            return panels.map((p, i) => ({
+                title: (p && p.title || '').toString().trim() || `分镜 ${i + 1}`,
+                prompt: (p && p.prompt || '').toString().trim(),
+                characters: Array.isArray(p && p.characters) ? p.characters.map(String) : [],
+                scenes:     Array.isArray(p && p.scenes) ? p.scenes.map(String) : [],
+                _status: 'idle',
+            })).filter(p => p.prompt);
+        }
+        function _plotRegexFallback(raw, count) {
+            const out = [];
+            const re = /["']?(?:prompt|描述)["']?\s*[:：]\s*["「『]([^"」』]{6,400})["」』]/g;
+            let m;
+            while ((m = re.exec(raw)) != null && out.length < count) {
+                out.push({ title: `分镜 ${out.length + 1}`, prompt: m[1].trim(), characters: [], scenes: [] });
+            }
+            return out;
+        }
+        // 拼最终上下文（世界观 + 可用 @ 名清单 + 重点角色/场景/道具详情 + 选中历史条目）
+        // v6: 大纲 @ 命中的卡现场重新提取（避免依赖异步赋值的 _plotState 字段时序）
+        async function _plotBuildContextBlock(selectedIdSet) {
+            const lines = [];
+            const outline = _plotState.outline || '';
+
+            // 当前对话挂的世界观（完整）
+            if (_plotState.currentWorldview) {
+                lines.push('=== 世界观 ===');
+                const w = _plotState.currentWorldview;
+                lines.push(`「${w.name}」`);
+                if (w.era)       lines.push(`时代：${w.era}`);
+                if (w.setting)   lines.push(`设定：${w.setting}`);
+                if (w.mood)      lines.push(`基调：${w.mood}`);
+                if (w.styleNote) lines.push(`视觉风格：${w.styleNote}`);
+                if (w.extras)    lines.push(`其他：${w.extras}`);
+                lines.push('');
+            }
+            // 可用 @ 名清单（系统 prompt 强制只能用这些；上限避免 token 爆）
+            const allChars  = (_charactersCache || []).slice(0, 40);
+            const allScenes = (_scenesCache || []).slice(0, 40);
+            const allProps  = (typeof _propsCache !== 'undefined' ? (_propsCache || []) : []).slice(0, 40);
+            if (allChars.length > 0 || allScenes.length > 0 || allProps.length > 0) {
+                lines.push('=== 可用 @ 名（仅以下名字可以加 @ 引用，未列出的不要加 @）===');
+                if (allChars.length > 0)  lines.push('角色：' + allChars.map(c => '@' + c.name).join('、'));
+                if (allScenes.length > 0) lines.push('场景：' + allScenes.map(s => '@' + s.name).join('、'));
+                if (allProps.length > 0)  lines.push('道具：' + allProps.map(p => '@' + p.name).join('、'));
+                lines.push('');
+            }
+            // 现场从大纲重新提取 @ 命中（拿到完整对象，不再依赖异步设置的 state 字段）
+            const mentionedChars  = extractMentionedCharacters(outline).characters || [];
+            const mentionedScenes = extractMentionedScenes(outline) || [];
+            const mentionedProps  = (typeof extractMentionedProps === 'function') ? extractMentionedProps(outline) : [];
+
+            // 重点角色（大纲 @ 中的 + Stage 2 选中的）→ 展开完整字段
+            const charSet = new Map();
+            for (const c of mentionedChars) charSet.set(c.id, c);
+            for (const id of selectedIdSet) {
+                if (id.startsWith('char_')) {
+                    const numId = Number(id.slice(5));
+                    const c = (_charactersCache || []).find(x => x.id === numId);
+                    if (c) charSet.set(c.id, c);
+                }
+            }
+            if (charSet.size > 0) {
+                lines.push('=== 重点角色（详细字段）===');
+                for (const c of charSet.values()) {
+                    lines.push(`@${c.name}：`);
+                    if (c.appearance) lines.push(`  外貌：${c.appearance}`);
+                    if (c.outfit)     lines.push(`  服饰：${c.outfit}`);
+                    if (c.gear)       lines.push(`  道具：${c.gear}`);
+                    if (c.persona)    lines.push(`  性格/设定：${c.persona}`);
+                    if (c.styleNote)  lines.push(`  风格：${c.styleNote}`);
+                }
+                lines.push('');
+            }
+            // 重点场景
+            const sceneSet = new Map();
+            for (const s of mentionedScenes) sceneSet.set(s.id, s);
+            for (const id of selectedIdSet) {
+                if (id.startsWith('scene_')) {
+                    const numId = Number(id.slice(6));
+                    const s = (_scenesCache || []).find(x => x.id === numId);
+                    if (s) sceneSet.set(s.id, s);
+                }
+            }
+            if (sceneSet.size > 0) {
+                lines.push('=== 重点场景（详细字段）===');
+                for (const s of sceneSet.values()) {
+                    lines.push(`@${s.name}：`);
+                    if (s.description)  lines.push(`  描述：${s.description}`);
+                    if (s.lighting)     lines.push(`  光线：${s.lighting}`);
+                    if (s.composition)  lines.push(`  构图：${s.composition}`);
+                    if (s.mood)         lines.push(`  氛围：${s.mood}`);
+                    if (s.keyElements)  lines.push(`  关键元素：${s.keyElements}`);
+                    if (s.styleNote)    lines.push(`  风格：${s.styleNote}`);
+                }
+                lines.push('');
+            }
+            // 重点道具
+            const propSet = new Map();
+            for (const p of mentionedProps) propSet.set(p.id, p);
+            for (const id of selectedIdSet) {
+                if (id.startsWith('prop_')) {
+                    const numId = Number(id.slice(5));
+                    const p = ((typeof _propsCache !== 'undefined' ? _propsCache : null) || []).find(x => x.id === numId);
+                    if (p) propSet.set(p.id, p);
+                }
+            }
+            if (propSet.size > 0) {
+                lines.push('=== 重点道具（详细字段）===');
+                for (const p of propSet.values()) {
+                    lines.push(`@${p.name}${p.category ? `（${p.category}）` : ''}：`);
+                    if (p.description)  lines.push(`  概述：${p.description}`);
+                    if (p.appearance)   lines.push(`  外观：${p.appearance}`);
+                    if (p.properties)   lines.push(`  特性：${p.properties}`);
+                    if (p.lore)         lines.push(`  出处：${p.lore}`);
+                    if (p.styleNote)    lines.push(`  风格：${p.styleNote}`);
+                }
+                lines.push('');
+            }
+            // 选中的历史 prompt / 收藏 / 图库
+            const histLines = [];
+            for (const cand of _plotState.candidates) {
+                if (!selectedIdSet.has(cand.id)) continue;
+                if (['character','scene','worldview','prop'].includes(cand.type)) continue;
+                histLines.push(`- ${cand.title}：${cand.summary}`);
+            }
+            if (histLines.length > 0) {
+                lines.push('=== 相关历史 ===');
+                lines.push(...histLines);
+                lines.push('');
+            }
+            return lines.join('\n');
+        }
+
+        // ============================================================
+        // Picker UI（manual / tune 模式）
+        // ============================================================
+        function _renderPlotPickerList() {
+            const container = document.getElementById('plot-picker-list');
+            const countEl = document.getElementById('plot-picker-count');
+            if (!container) return;
+            const items = _plotState.candidates;
+            if (countEl) countEl.textContent = `(${_plotState.selectedIds.size}/${items.length} 已选)`;
+            if (items.length === 0) {
+                container.innerHTML = '<div class="text-xs text-gray-400 py-4 text-center">没有候选条目（DB 里几乎没有历史，或全被打分过滤了）</div>';
+                return;
+            }
+            container.innerHTML = items.map(c => {
+                const checked = _plotState.selectedIds.has(c.id);
+                return `
+                    <label class="plot-cand-item ${checked ? 'is-checked' : ''}" data-id="${escapeHTML(c.id)}">
+                        <input type="checkbox" ${checked ? 'checked' : ''} onchange="_plotTogglePick('${c.id.replace(/'/g, '')}', this.checked)" class="mt-0.5 accent-orange-600">
+                        <span class="plot-cand-type t-${c.type}">${escapeHTML(c.type)}</span>
+                        <div class="flex-1 min-w-0">
+                            <div class="text-sm text-gray-800 truncate">${escapeHTML(c.title)}</div>
+                            <div class="text-[11px] text-gray-400 truncate">${escapeHTML(c.summary || '')}</div>
+                        </div>
+                    </label>
+                `;
+            }).join('');
+        }
+        function _plotTogglePick(id, checked) {
+            if (checked) _plotState.selectedIds.add(id);
+            else _plotState.selectedIds.delete(id);
+            const countEl = document.getElementById('plot-picker-count');
+            if (countEl) countEl.textContent = `(${_plotState.selectedIds.size}/${_plotState.candidates.length} 已选)`;
+            const label = document.querySelector(`.plot-cand-item[data-id="${id}"]`);
+            if (label) label.classList.toggle('is-checked', checked);
+        }
+        function _plotPickAll() {
+            _plotState.selectedIds = new Set(_plotState.candidates.map(c => c.id));
+            _renderPlotPickerList();
+        }
+        function _plotPickNone() {
+            _plotState.selectedIds = new Set();
+            _renderPlotPickerList();
+        }
+        function _plotPickCurrentConv() {
+            const ids = _plotState.candidates
+                .filter(c => c.type === 'message' && c.convId === currentConversationId)
+                .map(c => c.id);
+            _plotState.selectedIds = new Set(ids);
+            _renderPlotPickerList();
+        }
+
+        // ============================================================
+        // Panels grid 渲染 + 操作
+        // ============================================================
+        function _renderPlotPanels() {
+            const grid = document.getElementById('plot-panels-grid');
+            const countEl = document.getElementById('plot-panels-count');
+            if (!grid) return;
+            const panels = _plotState.panels;
+            if (countEl) countEl.textContent = `(${panels.length} 个)`;
+            if (panels.length === 0) {
+                grid.innerHTML = '<div class="col-span-full text-xs text-gray-400 py-6 text-center">推演结果为空（API 输出不可解析；可重试或换大纲）</div>';
+                return;
+            }
+            grid.innerHTML = panels.map((p, i) => {
+                const statusBadge = p._status && p._status !== 'idle'
+                    ? `<span class="text-[10px] px-1.5 py-0.5 rounded ${_plotStatusBadgeClass(p._status)}">${_plotStatusLabel(p._status)}</span>`
+                    : '';
+                return `
+                    <div class="plot-panel-card ${p._status === 'queued' ? 'is-queued' : p._status === 'running' ? 'is-running' : p._status === 'done' ? 'is-done' : p._status === 'error' ? 'is-error' : ''}" data-panel-idx="${i}">
+                        <div class="flex items-center gap-1.5">
+                            <span class="text-[11px] font-mono text-gray-400">${String(i + 1).padStart(2, '0')}</span>
+                            <span class="text-sm font-medium text-gray-800 truncate flex-1">${escapeHTML(p.title)}</span>
+                            ${statusBadge}
+                        </div>
+                        <div class="text-[12px] text-gray-600 leading-relaxed plot-panel-prompt" data-prompt-text="${escapeHTML(p.prompt)}">${escapeHTML(p.prompt.length > 180 ? p.prompt.slice(0, 180) + '…' : p.prompt)}</div>
+                        <div class="flex gap-1 pt-0.5">
+                            <button type="button" onclick="editPlotPanel(${i})" class="text-[11px] text-gray-600 hover:bg-gray-100 px-2 py-0.5 rounded">改</button>
+                            <button type="button" onclick="applyPlotPanel(${i})" class="text-[11px] text-gray-700 bg-gray-100 hover:bg-gray-200 px-2 py-0.5 rounded ml-auto" title="填到主输入框（不发送），方便手动改">应用</button>
+                            <button type="button" onclick="sendPlotPanel(${i})" class="text-[11px] text-orange-700 bg-orange-50 hover:bg-orange-100 border border-orange-200 px-2 py-0.5 rounded">发送</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        function _plotStatusBadgeClass(s) {
+            return s === 'queued' ? 'bg-amber-100 text-amber-800'
+                : s === 'running' ? 'bg-orange-100 text-orange-800'
+                : s === 'done' ? 'bg-emerald-100 text-emerald-800'
+                : s === 'error' ? 'bg-red-100 text-red-800'
+                : 'bg-gray-100 text-gray-700';
+        }
+        function _plotStatusLabel(s) {
+            return s === 'queued' ? '排队'
+                : s === 'running' ? '生成中'
+                : s === 'done' ? '完成'
+                : s === 'error' ? '失败'
+                : s;
+        }
+        function editPlotPanel(idx) {
+            const panel = _plotState.panels[idx];
+            if (!panel) return;
+            const card = document.querySelector(`.plot-panel-card[data-panel-idx="${idx}"]`);
+            if (!card) return;
+            const promptEl = card.querySelector('.plot-panel-prompt');
+            if (!promptEl) return;
+            // 替换为可编辑 textarea
+            const ta = document.createElement('textarea');
+            ta.rows = 4;
+            ta.value = panel.prompt;
+            ta.className = 'w-full bg-white border border-orange-300 rounded px-2 py-1 text-[12px] text-gray-800 outline-none resize-y';
+            const bar = document.createElement('div');
+            bar.className = 'flex gap-1 mt-1';
+            const saveBtn = document.createElement('button');
+            saveBtn.textContent = '保存';
+            saveBtn.className = 'text-[11px] bg-orange-600 text-white px-2 py-0.5 rounded hover:bg-orange-500';
+            saveBtn.onclick = () => {
+                panel.prompt = (ta.value || '').trim();
+                _renderPlotPanels();
+            };
+            const cancelBtn = document.createElement('button');
+            cancelBtn.textContent = '取消';
+            cancelBtn.className = 'text-[11px] bg-white border border-gray-300 text-gray-600 px-2 py-0.5 rounded hover:bg-gray-50';
+            cancelBtn.onclick = () => _renderPlotPanels();
+            bar.appendChild(saveBtn); bar.appendChild(cancelBtn);
+            promptEl.replaceWith(ta);
+            card.insertBefore(bar, card.lastElementChild);
+            ta.focus();
+        }
+        async function sendPlotPanel(idx) {
+            const panel = _plotState.panels[idx];
+            if (!panel) return;
+            if (!currentConversationId) { showToast('请先选一个对话再发送'); return; }
+            // 关 modal、灌入主输入框、走标准发送
+            closeStoryModal();
+            await new Promise(r => setTimeout(r, 80));
+            promptInput.value = panel.prompt;
+            autoResizeTextarea(promptInput);
+            sendMessage();
+        }
+        // 仅"应用"：把 prompt 填到主输入框 + 关 modal + 聚焦光标到末尾，不自动发送
+        async function applyPlotPanel(idx) {
+            const panel = _plotState.panels[idx];
+            if (!panel) return;
+            closeStoryModal();
+            await new Promise(r => setTimeout(r, 80));
+            promptInput.value = panel.prompt;
+            autoResizeTextarea(promptInput);
+            promptInput.focus();
+            try { promptInput.setSelectionRange(promptInput.value.length, promptInput.value.length); } catch {}
+            showToast('已填入输入框，自由编辑后再发送');
+        }
+        async function generateAllPlotPanels() {
+            if (_plotState.isBatching) { showToast('批量生成进行中…'); return; }
+            if (!currentConversationId) { showToast('请先选一个对话'); return; }
+            const panels = _plotState.panels;
+            if (panels.length === 0) return;
+            _plotState.isBatching = true;
+            const ac = new AbortController();
+            _plotState.abortController = ac;
+            // 标记全部为 queued
+            for (const p of panels) p._status = 'queued';
+            _renderPlotPanels();
+            for (let i = 0; i < panels.length; i++) {
+                if (ac.signal.aborted) break;
+                const p = panels[i];
+                p._status = 'running';
+                _renderPlotPanels();
+                try {
+                    await _runOnePlotPanel(p);
+                    p._status = 'done';
+                } catch (err) {
+                    p._status = 'error';
+                    console.warn('panel gen failed', err);
+                }
+                _renderPlotPanels();
+            }
+            _plotState.isBatching = false;
+            _plotState.abortController = null;
+            showToast('全部分镜生成完成');
+        }
+        async function _runOnePlotPanel(panel) {
+            const convId = currentConversationId;
+            const params = { size: 'auto', quality: 'high', format: 'png' };
+            const estSend = estimateSendTokens(panel.prompt, []);
+            const userMsg = await createMessage({
+                conversationId: convId, role: 'user', status: 'done',
+                text: panel.prompt, images: [], params,
+                sendTokens: estSend, sendTokensEstimated: true,
+                seed: _currentSeed,
+            });
+            if (currentConversationId === convId) renderUserMessage(userMsg);
+            await runGeneration({
+                conversationId: convId,
+                promptText: panel.prompt,
+                inputImages: [],
+                params,
+                seed: _currentSeed,
+            });
+        }
+        async function exportPlotAsNewConv() {
+            const panels = _plotState.panels;
+            if (panels.length === 0) { showToast('还没有 panel'); return; }
+            if (!confirm(`将 ${panels.length} 个分镜导出为新对话，并依次生成？这会自动创建一个新对话并切换过去。`)) return;
+            const title = (_plotState.outline || '剧情推演').slice(0, 24);
+            const conv = await createConversation(title);
+            await switchToConversation(conv.id);
+            closeStoryModal();
+            await new Promise(r => setTimeout(r, 100));
+            // 标 queued + 顺序跑
+            _plotState.isBatching = true;
+            for (const p of panels) p._status = 'queued';
+            for (let i = 0; i < panels.length; i++) {
+                const p = panels[i];
+                p._status = 'running';
+                try {
+                    await _runOnePlotPanel(p);
+                    p._status = 'done';
+                } catch (err) {
+                    p._status = 'error';
+                    console.warn('export gen failed', err);
+                }
+            }
+            _plotState.isBatching = false;
+            showToast('全部分镜已导出到新对话');
+        }
+
+        // ============================================================
+        // 道具卡管理 UI（v6）
+        // ============================================================
+        let _currentEditingPropId = null;
+        let _propListFilter = '';
+        let _propCategoryFilter = '';
+        let _propPendingAvatar = null;
+
+        function _populatePropCategoryFilter() {
+            const sel = document.getElementById('prop-category-filter');
+            if (!sel) return;
+            const cur = sel.value;
+            sel.innerHTML = '<option value="">全部分类</option>' +
+                PROP_CATEGORIES.map(c => `<option value="${c}">${c}</option>`).join('');
+            sel.value = cur || '';
+        }
+        function onPropSearchInput(v) {
+            _propListFilter = (v || '').trim().toLowerCase();
+            renderPropList();
+        }
+        function onPropCategoryFilterChange(v) {
+            _propCategoryFilter = v || '';
+            renderPropList();
+        }
+        function _filterProps(list, q, cat) {
+            return list.filter(p => {
+                if (cat && p.category !== cat) return false;
+                if (!q) return true;
+                if (p.nameLower && p.nameLower.includes(q)) return true;
+                if ((p.category || '').toLowerCase().includes(q)) return true;
+                if (Array.isArray(p.tags) && p.tags.some(t => (t || '').toLowerCase().includes(q))) return true;
+                return false;
+            });
+        }
+        function renderPropList() {
+            const container = document.getElementById('prop-list-container');
+            if (!container) return;
+            const list = _filterProps(_propsCache, _propListFilter, _propCategoryFilter);
+            if (list.length === 0) {
+                container.innerHTML = `<div class="text-xs text-gray-400 text-center py-4">${_propListFilter || _propCategoryFilter ? '没有匹配的道具' : '还没有道具，点上方"新建"创建第一张'}</div>`;
+                return;
+            }
+            container.innerHTML = list.map(p => {
+                const active = (_currentEditingPropId === p.id);
+                const avatarHtml = p.avatar
+                    ? `<img src="${p.avatar}" class="w-8 h-8 rounded-md object-cover border border-gray-200 shrink-0">`
+                    : `<div class="w-8 h-8 rounded-md bg-sky-100 text-sky-700 flex items-center justify-center text-xs font-semibold shrink-0">${escapeHTML((p.name || '?').slice(0, 2))}</div>`;
+                const summary = (p.description || p.appearance || p.properties || '').replace(/\s+/g, ' ').slice(0, 40);
+                return `
+                    <div class="flex items-center gap-2 px-2 py-2 rounded-lg cursor-pointer ${active ? 'bg-sky-50 border border-sky-200' : 'hover:bg-gray-50 border border-transparent'}" onclick="selectPropForEdit(${p.id})">
+                        ${avatarHtml}
+                        <div class="flex-1 min-w-0">
+                            <div class="text-sm text-gray-800 truncate flex items-center gap-1.5">
+                                <span class="truncate">${escapeHTML(p.name || '未命名')}</span>
+                                ${p.category ? `<span class="text-[9px] px-1 py-px rounded bg-sky-100 text-sky-700 shrink-0">${escapeHTML(p.category)}</span>` : ''}
+                            </div>
+                            <div class="text-[11px] text-gray-400 truncate">${escapeHTML(summary)}</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        function startNewProp() {
+            _currentEditingPropId = null;
+            _propPendingAvatar = null;
+            renderPropEditPane(null);
+            renderPropList();
+        }
+        async function selectPropForEdit(id) {
+            abortAllPropFieldEnhancers();
+            const p = await getProp(id);
+            if (!p) { showToast('道具已丢失'); return; }
+            _currentEditingPropId = p.id;
+            _propPendingAvatar = p.avatar || null;
+            renderPropEditPane(p);
+            renderPropList();
+        }
+        function renderPropEditPane(p) {
+            const pane = document.getElementById('prop-edit-pane');
+            if (!pane) return;
+            const isNew = !p;
+            const title = isNew ? '新建道具' : `编辑：${escapeHTML(p.name)}`;
+            const avatarSrc = (_propPendingAvatar) ? _propPendingAvatar : (p && p.avatar) || '';
+            const fieldsHTML = Object.keys(PROP_FIELD_LABELS).map(k => `
+                <div class="prop-field-group" data-field="${k}">
+                    <div class="flex items-center mb-1">
+                        <label class="text-sm font-medium text-gray-700">${PROP_FIELD_LABELS[k]}</label>
+                        <button type="button" onclick="onPropFieldEnhanceClick('${k}')" class="prop-ai-btn ml-auto inline-flex items-center gap-1 text-[11px] text-purple-600 hover:bg-purple-50 border border-purple-200 px-2 py-1 sm:py-0.5 rounded-md" title="用 gpt-oss-120b 生成/优化这个字段">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+                            AI
+                        </button>
+                    </div>
+                    <textarea id="prop-field-${k}" rows="3" class="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 focus:ring-1 focus:ring-sky-400 focus:outline-none resize-y"></textarea>
+                    <div class="prop-field-preview hidden mt-2 rounded-lg border border-purple-200 bg-purple-50 p-3">
+                        <div class="flex items-center justify-between text-[11px] text-purple-700 mb-1">
+                            <span class="prop-field-preview-label">AI 建议</span>
+                            <button type="button" class="prop-field-preview-close text-gray-400 hover:text-red-500" onclick="discardPropFieldPreview('${k}')" title="关闭">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                            </button>
+                        </div>
+                        <div class="prop-field-preview-body">
+                            <pre class="prop-field-preview-text whitespace-pre-wrap break-words text-sm text-gray-800 font-sans"></pre>
+                        </div>
+                        <div class="prop-field-preview-actions mt-2 flex flex-wrap gap-2">
+                            <button type="button" class="flex-1 min-h-[36px] sm:min-h-0 bg-purple-600 text-white text-xs px-3 py-1.5 rounded-md hover:bg-purple-500" onclick="applyPropFieldPreview('${k}')">应用到此字段</button>
+                            <button type="button" class="flex-1 min-h-[36px] sm:min-h-0 bg-white border border-gray-300 text-gray-600 text-xs px-3 py-1.5 rounded-md hover:bg-gray-50" onclick="discardPropFieldPreview('${k}')">放弃</button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+
+            pane.innerHTML = `
+                <div class="flex items-center gap-2 mb-3">
+                    <div class="relative shrink-0">
+                        <img id="prop-avatar-preview" src="${avatarSrc || ''}" class="w-14 h-14 rounded-md object-cover border border-gray-200 bg-gray-100 ${avatarSrc ? '' : 'hidden'}">
+                        <div id="prop-avatar-placeholder" class="w-14 h-14 rounded-md bg-sky-100 text-sky-700 flex items-center justify-center text-base font-semibold border border-sky-200 ${avatarSrc ? 'hidden' : ''}">?</div>
+                        <input type="file" id="prop-avatar-input" accept="image/*" class="hidden" onchange="onPropAvatarPick(event)">
+                        <button type="button" onclick="document.getElementById('prop-avatar-input').click()" class="absolute -bottom-1 -right-1 bg-white border border-gray-200 rounded-full p-1 shadow-sm hover:bg-gray-50" title="上传缩略图（可选）">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+                        </button>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="text-xs text-gray-400">${title}</div>
+                        <input id="prop-field-name" type="text" maxlength="32" placeholder="道具名（@ 触发用）" class="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-base text-gray-800 focus:ring-1 focus:ring-sky-400 focus:outline-none">
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="text-sm font-medium text-gray-700 mb-1 block">分类</label>
+                    <select id="prop-field-category" class="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 focus:ring-1 focus:ring-sky-400 focus:outline-none cursor-pointer">
+                        ${PROP_CATEGORIES.map(c => `<option value="${c}">${c}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="flex items-center gap-1 mb-3 text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-2 py-1.5">
+                    <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    <span>道具用于通用物品（食物 / 植物 / 动物 / 武器 / 神物 / 饰品等）。每段可点 AI 让 gpt-oss-120b 生成/优化。</span>
+                </div>
+                <div class="space-y-3">
+                    ${fieldsHTML}
+                    <div>
+                        <label class="text-sm font-medium text-gray-700 mb-1 block">标签（可选，逗号分隔）</label>
+                        <input id="prop-field-tags" type="text" class="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 focus:ring-1 focus:ring-sky-400 focus:outline-none">
+                    </div>
+                </div>
+                <div class="sticky bottom-0 left-0 right-0 -mx-4 mt-4 px-4 py-3 bg-white flex flex-wrap gap-2 shadow-[0_-2px_6px_rgba(0,0,0,0.04)]">
+                    <button type="button" onclick="saveCurrentProp()" class="flex-1 min-w-[120px] min-h-[40px] bg-black text-white rounded-lg text-sm hover:bg-gray-800">保存</button>
+                    ${isNew ? '' : `
+                        <button type="button" onclick="exportCurrentProp()" class="min-h-[40px] bg-gray-100 text-gray-700 rounded-lg text-sm px-3 hover:bg-gray-200">导出本卡</button>
+                        <button type="button" onclick="deleteCurrentProp()" class="min-h-[40px] bg-red-50 text-red-600 border border-red-200 rounded-lg text-sm px-3 hover:bg-red-100">删除</button>
+                    `}
+                </div>
+            `;
+            document.getElementById('prop-field-name').value = p ? (p.name || '') : '';
+            document.getElementById('prop-field-category').value = (p && p.category) || '其他';
+            for (const k of Object.keys(PROP_FIELD_LABELS)) {
+                document.getElementById('prop-field-' + k).value = p ? (p[k] || '') : '';
+            }
+            document.getElementById('prop-field-tags').value = p && Array.isArray(p.tags) ? p.tags.join(', ') : '';
+        }
+        function collectPropFormFromDOM() {
+            const get = (id) => (document.getElementById(id) && document.getElementById(id).value) || '';
+            return {
+                name: get('prop-field-name'),
+                category: get('prop-field-category'),
+                description: get('prop-field-description'),
+                appearance: get('prop-field-appearance'),
+                properties: get('prop-field-properties'),
+                lore: get('prop-field-lore'),
+                styleNote: get('prop-field-styleNote'),
+                avatar: _propPendingAvatar || null,
+                tags: get('prop-field-tags'),
+            };
+        }
+        async function saveCurrentProp() {
+            const form = collectPropFormFromDOM();
+            try {
+                const p = await upsertPropFromForm(form, _currentEditingPropId);
+                _currentEditingPropId = p.id;
+                _propPendingAvatar = p.avatar || null;
+                renderPropList();
+                renderPropEditPane(p);
+                showToast('道具已保存');
+            } catch (e) {
+                alert('保存失败：' + (e && e.message ? e.message : e));
+            }
+        }
+        async function deleteCurrentProp() {
+            if (!_currentEditingPropId) return;
+            const p = (_propsCache || []).find(x => x.id === _currentEditingPropId);
+            if (!confirm(`确定删除道具「${(p && p.name) || '未命名'}」？\n历史消息里的 @ 文本不会变，但以后 reroll 将无法再注入这个道具。`)) return;
+            try {
+                await deleteProp(_currentEditingPropId);
+                await preloadProps();
+                _currentEditingPropId = null;
+                _propPendingAvatar = null;
+                renderPropList();
+                renderPropEditPane(null);
+                showToast('已删除');
+            } catch (e) {
+                alert('删除失败：' + (e && e.message ? e.message : e));
+            }
+        }
+        async function clearAllPropsWithConfirm() {
+            if (!_propsCache.length) { alert('库已空'); return; }
+            if (!confirm(`确定清空全部 ${_propsCache.length} 个道具？\n此操作不可恢复（不影响角色/场景/世界观/历史图）。`)) return;
+            try {
+                await clearAllProps();
+                await preloadProps();
+                _currentEditingPropId = null;
+                _propPendingAvatar = null;
+                renderPropList();
+                renderPropEditPane(null);
+                showToast('已清空');
+            } catch (e) {
+                alert('清空失败：' + (e && e.message ? e.message : e));
+            }
+        }
+        function onPropAvatarPick(e) {
+            const file = e.target.files && e.target.files[0];
+            if (!file) return;
+            if (!/^image\//.test(file.type)) { alert('请选择图片文件'); e.target.value = ''; return; }
+            const reader = new FileReader();
+            reader.onload = async () => {
+                try {
+                    const compressed = await compressDataURLForAvatar(reader.result);
+                    _propPendingAvatar = compressed;
+                    const img = document.getElementById('prop-avatar-preview');
+                    const ph = document.getElementById('prop-avatar-placeholder');
+                    if (img) { img.src = compressed; img.classList.remove('hidden'); }
+                    if (ph) ph.classList.add('hidden');
+                } catch { alert('缩略图处理失败'); }
+            };
+            reader.readAsDataURL(file);
+            e.target.value = '';
+        }
+        // ---- 导入导出 ----
+        async function exportCurrentProp() {
+            if (!_currentEditingPropId) { alert('请先选择或保存一个道具再导出'); return; }
+            const p = await getProp(_currentEditingPropId);
+            if (!p) { alert('道具已丢失'); return; }
+            _downloadJSON({ type: 'vsllm-prop', schemaVersion: PROP_SCHEMA_VERSION, prop: p },
+                `prop-${safeFilename(p.name)}-${new Date().toISOString().slice(0,10).replace(/-/g,'')}.json`);
+        }
+        async function exportAllProps() {
+            const all = await listProps();
+            if (all.length === 0) { alert('还没有任何道具可以导出'); return; }
+            _downloadJSON({
+                type: 'vsllm-prop-pack',
+                schemaVersion: PROP_SCHEMA_VERSION,
+                exportedAt: Date.now(),
+                props: all,
+            }, `props-pack-${new Date().toISOString().slice(0,10).replace(/-/g,'')}.json`);
+        }
+        async function importPropsFromFile(e) {
+            const file = e.target.files && e.target.files[0];
+            if (!file) return;
+            if (file.size > 5 * 1024 * 1024) { alert('文件太大（> 5MB）'); e.target.value=''; return; }
+            try {
+                const text = await file.text();
+                let obj;
+                try { obj = JSON.parse(text); }
+                catch (pe) { throw new Error('JSON 解析失败：' + pe.message); }
+
+                let list = [];
+                if (obj && obj.type === 'vsllm-prop-pack' && Array.isArray(obj.props)) list = obj.props;
+                else if (obj && obj.type === 'vsllm-prop' && obj.prop) list = [obj.prop];
+                else if (obj && (obj.name || obj.description || obj.appearance)) list = [obj];
+                else if (Array.isArray(obj) && obj.length && (obj[0].name || obj[0].description)) list = obj;
+                else throw new Error('文件格式不认识：既不是单卡也不是 prop-pack');
+
+                const result = await _importPropList(list);
+                showToast(`导入完成：新增 ${result.added}，覆盖 ${result.overwritten}，改名 ${result.renamed}，跳过 ${result.skipped}`);
+                renderPropList();
+            } catch (err) {
+                alert('导入失败：' + (err && err.message ? err.message : err));
+            }
+            e.target.value = '';
+        }
+        async function _importPropList(list) {
+            const stats = { added: 0, overwritten: 0, renamed: 0, skipped: 0 };
+            let globalStrategy = null;
+            for (const raw of list) {
+                const body = normalizePropForm(raw);
+                const errs = validateProp(body);
+                if (errs.length) { stats.skipped++; continue; }
+                const existing = await findPropByName(body.name, null);
+                let strategy = globalStrategy;
+                if (existing && !strategy) {
+                    const ans = prompt(
+                        `道具「${body.name}」已存在。\n输入 1 覆盖，2 改名导入，3 跳过\n（输入 1!/2!/3! 表示对剩余重名沿用此策略）`,
+                        '2'
+                    );
+                    if (ans == null) { stats.skipped++; continue; }
+                    const sticky = ans.endsWith('!');
+                    const n = ans.replace(/!$/, '').trim();
+                    strategy = n === '1' ? 'overwrite' : n === '3' ? 'skip' : 'rename';
+                    if (sticky) globalStrategy = strategy;
+                }
+                if (existing && strategy === 'skip') { stats.skipped++; continue; }
+                let finalName = body.name;
+                let targetId;
+                if (existing && strategy === 'overwrite') { targetId = existing.id; stats.overwritten++; }
+                else if (existing && strategy === 'rename') {
+                    let k = 2;
+                    while (await findPropByName(`${body.name}-${k}`, null)) k++;
+                    finalName = `${body.name}-${k}`;
+                    stats.renamed++;
+                } else stats.added++;
+                const now = Date.now();
+                const p = {
+                    id: targetId || _newId(),
+                    ...body,
+                    name: finalName,
+                    nameLower: toNameLower(finalName),
+                    createdAt: raw.createdAt || now,
+                    updatedAt: now,
+                    schemaVersion: PROP_SCHEMA_VERSION,
+                };
+                try { await putProp(p); }
+                catch { stats.skipped++; if (strategy === 'overwrite') stats.overwritten--; else if (strategy === 'rename') stats.renamed--; else stats.added--; }
+            }
+            await preloadProps();
+            return stats;
+        }
+        // ---- AI 字段增强 ----
+        const _propFieldAborters = new Map();
+        function abortAllPropFieldEnhancers() {
+            for (const ac of _propFieldAborters.values()) { try { ac.abort(); } catch {} }
+            _propFieldAborters.clear();
+        }
+        const PROP_FIELD_ENHANCE_SYSTEM = [
+            '你在帮助用户构建"道具卡"，用于 gpt-image-2 系列保持物品一致性。道具是世界中的通用物品（食物 / 植物 / 动物 / 神物 / 武器 / 饰品 / 工具 / 载具 / 服饰道具）。',
+            '任务：为指定字段产出或润色一段清晰的自然语言描述。',
+            '',
+            '字段语义：',
+            '- description：概述（这是什么 + 一句定位）',
+            '- appearance：外观（颜色、材质、形态、尺寸、纹饰）',
+            '- properties：特性 / 性能（功能、效果、世界规则下的作用、强度）',
+            '- lore：出处 / 传说（来源、典故、文化设定、稀有度）',
+            '- styleNote：风格备注（视觉处理偏好、可参考的美学）',
+            '',
+            '硬性规则：',
+            '- 输出必须是自然语言段落，不要 Markdown / 列点 / 引号 / 前后解释。',
+            '- 严格只输出本字段的最终内容本体。',
+            '- 不与用户已填的其他字段矛盾。',
+            '- 中文交流回中文，英文回英文。',
+            '- 不添加敏感/违规内容。',
+            '- 长度约 60~220 字。',
+            '',
+            '判定：当前值为空 → 基于道具名 + 分类 + 其他字段合理生成；非空 → 保留用户意图润色补细节。',
+        ].join('\n');
+        async function callPropFieldEnhancer({ propName, propCategory, fieldKey, currentValue, otherFields, signal }) {
+            const label = PROP_FIELD_LABELS[fieldKey] || fieldKey;
+            const isEmpty = !currentValue || !currentValue.trim();
+            const other = [];
+            for (const k of Object.keys(PROP_FIELD_LABELS)) {
+                if (k === fieldKey) continue;
+                const v = otherFields && otherFields[k];
+                if (v && v.trim()) other.push(`  ${k}(${PROP_FIELD_LABELS[k]}): ${v.trim()}`);
+            }
+            const userMsg = [
+                `道具名：${propName || '(未命名)'}`,
+                `分类：${propCategory || '其他'}`,
+                `目标字段：${fieldKey}（${label}）`,
+                `当前值：${isEmpty ? '(空)' : currentValue.trim()}`,
+                `任务：${isEmpty ? '生成一段合理的新描述。' : '在保留用户意图前提下润色、补细节、去歧义。'}`,
+                '',
+                '其他已填字段（仅供参考，保持一致）：',
+                other.length ? other.join('\n') : '  (无)',
+                '',
+                `请只输出 ${fieldKey} 字段的最终自然语言内容本体。`,
+            ].join('\n');
+            return await postChatCompletion({
+                system: PROP_FIELD_ENHANCE_SYSTEM,
+                user: userMsg,
+                signal,
+            });
+        }
+        function _setPropFieldPreview(fieldKey, state, opts) {
+            const group = document.querySelector(`.prop-field-group[data-field="${fieldKey}"]`);
+            if (!group) return;
+            const preview = group.querySelector('.prop-field-preview');
+            const label = group.querySelector('.prop-field-preview-label');
+            const text = group.querySelector('.prop-field-preview-text');
+            if (!preview || !label || !text) return;
+            preview.classList.remove('hidden');
+            if (state === 'loading')   { label.textContent = 'AI 生成中…'; text.textContent = ''; }
+            else if (state === 'done') { label.textContent = 'AI 建议'; text.textContent = (opts && opts.text) || ''; }
+            else if (state === 'error'){ label.textContent = '失败'; text.textContent = (opts && opts.error) || '请重试'; }
+        }
+        function discardPropFieldPreview(fieldKey) {
+            const group = document.querySelector(`.prop-field-group[data-field="${fieldKey}"]`);
+            const preview = group && group.querySelector('.prop-field-preview');
+            if (preview) preview.classList.add('hidden');
+            const ac = _propFieldAborters.get(fieldKey);
+            if (ac) { try { ac.abort(); } catch {} _propFieldAborters.delete(fieldKey); }
+        }
+        function applyPropFieldPreview(fieldKey) {
+            const group = document.querySelector(`.prop-field-group[data-field="${fieldKey}"]`);
+            const text = group && group.querySelector('.prop-field-preview-text');
+            const ta = document.getElementById('prop-field-' + fieldKey);
+            if (text && ta) ta.value = text.textContent || '';
+            discardPropFieldPreview(fieldKey);
+            showToast(`已应用到【${PROP_FIELD_LABELS[fieldKey] || fieldKey}】`);
+        }
+        async function onPropFieldEnhanceClick(fieldKey) {
+            if (!localStorage.getItem('vsllm_api_key')) { showToast('先去设置填 API Key'); openSettings(); return; }
+            const form = collectPropFormFromDOM();
+            const propName = (form.name || '').trim() || '(未命名)';
+            const propCategory = form.category || '其他';
+            const currentValue = form[fieldKey] || '';
+            const prev = _propFieldAborters.get(fieldKey);
+            if (prev) { try { prev.abort(); } catch {} }
+            const ac = new AbortController();
+            _propFieldAborters.set(fieldKey, ac);
+            _setPropFieldPreview(fieldKey, 'loading');
+            try {
+                const out = await callPropFieldEnhancer({
+                    propName, propCategory, fieldKey, currentValue, otherFields: form, signal: ac.signal,
+                });
+                if (ac.signal.aborted) return;
+                _setPropFieldPreview(fieldKey, 'done', { text: (out || '').trim() });
+            } catch (err) {
+                if (err && err.name === 'AbortError') return;
+                _setPropFieldPreview(fieldKey, 'error', { error: (err && err.message) || String(err) });
+            } finally {
+                if (_propFieldAborters.get(fieldKey) === ac) _propFieldAborters.delete(fieldKey);
             }
         }
     </script>
