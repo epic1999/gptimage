@@ -169,7 +169,11 @@
                 #475569 100%);
             background-size: 300% 100%;
             background-position: 200% 0;
-            animation: ai-silver-shimmer 4s ease-in-out infinite;
+            /* 关键修复：linear 而不是 ease-in-out，避免 100% 处减速到几乎停顿再"啪"地跳回；
+               关键帧首尾差值 = background-size（300%），循环点视觉上完全连续；
+               will-change 提示 GPU 单独 layer 合成，避免 paint 抖动 */
+            animation: ai-silver-shimmer 3s linear infinite;
+            will-change: background-position;
             /* 浅底下轻微白色阴影提高可读性；对 transparent 文字另行处理 */
             text-shadow: 0 1px 1.5px rgba(255,255,255,0.9);
         }
@@ -186,7 +190,7 @@
         }
         @keyframes ai-silver-shimmer {
             0%   { background-position: 200% 0; }
-            100% { background-position: -200% 0; }
+            100% { background-position: -100% 0; }
         }
         /* 文案切换：淡入淡出 + 轻微上移 */
         .ai-fade-text {
@@ -315,6 +319,108 @@
             padding-top: 8px;
         }
 
+        /* ========== 计费提醒（低调灰系，沿用 thinking-block 风格） ========== */
+        .cost-reminder {
+            display: none;
+            gap: 7px;
+            align-items: flex-start;
+            margin-top: 8px;
+            max-width: 440px;
+            padding: 7px 10px;
+            border: 1px solid #ececec;
+            border-radius: 10px;
+            background: #f7f7f8;
+            color: #6b7280;
+            font-size: 11.5px;
+            line-height: 1.5;
+        }
+        .cost-reminder.is-shown {
+            display: flex;
+            animation: cost-reminder-in 0.36s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        @keyframes cost-reminder-in {
+            from { opacity: 0; transform: translateY(-4px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        .cost-reminder .icon {
+            width: 13px; height: 13px;
+            flex-shrink: 0;
+            color: #9ca3af;
+            margin-top: 2px;
+        }
+        .cost-reminder .title {
+            font-weight: 500;
+            color: #4b5563;
+            margin-bottom: 1px;
+            letter-spacing: 0.01em;
+        }
+        .cost-reminder .body {
+            color: #6b7280;
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .cost-reminder.is-shown { animation: none; }
+        }
+
+        /* ========== 键盘快捷键浮按钮 + 帮助弹层（仅桌面） ========== */
+        #kbd-help-btn {
+            position: fixed; bottom: 14px; right: 14px;
+            width: 28px; height: 28px;
+            background: rgba(255,255,255,0.92);
+            border: 1px solid #e5e7eb;
+            border-radius: 50%;
+            color: #6b7280;
+            font-size: 13px;
+            font-weight: 600;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 1px 3px rgba(15,23,42,0.06);
+            z-index: 45;
+            transition: background-color 0.15s, color 0.15s, transform 0.15s;
+            user-select: none;
+        }
+        #kbd-help-btn:hover { background: #fff; color: #111; transform: translateY(-1px); }
+        #kbd-help-modal {
+            display: none;
+            position: fixed; inset: 0;
+            background: rgba(15,23,42,0.45);
+            z-index: 110;
+            justify-content: center; align-items: center;
+            padding: 16px;
+        }
+        #kbd-help-modal.is-open { display: flex; animation: kbd-help-fade 0.2s ease-out; }
+        @keyframes kbd-help-fade { from { opacity: 0; } to { opacity: 1; } }
+        #kbd-help-modal .panel {
+            background: #fff;
+            border-radius: 14px;
+            padding: 20px 22px 18px;
+            min-width: 300px; max-width: 380px;
+            width: 100%;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.18);
+        }
+        #kbd-help-modal h3 {
+            font-size: 14px; font-weight: 600;
+            color: #111;
+            margin-bottom: 14px;
+        }
+        #kbd-help-modal table { width: 100%; border-collapse: collapse; }
+        #kbd-help-modal td { padding: 5px 0; font-size: 13px; color: #4b5563; vertical-align: middle; }
+        #kbd-help-modal td.kbd-col { text-align: right; }
+        #kbd-help-modal kbd {
+            display: inline-block;
+            padding: 2px 6px;
+            font-family: ui-monospace, "SF Mono", Menlo, monospace;
+            font-size: 11px;
+            background: #f3f4f6;
+            border: 1px solid #e5e7eb;
+            border-bottom-color: #d1d5db;
+            border-radius: 4px;
+            color: #374151;
+            margin-left: 2px;
+        }
+        @media (max-width: 768px), (pointer: coarse) {
+            #kbd-help-btn, #kbd-help-modal { display: none !important; }
+        }
+
         /* ========== loading 卡片里的 meta 行（计时器 + 事件计数） ========== */
         .loading-meta {
             display: inline-flex;
@@ -378,6 +484,19 @@
                 </button>
             </div>
             <div id="conversation-list" class="flex-1 overflow-y-auto px-2 pb-2 flex flex-col gap-1 min-h-0"></div>
+        </div>
+
+        <!-- 我的提示词 section（默认折叠） -->
+        <div id="fav-section" class="border-t border-gray-200 shrink-0">
+            <div onclick="toggleFavorites()" class="px-3 py-2 flex items-center justify-between cursor-pointer hover:bg-gray-100 select-none">
+                <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-1.5">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.562.562 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.562.562 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z"/></svg>
+                    我的提示词
+                    <span id="fav-count" class="text-gray-400 normal-case font-normal"></span>
+                </span>
+                <svg id="fav-chevron" class="w-3 h-3 text-gray-400 transition-transform" style="transform: rotate(-90deg);" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+            </div>
+            <div id="favorites-list" class="hidden max-h-48 overflow-y-auto px-2 pb-2 flex flex-col gap-1"></div>
         </div>
 
         <!-- 图库 section -->
@@ -740,11 +859,12 @@
         const PROMPT_ENHANCE_MODEL = "gpt-oss-120b";
 
         const DB_NAME = "VsllmGallery";
-        const DB_VERSION = 3; // v1 只有 images；v2 加 conversations、messages；v3 加 characters
+        const DB_VERSION = 4; // v1 只有 images；v2 加 conversations、messages；v3 加 characters；v4 加 favorites
         const STORE_GALLERY = "images";
         const STORE_CONVERSATIONS = "conversations";
         const STORE_MESSAGES = "messages";
         const STORE_CHARACTERS = "characters";
+        const STORE_FAVORITES = "favorites";
 
         // 生成时轮播的等待文案（高质量图 1-5 分钟，给用户点乐子别闲着）
         const LOADING_MESSAGES = [
@@ -941,6 +1061,8 @@
             }
             await switchToConversation(convs[0].id);
             await loadGallery();
+            // 初始拉一次收藏数量，让 sidebar 标题旁的 (N) 显示
+            renderFavorites();
 
             const apiKey = localStorage.getItem('vsllm_api_key');
             if (!apiKey) openSettings();
@@ -968,6 +1090,12 @@
                         const chs = d.createObjectStore(STORE_CHARACTERS, { keyPath: "id" });
                         chs.createIndex("updatedAt", "updatedAt");
                         chs.createIndex("nameLower", "nameLower", { unique: false });
+                    }
+                    // v4 新增：提示词收藏；幂等
+                    if (!d.objectStoreNames.contains(STORE_FAVORITES)) {
+                        const fs = d.createObjectStore(STORE_FAVORITES, { keyPath: "id" });
+                        fs.createIndex("updatedAt", "updatedAt");
+                        fs.createIndex("usedCount", "usedCount");
                     }
                 };
                 req.onsuccess = (e) => { db = e.target.result; resolve(); };
@@ -1067,6 +1195,50 @@
                 req.onerror = (e) => reject(e.target.error || e);
             });
         }
+
+        // ---- Favorites CRUD ----
+        function putFav(f) {
+            return new Promise((resolve, reject) => {
+                const req = db.transaction(STORE_FAVORITES, 'readwrite').objectStore(STORE_FAVORITES).put(f);
+                req.onsuccess = () => resolve();
+                req.onerror = (e) => reject(e.target.error || e);
+            });
+        }
+        function getFav(id) {
+            return new Promise((resolve, reject) => {
+                const req = db.transaction(STORE_FAVORITES, 'readonly').objectStore(STORE_FAVORITES).get(Number(id));
+                req.onsuccess = () => resolve(req.result);
+                req.onerror = (e) => reject(e.target.error || e);
+            });
+        }
+        function listFavs() {
+            return new Promise((resolve, reject) => {
+                const req = db.transaction(STORE_FAVORITES, 'readonly').objectStore(STORE_FAVORITES).getAll();
+                req.onsuccess = () => {
+                    // 按 usedCount DESC，并列时按 updatedAt DESC
+                    const items = (req.result || []).sort((a, b) =>
+                        (b.usedCount || 0) - (a.usedCount || 0) || (b.updatedAt || 0) - (a.updatedAt || 0)
+                    );
+                    resolve(items);
+                };
+                req.onerror = (e) => reject(e.target.error || e);
+            });
+        }
+        function deleteFav(id) {
+            return new Promise((resolve, reject) => {
+                const req = db.transaction(STORE_FAVORITES, 'readwrite').objectStore(STORE_FAVORITES).delete(Number(id));
+                req.onsuccess = () => resolve();
+                req.onerror = (e) => reject(e.target.error || e);
+            });
+        }
+        async function incFavUseCount(id) {
+            const f = await getFav(id);
+            if (!f) return;
+            f.usedCount = (f.usedCount || 0) + 1;
+            f.updatedAt = Date.now();
+            await putFav(f);
+        }
+
         async function updateMsg(id, patch) {
             const m = await getMsg(id);
             if (!m) return; // 可能被删对话一起干掉了
@@ -2351,6 +2523,110 @@
             await switchToConversation(c.id);
         }
 
+        // ============== 提示词收藏 ==============
+        // 折叠面板开关：仅切显隐 + 旋 chevron；展开时拉一次列表
+        function toggleFavorites() {
+            const list = document.getElementById('favorites-list');
+            const chevron = document.getElementById('fav-chevron');
+            if (!list) return;
+            const willShow = list.classList.contains('hidden');
+            if (willShow) {
+                list.classList.remove('hidden');
+                if (chevron) chevron.style.transform = 'rotate(0)';
+                renderFavorites();
+            } else {
+                list.classList.add('hidden');
+                if (chevron) chevron.style.transform = 'rotate(-90deg)';
+            }
+        }
+        // 拉所有收藏，按 usedCount DESC 渲染（listFavs 已排序）
+        async function renderFavorites() {
+            const list = document.getElementById('favorites-list');
+            const countEl = document.getElementById('fav-count');
+            if (!list) return;
+            const favs = await listFavs();
+            if (countEl) countEl.textContent = favs.length > 0 ? `(${favs.length})` : '';
+            if (favs.length === 0) {
+                list.innerHTML = `<div class="text-[11px] text-gray-400 text-center py-3 px-2 leading-relaxed">还没有收藏的提示词<br><span class="text-gray-300">在生成结果底部点"收藏"加进来</span></div>`;
+                return;
+            }
+            const items = favs.map(f => {
+                const text = f.text || '';
+                const preview = text.length > 60 ? text.slice(0, 60) + '…' : text;
+                const thumb = f.thumb
+                    ? `<img src="${f.thumb}" class="w-8 h-8 rounded object-cover shrink-0">`
+                    : `<div class="w-8 h-8 rounded bg-gray-200 shrink-0 flex items-center justify-center text-gray-400"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h7"/></svg></div>`;
+                const used = (f.usedCount || 0) > 0 ? `用过 ${f.usedCount} 次` : '未用过';
+                return `
+                    <div class="group flex items-start gap-2 p-1.5 rounded hover:bg-gray-100 cursor-pointer" onclick="useFavorite(${f.id}, event)" title="${escapeHTML(text).slice(0,200)}&#10;点击替换 / Shift+点击追加">
+                        ${thumb}
+                        <div class="flex-1 min-w-0">
+                            <div class="text-[12px] text-gray-700 leading-tight break-words" style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${escapeHTML(preview)}</div>
+                            <div class="text-[10px] text-gray-400 mt-0.5">${escapeHTML(used)}</div>
+                        </div>
+                        <button class="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 shrink-0 p-0.5" onclick="event.stopPropagation(); deleteFavorite(${f.id})" title="删除">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+                `;
+            }).join('');
+            list.innerHTML = items;
+        }
+        // 使用收藏：默认替换输入；Shift+点击追加
+        async function useFavorite(id, ev) {
+            const fav = await getFav(Number(id));
+            if (!fav) return;
+            const inp = document.getElementById('prompt-input');
+            if (!inp) return;
+            if (ev && ev.shiftKey) {
+                const cur = (inp.value || '').trim();
+                inp.value = cur ? cur + '\n' + fav.text : fav.text;
+            } else {
+                inp.value = fav.text;
+            }
+            if (typeof autoResizeTextarea === 'function') autoResizeTextarea(inp);
+            inp.focus();
+            await incFavUseCount(Number(id));
+            renderFavorites();
+            // 移动端用完自动收侧边栏，回到主聊天
+            if (matchMedia('(max-width: 768px)').matches) {
+                const sb = document.getElementById('sidebar');
+                if (sb && !sb.classList.contains('-translate-x-full')) toggleSidebar();
+            }
+        }
+        async function deleteFavorite(id) {
+            const fav = await getFav(Number(id));
+            if (!fav) return;
+            const preview = (fav.text || '').slice(0, 30);
+            if (!confirm(`删除收藏「${preview}${(fav.text || '').length > 30 ? '…' : ''}」？`)) return;
+            await deleteFav(Number(id));
+            renderFavorites();
+        }
+        // 把指定 bot message 的 prompt 收藏起来（自动用结果图当 thumb）
+        async function favoriteFromMessage(msgId) {
+            const m = await getMsg(Number(msgId));
+            if (!m) { showToast('消息不存在'); return; }
+            const text = (m.text || '').trim();
+            if (!text) { showToast('这条消息没有提示词可收藏'); return; }
+            let thumb = null;
+            if (m.resultImgSrc) {
+                try { thumb = await compressDataURLForAvatar(m.resultImgSrc); } catch {}
+            }
+            const fav = {
+                id: _newId(),
+                text, thumb,
+                createdAt: Date.now(),
+                updatedAt: Date.now(),
+                usedCount: 0,
+            };
+            await putFav(fav);
+            showToast('已收藏到"我的提示词"');
+            // 自动展开 favorites section，让用户看到刚加的
+            const list = document.getElementById('favorites-list');
+            if (list && list.classList.contains('hidden')) toggleFavorites();
+            else renderFavorites();
+        }
+
         // ============== 上下文图/待发送图（按 conversation 存） ==============
         async function renderContextBarFromConv() {
             const conv = await getConv(currentConversationId);
@@ -2582,6 +2858,13 @@
                             取消
                         </button>
                     </div>
+                    <div class="cost-reminder" data-cost-reminder>
+                        <svg class="icon" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        <div>
+                            <div class="title">已开始计费</div>
+                            <div class="body">通常 1–3 分钟，复杂场景更久。中途取消不退费。</div>
+                        </div>
+                    </div>
                     <div class="text-[11px] text-gray-400 mt-2 max-w-md">${escapeHTML(footLine)}</div>
                     ${botTokenMetaHTML(null, true, '生成中…')}
                 </div>
@@ -2716,6 +2999,10 @@
                         <button onclick="markResultImage(${msgId})" title="在图上画红圈标记要改的位置" class="bot-action-btn inline-flex items-center gap-1 px-2 py-1 rounded-md text-[12px] text-rose-500 hover:text-rose-700 hover:bg-rose-50 border border-transparent hover:border-rose-200 transition-all">
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
                             标记
+                        </button>
+                        <button onclick="favoriteFromMessage(${msgId})" title="把这条提示词加入「我的提示词」" class="bot-action-btn inline-flex items-center gap-1 px-2 py-1 rounded-md text-[12px] text-gray-500 hover:text-gray-900 hover:bg-gray-100 border border-transparent hover:border-gray-200 transition-all">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.562.562 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.562.562 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z"/></svg>
+                            收藏
                         </button>
                     </div>
                     ${charsBadge}
@@ -3650,6 +3937,13 @@
                             // 部分预览图：渐进展示（模糊 → 清晰），覆盖在烟雾之上
                             if (st.progress.partialB64) {
                                 setLoadingPreview(div, st.progress.partialB64, st.progress.partialIndex);
+                            }
+                            // 计费提醒：第 3 个 SSE 事件后显示，每条 loading 仅一次
+                            // 此时请求已确认进入上游 GPU 队列，再取消不退费
+                            if (!div.__reminderShown && (div.__sseEventCount || 0) >= 3) {
+                                div.__reminderShown = true;
+                                const reminder = div.querySelector('[data-cost-reminder]');
+                                if (reminder) reminder.classList.add('is-shown');
                             }
                         }
                     };
@@ -4706,6 +5000,92 @@
                 return false;
             }
         }
+
+        // ============== 键盘快捷键（仅桌面） ==============
+        // 移动端不绑、不渲染帮助按钮（CSS 也用 media query 兜底了一次）
+        const __isMobileForKbd = ('ontouchstart' in window) || matchMedia('(max-width: 768px)').matches || matchMedia('(pointer: coarse)').matches;
+
+        function toggleKbdHelp() {
+            const m = document.getElementById('kbd-help-modal');
+            if (m) m.classList.toggle('is-open');
+        }
+        // 取消最近一个还在跑的任务（_tasks 是 Map，按插入序最后一个就是最新）
+        function cancelMostRecentTask() {
+            if (!_tasks || _tasks.size === 0) return false;
+            let lastId = null;
+            for (const id of _tasks.keys()) lastId = id;
+            if (lastId == null) return false;
+            cancelTaskById(lastId);
+            return true;
+        }
+
+        if (!__isMobileForKbd) {
+            document.addEventListener('keydown', (e) => {
+                const ae = document.activeElement;
+                const tag = (ae && ae.tagName) || '';
+                const inInput = tag === 'INPUT' || tag === 'TEXTAREA' || (ae && ae.isContentEditable);
+                const cmd = e.metaKey || e.ctrlKey;
+
+                // Esc：优先取消生成；没任务就让浏览器默认（如 blur 输入框、关 modal）
+                if (e.key === 'Escape') {
+                    // 先关帮助弹层（如果开着）
+                    const help = document.getElementById('kbd-help-modal');
+                    if (help && help.classList.contains('is-open')) {
+                        e.preventDefault();
+                        help.classList.remove('is-open');
+                        return;
+                    }
+                    if (cancelMostRecentTask()) e.preventDefault();
+                    return;
+                }
+                // ⌘/Ctrl + ⇧ + N：新对话
+                if (cmd && e.shiftKey && e.key.toLowerCase() === 'n') {
+                    e.preventDefault();
+                    try { newConversation(); } catch {}
+                    return;
+                }
+                // ⌘/Ctrl + B：切换侧边栏
+                if (cmd && !e.shiftKey && e.key.toLowerCase() === 'b') {
+                    e.preventDefault();
+                    try { toggleSidebar(); } catch {}
+                    return;
+                }
+                // ?：显示快捷键帮助（不在输入框时）
+                if (e.key === '?' && !inInput && !cmd) {
+                    e.preventDefault();
+                    toggleKbdHelp();
+                    return;
+                }
+            });
+        } else {
+            // 移动端：等 DOM 就绪后把帮助按钮和弹层拿掉（CSS media query 已经隐藏，这里再多一道保险）
+            const __removeKbdUI = () => {
+                const b = document.getElementById('kbd-help-btn');
+                const m = document.getElementById('kbd-help-modal');
+                if (b) b.remove();
+                if (m) m.remove();
+            };
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', __removeKbdUI, { once: true });
+            } else {
+                __removeKbdUI();
+            }
+        }
     </script>
+
+    <!-- 键盘快捷键浮按钮 + 帮助弹层（移动端 CSS / JS 双重隐藏） -->
+    <button id="kbd-help-btn" type="button" onclick="toggleKbdHelp()" title="键盘快捷键 (按 ?)" aria-label="键盘快捷键">?</button>
+    <div id="kbd-help-modal" onclick="if(event.target===this) toggleKbdHelp()">
+        <div class="panel">
+            <h3>键盘快捷键</h3>
+            <table>
+                <tr><td>发送</td><td class="kbd-col"><kbd>↵</kbd></td></tr>
+                <tr><td>取消生成</td><td class="kbd-col"><kbd>Esc</kbd></td></tr>
+                <tr><td>新对话</td><td class="kbd-col"><kbd>⌘/Ctrl</kbd> <kbd>⇧</kbd> <kbd>N</kbd></td></tr>
+                <tr><td>切换侧边栏</td><td class="kbd-col"><kbd>⌘/Ctrl</kbd> <kbd>B</kbd></td></tr>
+                <tr><td>显示此帮助</td><td class="kbd-col"><kbd>?</kbd></td></tr>
+            </table>
+        </div>
+    </div>
 </body>
 </html>
