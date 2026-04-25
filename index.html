@@ -6576,10 +6576,6 @@
             document.getElementById('settings-modal').classList.remove('hidden');
         }
         function closeSettings() {
-            if (!localStorage.getItem('vsllm_api_key')) {
-                alert('请先填写并保存 API 密钥才能正常使用哦！');
-                return;
-            }
             document.getElementById('settings-modal').classList.add('hidden');
         }
         async function saveSettings() {
