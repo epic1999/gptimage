@@ -97,6 +97,42 @@
         @keyframes loader-dots3 { 0% { transform: scale(1); } 100% { transform: scale(0); } }
         @keyframes loader-dots2 { 0% { transform: translate(0, 0); } 100% { transform: translate(24px, 0); } }
 
+        /* ========== 标记编辑器工具栏 ========== */
+        .mark-tool-btn {
+            width: 32px; height: 32px;
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 8px;
+            background: #f3f4f6;
+            color: #4b5563;
+            border: 1.5px solid transparent;
+            transition: background-color .12s ease, color .12s ease, border-color .12s ease;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .mark-tool-btn:hover { background: #e5e7eb; color: #111827; }
+        .mark-tool-btn:active { transform: scale(0.95); }
+        .mark-tool-btn.is-active {
+            background: #eef2ff;
+            color: #4338ca;
+            border-color: #818cf8;
+        }
+        .mark-fill-btn {
+            background: #f3f4f6;
+            color: #4b5563;
+            transition: background-color .12s ease, color .12s ease;
+        }
+        .mark-fill-btn:hover { background: #e5e7eb; }
+        .mark-fill-btn[data-active="1"] {
+            background: #eef2ff;
+            color: #4338ca;
+        }
+        .mark-fill-btn[data-active="1"] svg rect { fill: currentColor; }
+        /* 移动端按钮稍大点便于点击 */
+        @media (max-width: 640px) {
+            .mark-tool-btn { width: 36px; height: 36px; }
+            .mark-tool-btn svg { width: 18px; height: 18px; }
+        }
+
         /* 输入区底部：原本 Tailwind 的 pb-3 + 安全区高度（home indicator / 浏览器底栏）累加，
            避免移动端被 Edge / Chrome 底栏盖住 */
         #input-container { padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px)); }
@@ -957,6 +993,15 @@
                                 <option value="webp">webp</option>
                             </select>
                         </label>
+                        <label class="flex items-center gap-1" title="开启后请求里带 reasoning.effort，让模型边思考边出图。仅 Responses API 支持思考的模型（如 gpt-5.x）有效">
+                            <span>思考</span>
+                            <select id="param-reasoning" class="bg-white border border-gray-200 rounded px-1.5 py-0.5 text-xs focus:outline-none focus:ring-1 focus:ring-black cursor-pointer">
+                                <option value="off" selected>关闭</option>
+                                <option value="low">低</option>
+                                <option value="medium">中</option>
+                                <option value="high">高</option>
+                            </select>
+                        </label>
                     </div>
 
                     <div id="context-bar" class="hidden bg-indigo-50/50 border-b border-indigo-100 px-3 py-2 flex items-center justify-between">
@@ -1105,21 +1150,57 @@
                 圈出想改的位置，保存后这张图会放进待发送区，再在输入框里写类似<span class="font-medium text-indigo-700">"修复红圈内的手"</span>、<span class="font-medium text-indigo-700">"把圈住的区域换成XXX"</span>的指令发出去。
             </p>
 
+            <!-- 工具栏：第一行工具图标，第二行属性。移动端自动换行 -->
+            <div class="flex flex-wrap items-center gap-1.5 shrink-0" id="mark-tool-row" role="toolbar" aria-label="标记工具">
+                <button type="button" class="mark-tool-btn" data-tool="select" onclick="setMarkTool('select')" title="选择 / 移动 / 缩放（点形状选中，拖动移动，拖角缩放，长按删）">
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M5.5 3.21V19.5l4-3.79 2.4 5.79 1.84-.76-2.4-5.79H17L5.5 3.21z"/></svg>
+                </button>
+                <button type="button" class="mark-tool-btn" data-tool="brush" onclick="setMarkTool('brush')" title="画笔 (自由线条)">
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21l4-1 11.5-11.5a2.121 2.121 0 00-3-3L4 17l-1 4z"/></svg>
+                </button>
+                <button type="button" class="mark-tool-btn" data-tool="line" onclick="setMarkTool('line')" title="直线">
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="19" x2="19" y2="5"/></svg>
+                </button>
+                <button type="button" class="mark-tool-btn" data-tool="arrow" onclick="setMarkTool('arrow')" title="箭头 (从起点拉到终点定方向)">
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="19" x2="18" y2="6"/><polyline points="11,5 18,5 18,12"/></svg>
+                </button>
+                <button type="button" class="mark-tool-btn" data-tool="rect" onclick="setMarkTool('rect')" title="长方形">
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="7" width="18" height="10" rx="1"/></svg>
+                </button>
+                <button type="button" class="mark-tool-btn" data-tool="square" onclick="setMarkTool('square')" title="正方形">
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="1"/></svg>
+                </button>
+                <button type="button" class="mark-tool-btn" data-tool="circle" onclick="setMarkTool('circle')" title="圆形">
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/></svg>
+                </button>
+                <button type="button" class="mark-tool-btn" data-tool="heart" onclick="setMarkTool('heart')" title="心形">
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+                </button>
+            </div>
+
             <div class="flex flex-wrap items-center gap-3 text-xs text-gray-600 shrink-0">
                 <label class="flex items-center gap-1">
-                    <span>画笔色</span>
+                    <span>颜色</span>
                     <input type="color" id="mark-color" value="#ef4444" class="w-8 h-7 rounded cursor-pointer border border-gray-200">
                 </label>
                 <label class="flex items-center gap-1">
                     <span>粗细</span>
-                    <input type="range" id="mark-size" min="2" max="40" value="10" class="w-28" oninput="document.getElementById('mark-size-label').textContent = this.value">
+                    <input type="range" id="mark-size" min="2" max="40" value="10" class="w-24" oninput="document.getElementById('mark-size-label').textContent = this.value">
                     <span id="mark-size-label" class="font-mono w-6 text-center">10</span>
                 </label>
-                <button type="button" onclick="markUndo()" class="px-2 py-1 bg-gray-100 rounded hover:bg-gray-200 flex items-center gap-1" title="撤销最近一笔">
+                <button type="button" id="mark-fill-toggle" onclick="toggleMarkFill()" data-active="0" class="mark-fill-btn px-2 py-1 rounded flex items-center gap-1" title="实心 / 空心切换（仅对长方形/正方形/圆形/心形生效）">
+                    <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
+                    <span id="mark-fill-label">空心</span>
+                </button>
+                <button type="button" onclick="markUndo()" class="px-2 py-1 bg-gray-100 rounded hover:bg-gray-200 flex items-center gap-1" title="撤销 (Ctrl+Z)">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a5 5 0 015 5v2M3 10l4-4m-4 4l4 4"></path></svg>
                     撤销
                 </button>
-                <button type="button" onclick="markClear()" class="px-2 py-1 bg-gray-100 rounded hover:bg-gray-200 flex items-center gap-1" title="清空所有标记">
+                <button type="button" onclick="markRedo()" class="px-2 py-1 bg-gray-100 rounded hover:bg-gray-200 flex items-center gap-1" title="重做 (Ctrl+Shift+Z)">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 10H11a5 5 0 00-5 5v2m15-7l-4-4m4 4l-4 4"></path></svg>
+                    重做
+                </button>
+                <button type="button" onclick="markClear()" class="px-2 py-1 bg-gray-100 rounded hover:bg-gray-200 flex items-center gap-1" title="清空全部标记">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                     清除
                 </button>
@@ -1361,8 +1442,9 @@
                                     <option value="oilpainting">油画质感</option>
                                     <option value="comic">美漫分镜</option>
                                     <option value="watercolor">水彩画风</option>
-                                    <option value="custom">自由发挥</option>
+                                    <option value="custom">自定义 / 自由发挥</option>
                                 </select>
+                                <input type="text" id="plot-style-custom-input" class="hidden bg-gray-50 border border-gray-200 rounded px-2 py-0.5 text-xs w-44 sm:w-56 focus:bg-white focus:border-orange-400 outline-none" placeholder="如：宫崎骏动画风格 / 赛博朋克水彩 / 80 年代港片质感" oninput="_plotInputChanged()" title="留空则让模型自由发挥；填了就强制按这个风格画">
                             </label>
                             <div class="ml-auto plot-mode-seg" role="tablist">
                                 <button type="button" data-plot-mode="ai" class="is-active" onclick="_setPlotMode('ai')" title="AI 智能挑选历史上下文">AI 智能</button>
@@ -1374,6 +1456,54 @@
                             <input type="checkbox" id="plot-include-dialogue" class="accent-orange-600" onchange="_plotInputChanged()">
                             <span>生成对话（让画面自带角色台词，按 persona 风格）</span>
                         </label>
+                        <!-- 输出模式：多图（每个分镜单独发图）/ 合并图（拼到一张图里发） -->
+                        <div class="flex flex-wrap items-center gap-2 text-xs text-gray-500">
+                            <span class="text-gray-600">输出</span>
+                            <div class="plot-mode-seg" role="tablist" title="多图：每分镜独立生图。合并图：所有分镜画到一张图里（依赖模型理解力）">
+                                <button type="button" data-plot-output="multi" class="is-active" onclick="_setPlotOutputMode('multi')">多图</button>
+                                <button type="button" data-plot-output="merged" onclick="_setPlotOutputMode('merged')">合并图</button>
+                            </div>
+                            <!-- 合并图的子选项：只在 merged 模式显示 -->
+                            <div id="plot-merged-opts" class="hidden flex flex-wrap items-center gap-2">
+                                <label class="flex items-center gap-1">
+                                    <span>布局</span>
+                                    <select id="plot-merged-layout" class="bg-gray-50 border border-gray-200 rounded px-2 py-0.5 cursor-pointer" onchange="_plotInputChanged()">
+                                        <option value="comic">漫画格</option>
+                                        <option value="storybook">故事书</option>
+                                        <option value="custom">自定义</option>
+                                    </select>
+                                    <input type="text" id="plot-merged-layout-custom-input" class="hidden bg-gray-50 border border-gray-200 rounded px-2 py-0.5 text-xs w-44 sm:w-56 focus:bg-white focus:border-orange-400 outline-none" placeholder="如：3格L形排列 / 5格不规则拼贴 / 跨页大格+4小格" oninput="_plotInputChanged()" title="选了自定义后填这里；留空就让模型自由排版">
+                                </label>
+                                <label id="plot-merged-grid-wrap" class="flex items-center gap-1" title="漫画格才用得上；自适应会按分镜数推荐">
+                                    <span>格数</span>
+                                    <select id="plot-merged-grid" class="bg-gray-50 border border-gray-200 rounded px-2 py-0.5 cursor-pointer" onchange="_plotInputChanged()">
+                                        <option value="auto">自适应</option>
+                                        <option value="2">2 格</option>
+                                        <option value="3">3 格</option>
+                                        <option value="4">4 格</option>
+                                        <option value="6">6 格</option>
+                                        <option value="9">9 格</option>
+                                    </select>
+                                </label>
+                                <label class="flex items-center gap-1" title="分格视觉风格：影响整张图的视觉调性（边框线条、配色、装裱方式等）。和上面的『风格』字段是叠加关系">
+                                    <span>分格风格</span>
+                                    <select id="plot-merged-frame-style" class="bg-gray-50 border border-gray-200 rounded px-2 py-0.5 cursor-pointer" onchange="_plotInputChanged()">
+                                        <option value="default">默认（跟随主风格）</option>
+                                        <option value="bw-manga">黑白漫画</option>
+                                        <option value="color-manga">彩色日漫</option>
+                                        <option value="webcomic">韩漫条漫</option>
+                                        <option value="comic-page">美漫整页</option>
+                                        <option value="watercolor">水彩插画</option>
+                                        <option value="storyboard">电影分镜稿</option>
+                                        <option value="vintage-print">复古印刷</option>
+                                        <option value="ink-sketch">水墨速写</option>
+                                        <option value="custom">自定义</option>
+                                    </select>
+                                    <input type="text" id="plot-merged-frame-style-custom-input" class="hidden bg-gray-50 border border-gray-200 rounded px-2 py-0.5 text-xs w-44 sm:w-56 focus:bg-white focus:border-orange-400 outline-none" placeholder="如：黑白线稿+网点 / 90s动画手稿 / 水墨题字" oninput="_plotInputChanged()" title="选了自定义后填这里；任意分格视觉描述">
+                                </label>
+                                <span class="text-[11px] text-gray-400">尺寸自动用 2K</span>
+                            </div>
+                        </div>
                         <div class="flex gap-2 pt-1">
                             <button type="button" id="plot-start-btn" onclick="runPlotInference()" class="flex-1 bg-orange-600 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-orange-500 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors">开始推演 →</button>
                             <button type="button" id="plot-reset-btn" onclick="resetPlotState()" class="hidden bg-gray-100 text-gray-700 text-sm px-3 py-2 rounded-lg hover:bg-gray-200">重置</button>
@@ -2356,7 +2486,13 @@
                             AI
                         </button>
                     </div>
-                    <textarea id="char-field-${k}" rows="3" class="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 focus:ring-1 focus:ring-emerald-400 focus:outline-none resize-y"></textarea>
+                    ${k === 'persona' ? `
+                    <div class="flex items-start gap-1 mb-1.5 text-[11px] text-gray-400 leading-snug">
+                        <svg class="w-3 h-3 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        <span>角色卡没有独立的性别字段（这是设计）。性别 / 年龄 / 长相等特征请写在这里，模型不会自动猜测。</span>
+                    </div>
+                    ` : ''}
+                    <textarea id="char-field-${k}" rows="3" ${k === 'persona' ? 'placeholder="请描述角色的性别、年龄、外貌特征、性格、常见姿态等。这是模型最依赖的字段。"' : ''} class="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 focus:ring-1 focus:ring-emerald-400 focus:outline-none resize-y"></textarea>
                     <div class="char-field-preview hidden mt-2 rounded-lg border border-purple-200 bg-purple-50 p-3">
                         <div class="flex items-center justify-between text-[11px] text-purple-700 mb-1">
                             <span class="char-field-preview-label">AI 建议</span>
@@ -4136,16 +4272,42 @@
             btn.classList.toggle('is-expanded', willExpand);
             btn.setAttribute('aria-expanded', willExpand ? 'true' : 'false');
         }
+        // 思考程度持久化
+        const REASONING_EFFORT_LS_KEY = 'vsllm_reasoning_effort';
+        // 读当前思考程度（'off' | 'low' | 'medium' | 'high'）；'off' 表示不传 reasoning
+        function getReasoningEffort() {
+            const el = document.getElementById('param-reasoning');
+            if (el && el.value) return el.value;
+            return localStorage.getItem(REASONING_EFFORT_LS_KEY) || 'off';
+        }
+
         // 折叠态下显示当前 size · quality · format 摘要；select 一改就刷新
+        // 思考程度只在不是关闭时才追加，避免占用宽度
         function updateParamsSummary() {
             const s = document.getElementById('param-size');
             const q = document.getElementById('param-quality');
             const f = document.getElementById('param-format');
+            const r = document.getElementById('param-reasoning');
             const sum = document.getElementById('params-summary');
             if (!s || !q || !f || !sum) return;
-            sum.textContent = `${s.value} · ${q.value} · ${f.value}`;
+            let txt = `${s.value} · ${q.value} · ${f.value}`;
+            if (r && r.value && r.value !== 'off') {
+                const map = { low: '低', medium: '中', high: '高' };
+                txt += ` · 思考:${map[r.value] || r.value}`;
+            }
+            sum.textContent = txt;
         }
         function initParamsToggle() {
+            // 回填思考程度（其余 size/quality/format 不持久化，保持现状）
+            const reasoningEl = document.getElementById('param-reasoning');
+            if (reasoningEl) {
+                const saved = localStorage.getItem(REASONING_EFFORT_LS_KEY);
+                if (saved && ['off', 'low', 'medium', 'high'].includes(saved)) reasoningEl.value = saved;
+                reasoningEl.addEventListener('change', () => {
+                    localStorage.setItem(REASONING_EFFORT_LS_KEY, reasoningEl.value || 'off');
+                    updateParamsSummary();
+                });
+            }
             ['param-size', 'param-quality', 'param-format'].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.addEventListener('change', updateParamsSummary);
@@ -5021,6 +5183,15 @@
                 stream: !!USE_STREAMING_RESPONSES,
                 store: false,
             };
+            // 思考程度：用户选了 low/medium/high 才传；'off' 保持原行为，三个字段都不带
+            // 标准格式（gpt-5.x Responses API）：顶层 reasoning + text.verbosity + include 三件套同时传
+            // store:false 保留不变，所以靠 include 拿到加密的思考链回执
+            const reasoningEffort = getReasoningEffort();
+            if (reasoningEffort && reasoningEffort !== 'off') {
+                payload.reasoning = { effort: reasoningEffort, summary: 'auto' };
+                payload.text = { verbosity: 'medium' };
+                payload.include = ['reasoning.encrypted_content'];
+            }
 
             // fetch 前的最后兜底：任何 content item 的 type=='image_url' 都拦住，不发请求
             assertNoChatImageUrlContent(payload);
@@ -6390,12 +6561,22 @@
             });
         }
 
+        // ====================================================================
+        // 标记编辑器 v2：多形状 + 选中 + 移动 + 缩放 + 删除 + 撤销/重做
+        // 形状类型：brush（自由画笔，points 数组） | line/arrow（x1,y1,x2,y2）|
+        //         rect/square/circle/heart（x,y,w,h，可空心/实心）
+        // ====================================================================
+        let _markShapeIdCounter = 1;
+        function _nextMarkShapeId() { return _markShapeIdCounter++; }
+
+        // 打开编辑器：装入图、初始化空状态、默认 select 模式（保持向后兼容签名）
         function openMarkEditor(srcDataUrl, onSave) {
             const modal = document.getElementById('mark-editor-modal');
             const canvas = document.getElementById('mark-canvas');
             const ctx = canvas.getContext('2d');
             const img = new Image();
             img.onload = () => {
+                // 限制最大 1024 边长，避免大图卡顿
                 const MAX = 1024;
                 let w = img.naturalWidth || img.width;
                 let h = img.naturalHeight || img.height;
@@ -6405,8 +6586,27 @@
                 }
                 canvas.width = Math.round(w);
                 canvas.height = Math.round(h);
-                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                _markEditorState = { canvas, ctx, baseImg: img, strokes: [], currentStroke: null, onSave };
+                _markEditorState = {
+                    canvas, ctx, baseImg: img,
+                    shapes: [],          // 已提交的形状列表（绘制顺序：先画的在底）
+                    currentShape: null,  // 正在拖出来的形状（实时预览用）
+                    mode: 'brush',       // 默认画笔
+                    fill: false,         // 实心/空心 toggle，仅对 rect/square/circle/heart 生效
+                    selectedId: null,    // 当前选中 shape 的 id
+                    dragMode: null,      // 'move' | 'resize' | null（select 模式拖拽用）
+                    dragHandle: null,    // 'nw'|'ne'|'sw'|'se' 当前拖的角
+                    dragStart: null,     // 拖拽起点（canvas 坐标）
+                    dragShapeOrig: null, // 拖拽前形状快照，move/resize 都拿它做基准计算
+                    dragMoved: false,    // 是否真动过（控制是否记 undo / 长按删除是否触发）
+                    longPressTimer: null,
+                    undoStack: [],
+                    redoStack: [],
+                    onSave,
+                };
+                // 工具栏初值同步：默认 brush 高亮，fill 显示空心
+                setMarkTool('brush');
+                _syncMarkFillBtn();
+                renderMarkCanvas();
             };
             img.onerror = () => alert('图片加载失败，无法打开标记编辑器。');
             img.src = srcDataUrl;
@@ -6418,59 +6618,429 @@
             const modal = document.getElementById('mark-editor-modal');
             modal.classList.add('hidden');
             modal.classList.remove('flex');
+            if (_markEditorState && _markEditorState.longPressTimer) {
+                clearTimeout(_markEditorState.longPressTimer);
+            }
             _markEditorState = null;
         }
 
+        // 保存：把当前 shapes 渲染到不带选中态的 canvas，导出 dataURL
         function saveMarkEditor() {
-            if (!_markEditorState) return;
-            if (_markEditorState.currentStroke) {
-                _markEditorState.strokes.push(_markEditorState.currentStroke);
-                _markEditorState.currentStroke = null;
+            const st = _markEditorState;
+            if (!st) return;
+            // 提交可能正在拖的形状（保险起见）
+            if (st.currentShape) {
+                _commitCurrentShape();
             }
-            const dataUrl = _markEditorState.canvas.toDataURL('image/jpeg', 0.9);
-            const cb = _markEditorState.onSave;
+            st.selectedId = null;  // 导出前清掉选中态，避免 handles 被画进去
+            renderMarkCanvas();
+            const dataUrl = st.canvas.toDataURL('image/jpeg', 0.9);
+            const cb = st.onSave;
             closeMarkEditor();
             if (typeof cb === 'function') cb(dataUrl);
         }
 
+        // 工具切换：HTML 工具按钮 onclick 调
+        function setMarkTool(tool) {
+            const st = _markEditorState;
+            if (st) {
+                st.mode = tool;
+                st.selectedId = null;
+                st.currentShape = null;
+                renderMarkCanvas();
+            }
+            // 工具栏按钮高亮态
+            document.querySelectorAll('.mark-tool-btn').forEach(btn => {
+                btn.classList.toggle('is-active', btn.dataset.tool === tool);
+            });
+            // 改 cursor 提示当前模式
+            const canvas = document.getElementById('mark-canvas');
+            if (canvas) {
+                canvas.style.cursor = (tool === 'select') ? 'default' : 'crosshair';
+            }
+        }
+
+        function toggleMarkFill() {
+            const st = _markEditorState;
+            if (!st) return;
+            st.fill = !st.fill;
+            _syncMarkFillBtn();
+        }
+        function _syncMarkFillBtn() {
+            const btn = document.getElementById('mark-fill-toggle');
+            const lbl = document.getElementById('mark-fill-label');
+            const st = _markEditorState;
+            const active = !!(st && st.fill);
+            if (btn) btn.dataset.active = active ? '1' : '0';
+            if (lbl) lbl.textContent = active ? '实心' : '空心';
+        }
+
         function markUndo() {
-            if (!_markEditorState || _markEditorState.strokes.length === 0) return;
-            _markEditorState.strokes.pop();
-            redrawMarkCanvas();
+            const st = _markEditorState;
+            if (!st || st.undoStack.length === 0) return;
+            st.redoStack.push(JSON.stringify(st.shapes));
+            st.shapes = JSON.parse(st.undoStack.pop());
+            st.selectedId = null;
+            renderMarkCanvas();
+        }
+        function markRedo() {
+            const st = _markEditorState;
+            if (!st || st.redoStack.length === 0) return;
+            st.undoStack.push(JSON.stringify(st.shapes));
+            st.shapes = JSON.parse(st.redoStack.pop());
+            st.selectedId = null;
+            renderMarkCanvas();
         }
         function markClear() {
-            if (!_markEditorState) return;
-            _markEditorState.strokes = [];
-            _markEditorState.currentStroke = null;
-            redrawMarkCanvas();
+            const st = _markEditorState;
+            if (!st) return;
+            if (st.shapes.length === 0) return;
+            _pushUndoSnapshot();
+            st.shapes = [];
+            st.currentShape = null;
+            st.selectedId = null;
+            renderMarkCanvas();
         }
-        function redrawMarkCanvas() {
+        function _pushUndoSnapshot() {
+            const st = _markEditorState;
+            if (!st) return;
+            st.undoStack.push(JSON.stringify(st.shapes));
+            // 留 50 个版本封顶，老的丢掉
+            if (st.undoStack.length > 50) st.undoStack.shift();
+            st.redoStack = [];
+        }
+
+        // ============== 形状几何：bbox / move / resize ==============
+        function _shapeBBox(s) {
+            if (s.type === 'brush') {
+                let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+                for (const p of s.points) {
+                    if (p.x < minX) minX = p.x;
+                    if (p.y < minY) minY = p.y;
+                    if (p.x > maxX) maxX = p.x;
+                    if (p.y > maxY) maxY = p.y;
+                }
+                if (!isFinite(minX)) return { x: 0, y: 0, w: 0, h: 0 };
+                return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
+            }
+            if (s.type === 'line' || s.type === 'arrow') {
+                return {
+                    x: Math.min(s.x1, s.x2), y: Math.min(s.y1, s.y2),
+                    w: Math.abs(s.x2 - s.x1), h: Math.abs(s.y2 - s.y1),
+                };
+            }
+            return { x: s.x, y: s.y, w: s.w, h: s.h };
+        }
+        function _shapeAspectLocked(s) {
+            // square/circle/heart 必须保持 1:1，缩放时锁宽高比
+            return s.type === 'square' || s.type === 'circle' || s.type === 'heart';
+        }
+        function _shapeMove(s, dx, dy) {
+            if (s.type === 'brush') {
+                for (const p of s.points) { p.x += dx; p.y += dy; }
+            } else if (s.type === 'line' || s.type === 'arrow') {
+                s.x1 += dx; s.y1 += dy; s.x2 += dx; s.y2 += dy;
+            } else {
+                s.x += dx; s.y += dy;
+            }
+        }
+        // anchor 是被拖动的角；其对角是固定不动的锚点
+        function _shapeResize(s, anchor, p, lockAspect) {
+            const orig = _shapeBBox(s);
+            // 算固定锚点（anchor 的对角）
+            let fx, fy;
+            if (anchor === 'nw') { fx = orig.x + orig.w; fy = orig.y + orig.h; }
+            else if (anchor === 'ne') { fx = orig.x;          fy = orig.y + orig.h; }
+            else if (anchor === 'sw') { fx = orig.x + orig.w; fy = orig.y; }
+            else { fx = orig.x; fy = orig.y; }
+            let mx = p.x, my = p.y;
+
+            let newW = Math.abs(mx - fx);
+            let newH = Math.abs(my - fy);
+            if (lockAspect) {
+                // 取较大者作为统一边长，保持 1:1
+                const m = Math.max(newW, newH);
+                newW = m; newH = m;
+            }
+            newW = Math.max(newW, 4);
+            newH = Math.max(newH, 4);
+            // 根据鼠标在固定锚点的哪一侧定 newX/newY
+            const newX = (mx < fx) ? fx - newW : fx;
+            const newY = (my < fy) ? fy - newH : fy;
+
+            const sx = newW / Math.max(orig.w, 0.0001);
+            const sy = newH / Math.max(orig.h, 0.0001);
+            if (s.type === 'brush') {
+                for (const pt of s.points) {
+                    pt.x = newX + (pt.x - orig.x) * sx;
+                    pt.y = newY + (pt.y - orig.y) * sy;
+                }
+            } else if (s.type === 'line' || s.type === 'arrow') {
+                s.x1 = newX + (s.x1 - orig.x) * sx;
+                s.y1 = newY + (s.y1 - orig.y) * sy;
+                s.x2 = newX + (s.x2 - orig.x) * sx;
+                s.y2 = newY + (s.y2 - orig.y) * sy;
+            } else {
+                s.x = newX; s.y = newY; s.w = newW; s.h = newH;
+            }
+        }
+
+        // ============== 命中测试：点 p 是否落在形状上 ==============
+        function _distToSegment(p, x1, y1, x2, y2) {
+            const dx = x2 - x1, dy = y2 - y1;
+            const len2 = dx * dx + dy * dy;
+            if (len2 === 0) return Math.hypot(p.x - x1, p.y - y1);
+            const t = Math.max(0, Math.min(1, ((p.x - x1) * dx + (p.y - y1) * dy) / len2));
+            return Math.hypot(p.x - (x1 + t * dx), p.y - (y1 + t * dy));
+        }
+        function _hitTestShape(s, p) {
+            // 命中容差：粗细越粗越好选；最小 8px 保证细线也能戳中
+            const tol = Math.max(s.size, 10);
+            if (s.type === 'brush') {
+                if (s.points.length === 1) return Math.hypot(p.x - s.points[0].x, p.y - s.points[0].y) <= tol;
+                for (let i = 1; i < s.points.length; i++) {
+                    if (_distToSegment(p, s.points[i - 1].x, s.points[i - 1].y, s.points[i].x, s.points[i].y) <= tol) return true;
+                }
+                return false;
+            }
+            if (s.type === 'line' || s.type === 'arrow') {
+                return _distToSegment(p, s.x1, s.y1, s.x2, s.y2) <= tol;
+            }
+            if (s.type === 'rect' || s.type === 'square') {
+                if (s.fill) return p.x >= s.x && p.x <= s.x + s.w && p.y >= s.y && p.y <= s.y + s.h;
+                // 空心：靠近边框就算命中（环形带）
+                const nearOuter = p.x >= s.x - tol && p.x <= s.x + s.w + tol && p.y >= s.y - tol && p.y <= s.y + s.h + tol;
+                const nearInner = p.x >= s.x + tol && p.x <= s.x + s.w - tol && p.y >= s.y + tol && p.y <= s.y + s.h - tol;
+                return nearOuter && !nearInner;
+            }
+            if (s.type === 'circle') {
+                const cx = s.x + s.w / 2, cy = s.y + s.h / 2;
+                const rx = Math.max(s.w / 2, 1), ry = Math.max(s.h / 2, 1);
+                const dx = (p.x - cx) / rx, dy = (p.y - cy) / ry;
+                const d = Math.hypot(dx, dy);
+                if (s.fill) return d <= 1;
+                // 空心：环形带（归一化半径距离 1 附近）
+                return d >= 0.8 && d <= 1.2;
+            }
+            if (s.type === 'heart') {
+                // 心形精确命中麻烦，用 bbox 近似（够用）
+                return p.x >= s.x && p.x <= s.x + s.w && p.y >= s.y && p.y <= s.y + s.h;
+            }
+            return false;
+        }
+
+        // ============== 选中态的 4 角 handle + 删除 X ==============
+        function _shapeHandles(s) {
+            const bb = _shapeBBox(s);
+            // 删除 X 默认放在右上角外侧；如果出画布就 clamp 回来，保证永远点得到
+            const cw = (_markEditorState && _markEditorState.canvas && _markEditorState.canvas.width) || 9999;
+            const dx = Math.min(bb.x + bb.w + 14, cw - 12);
+            const dy = Math.max(bb.y - 14, 12);
+            return {
+                nw:     { x: bb.x,          y: bb.y,          kind: 'resize' },
+                ne:     { x: bb.x + bb.w,   y: bb.y,          kind: 'resize' },
+                sw:     { x: bb.x,          y: bb.y + bb.h,   kind: 'resize' },
+                se:     { x: bb.x + bb.w,   y: bb.y + bb.h,   kind: 'resize' },
+                delete: { x: dx, y: dy, kind: 'delete' },
+            };
+        }
+        function _hitHandle(s, p) {
+            const handles = _shapeHandles(s);
+            // 删除按钮命中区稍大
+            if (Math.hypot(p.x - handles.delete.x, p.y - handles.delete.y) <= 14) return 'delete';
+            const cornerTol = 12;
+            for (const k of ['nw', 'ne', 'sw', 'se']) {
+                const h = handles[k];
+                if (Math.abs(p.x - h.x) <= cornerTol && Math.abs(p.y - h.y) <= cornerTol) return k;
+            }
+            return null;
+        }
+
+        // ============== 主渲染：clear → drawImage → 各 shape → 选中 UI ==============
+        function renderMarkCanvas() {
             const st = _markEditorState;
             if (!st) return;
             st.ctx.clearRect(0, 0, st.canvas.width, st.canvas.height);
             st.ctx.drawImage(st.baseImg, 0, 0, st.canvas.width, st.canvas.height);
-            for (const s of st.strokes) drawMarkStroke(s);
+            for (const s of st.shapes) _drawShape(st.ctx, s);
+            if (st.currentShape) _drawShape(st.ctx, st.currentShape);
+            if (st.selectedId != null) {
+                const sel = st.shapes.find(x => x.id === st.selectedId);
+                if (sel) _drawSelectionUI(st.ctx, sel);
+            }
         }
-        function drawMarkStroke(s) {
-            const ctx = _markEditorState.ctx;
+
+        function _drawShape(ctx, s) {
+            ctx.save();
             ctx.strokeStyle = s.color;
-            ctx.lineWidth = s.size;
+            ctx.fillStyle = s.color;
+            ctx.lineWidth = Math.max(s.size, 1);
             ctx.lineCap = 'round';
             ctx.lineJoin = 'round';
-            if (s.points.length === 1) {
-                ctx.fillStyle = s.color;
+            if (s.type === 'brush') {
+                if (s.points.length === 1) {
+                    const p = s.points[0];
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, Math.max(s.size / 2, 1), 0, Math.PI * 2);
+                    ctx.fill();
+                } else {
+                    ctx.beginPath();
+                    ctx.moveTo(s.points[0].x, s.points[0].y);
+                    for (let i = 1; i < s.points.length; i++) ctx.lineTo(s.points[i].x, s.points[i].y);
+                    ctx.stroke();
+                }
+            } else if (s.type === 'line') {
                 ctx.beginPath();
-                ctx.arc(s.points[0].x, s.points[0].y, Math.max(s.size / 2, 1), 0, Math.PI * 2);
-                ctx.fill();
-                return;
+                ctx.moveTo(s.x1, s.y1);
+                ctx.lineTo(s.x2, s.y2);
+                ctx.stroke();
+            } else if (s.type === 'arrow') {
+                _drawArrow(ctx, s.x1, s.y1, s.x2, s.y2, s.size);
+            } else if (s.type === 'rect' || s.type === 'square') {
+                if (s.fill) ctx.fillRect(s.x, s.y, s.w, s.h);
+                else ctx.strokeRect(s.x, s.y, s.w, s.h);
+            } else if (s.type === 'circle') {
+                ctx.beginPath();
+                ctx.ellipse(s.x + s.w / 2, s.y + s.h / 2, Math.max(s.w / 2, 1), Math.max(s.h / 2, 1), 0, 0, Math.PI * 2);
+                if (s.fill) ctx.fill();
+                else ctx.stroke();
+            } else if (s.type === 'heart') {
+                _drawHeart(ctx, s.x, s.y, s.w, s.h, s.fill);
             }
-            ctx.beginPath();
-            ctx.moveTo(s.points[0].x, s.points[0].y);
-            for (let i = 1; i < s.points.length; i++) {
-                ctx.lineTo(s.points[i].x, s.points[i].y);
-            }
-            ctx.stroke();
+            ctx.restore();
         }
+
+        // 箭头：主体线段 + 三角箭头头（实心三角，跟着颜色）
+        function _drawArrow(ctx, x1, y1, x2, y2, size) {
+            const dx = x2 - x1, dy = y2 - y1;
+            const len = Math.hypot(dx, dy);
+            if (len < 1) return;
+            const angle = Math.atan2(dy, dx);
+            const headLen = Math.max(size * 3, 14);
+            const headW = Math.max(size * 1.6, 8);
+            // shaft 缩短一点防止跟箭头头重叠
+            const sx = x2 - Math.cos(angle) * headLen * 0.6;
+            const sy = y2 - Math.sin(angle) * headLen * 0.6;
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(sx, sy);
+            ctx.stroke();
+            // 三角箭头头
+            const cosA = Math.cos(angle), sinA = Math.sin(angle);
+            ctx.beginPath();
+            ctx.moveTo(x2, y2);
+            ctx.lineTo(x2 - headLen * cosA + headW * sinA, y2 - headLen * sinA - headW * cosA);
+            ctx.lineTo(x2 - headLen * cosA - headW * sinA, y2 - headLen * sinA + headW * cosA);
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        // 心形：四段贝塞尔，bbox 适配 (x,y,w,h)
+        function _drawHeart(ctx, x, y, w, h, fill) {
+            if (w < 2 || h < 2) return;
+            const cx = x + w / 2;
+            const topY = y + h * 0.3;
+            const tipY = y + h;
+            ctx.beginPath();
+            ctx.moveTo(cx, topY);
+            // 右上凸起
+            ctx.bezierCurveTo(cx, y, x + w, y, x + w, topY);
+            // 右下到尖端
+            ctx.bezierCurveTo(x + w, y + h * 0.6, cx, y + h * 0.85, cx, tipY);
+            // 左下从尖端回去
+            ctx.bezierCurveTo(cx, y + h * 0.85, x, y + h * 0.6, x, topY);
+            // 左上凸起合上
+            ctx.bezierCurveTo(x, y, cx, y, cx, topY);
+            ctx.closePath();
+            if (fill) ctx.fill();
+            else ctx.stroke();
+        }
+
+        // 选中态：虚线 bbox + 4 角白底 indigo handle + 右上红 X 删除
+        function _drawSelectionUI(ctx, s) {
+            const bb = _shapeBBox(s);
+            ctx.save();
+            ctx.strokeStyle = 'rgba(99, 102, 241, 0.95)';
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([6, 4]);
+            ctx.strokeRect(bb.x - 2, bb.y - 2, bb.w + 4, bb.h + 4);
+            ctx.setLineDash([]);
+            // 4 角缩放 handle
+            const hs = 10;
+            ctx.fillStyle = '#fff';
+            ctx.strokeStyle = '#6366f1';
+            ctx.lineWidth = 2;
+            const handles = _shapeHandles(s);
+            for (const k of ['nw', 'ne', 'sw', 'se']) {
+                const h = handles[k];
+                ctx.beginPath();
+                ctx.rect(h.x - hs / 2, h.y - hs / 2, hs, hs);
+                ctx.fill();
+                ctx.stroke();
+            }
+            // 红色删除 X
+            const dh = handles.delete;
+            ctx.fillStyle = '#ef4444';
+            ctx.beginPath();
+            ctx.arc(dh.x, dh.y, 10, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(dh.x - 4, dh.y - 4); ctx.lineTo(dh.x + 4, dh.y + 4);
+            ctx.moveTo(dh.x + 4, dh.y - 4); ctx.lineTo(dh.x - 4, dh.y + 4);
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        // ============== 提交 / 删除 ==============
+        function _commitCurrentShape() {
+            const st = _markEditorState;
+            if (!st || !st.currentShape) return;
+            const cs = st.currentShape;
+            // 极小尺寸的形状直接丢，避免误触留下点
+            if (cs.type !== 'brush') {
+                if (cs.type === 'line' || cs.type === 'arrow') {
+                    if (Math.hypot(cs.x2 - cs.x1, cs.y2 - cs.y1) < 4) { st.currentShape = null; return; }
+                } else {
+                    if (cs.w < 4 || cs.h < 4) { st.currentShape = null; return; }
+                    delete cs._originX; delete cs._originY;
+                }
+            }
+            st.shapes.push(cs);
+            st.currentShape = null;
+        }
+        function _deleteSelectedShape() {
+            const st = _markEditorState;
+            if (!st || st.selectedId == null) return;
+            _pushUndoSnapshot();
+            st.shapes = st.shapes.filter(x => x.id !== st.selectedId);
+            st.selectedId = null;
+            st.dragMode = null;
+            st.dragShapeOrig = null;
+            renderMarkCanvas();
+        }
+
+        // ============== 长按删除（移动端） ==============
+        function _startLongPressTimer() {
+            const st = _markEditorState;
+            _cancelLongPressTimer();
+            st.longPressTimer = setTimeout(() => {
+                if (!_markEditorState) return;
+                if (_markEditorState.dragMode === 'move' && !_markEditorState.dragMoved && _markEditorState.selectedId != null) {
+                    _deleteSelectedShape();
+                }
+            }, 500);
+        }
+        function _cancelLongPressTimer() {
+            const st = _markEditorState;
+            if (st && st.longPressTimer) {
+                clearTimeout(st.longPressTimer);
+                st.longPressTimer = null;
+            }
+        }
+
+        // ============== 指针事件（鼠标 + 触摸）======================
         function initMarkCanvasEvents() {
             const canvas = document.getElementById('mark-canvas');
             if (!canvas) return;
@@ -6482,42 +7052,129 @@
                 return { x: (t.clientX - rect.left) * scaleX, y: (t.clientY - rect.top) * scaleY };
             }
             function start(e) {
-                if (!_markEditorState) return;
+                const st = _markEditorState;
+                if (!st) return;
                 e.preventDefault();
                 const p = getPos(e);
+                if (st.mode === 'select') {
+                    // 1. 已选中？先看是不是点了 handle
+                    if (st.selectedId != null) {
+                        const sel = st.shapes.find(x => x.id === st.selectedId);
+                        if (sel) {
+                            const h = _hitHandle(sel, p);
+                            if (h === 'delete') { _deleteSelectedShape(); return; }
+                            if (h) {
+                                _pushUndoSnapshot();
+                                st.dragMode = 'resize';
+                                st.dragHandle = h;
+                                st.dragStart = p;
+                                st.dragShapeOrig = JSON.parse(JSON.stringify(sel));
+                                st.dragMoved = false;
+                                return;
+                            }
+                        }
+                    }
+                    // 2. 命中其它形状 → 选中并准备移动；从顶到底（最后画的最先命中）
+                    for (let i = st.shapes.length - 1; i >= 0; i--) {
+                        if (_hitTestShape(st.shapes[i], p)) {
+                            _pushUndoSnapshot();
+                            st.selectedId = st.shapes[i].id;
+                            st.dragMode = 'move';
+                            st.dragStart = p;
+                            st.dragShapeOrig = JSON.parse(JSON.stringify(st.shapes[i]));
+                            st.dragMoved = false;
+                            renderMarkCanvas();
+                            _startLongPressTimer();
+                            return;
+                        }
+                    }
+                    // 3. 啥都没点中 → 取消选中
+                    st.selectedId = null;
+                    renderMarkCanvas();
+                    return;
+                }
+
+                // 绘制工具：起一个新形状
+                _pushUndoSnapshot();
                 const colorEl = document.getElementById('mark-color');
                 const sizeEl = document.getElementById('mark-size');
-                _markEditorState.currentStroke = {
-                    color: (colorEl && colorEl.value) || '#ef4444',
-                    size: parseInt((sizeEl && sizeEl.value) || '10', 10) || 10,
-                    points: [p],
-                };
-                drawMarkStroke(_markEditorState.currentStroke);
+                const color = (colorEl && colorEl.value) || '#ef4444';
+                const size = parseInt((sizeEl && sizeEl.value) || '10', 10) || 10;
+                const fill = !!st.fill;
+                let shape;
+                if (st.mode === 'brush') {
+                    shape = { id: _nextMarkShapeId(), type: 'brush', color, size, points: [{ x: p.x, y: p.y }] };
+                } else if (st.mode === 'line' || st.mode === 'arrow') {
+                    shape = { id: _nextMarkShapeId(), type: st.mode, color, size, x1: p.x, y1: p.y, x2: p.x, y2: p.y };
+                } else {
+                    // rect / square / circle / heart
+                    shape = { id: _nextMarkShapeId(), type: st.mode, color, size, fill, x: p.x, y: p.y, w: 0, h: 0, _originX: p.x, _originY: p.y };
+                }
+                st.currentShape = shape;
+                renderMarkCanvas();
             }
             function move(e) {
-                if (!_markEditorState || !_markEditorState.currentStroke) return;
+                const st = _markEditorState;
+                if (!st) return;
                 e.preventDefault();
                 const p = getPos(e);
-                const s = _markEditorState.currentStroke;
-                s.points.push(p);
-                const ctx = _markEditorState.ctx;
-                ctx.strokeStyle = s.color;
-                ctx.lineWidth = s.size;
-                ctx.lineCap = 'round';
-                ctx.lineJoin = 'round';
-                const n = s.points.length;
-                if (n >= 2) {
-                    ctx.beginPath();
-                    ctx.moveTo(s.points[n - 2].x, s.points[n - 2].y);
-                    ctx.lineTo(s.points[n - 1].x, s.points[n - 1].y);
-                    ctx.stroke();
+                if (st.mode === 'select') {
+                    if (!st.dragMode) return;
+                    const dx = p.x - st.dragStart.x;
+                    const dy = p.y - st.dragStart.y;
+                    if (Math.hypot(dx, dy) > 3) st.dragMoved = true;
+                    if (st.dragMoved) _cancelLongPressTimer();
+                    const sel = st.shapes.find(x => x.id === st.selectedId);
+                    if (!sel) return;
+                    if (st.dragMode === 'move') {
+                        // 从快照重置 + 应用整体偏移
+                        Object.assign(sel, JSON.parse(JSON.stringify(st.dragShapeOrig)));
+                        _shapeMove(sel, dx, dy);
+                    } else if (st.dragMode === 'resize') {
+                        Object.assign(sel, JSON.parse(JSON.stringify(st.dragShapeOrig)));
+                        _shapeResize(sel, st.dragHandle, p, _shapeAspectLocked(sel));
+                    }
+                    renderMarkCanvas();
+                    return;
                 }
+                // 绘制工具：实时更新 currentShape
+                const cs = st.currentShape;
+                if (!cs) return;
+                if (cs.type === 'brush') {
+                    cs.points.push({ x: p.x, y: p.y });
+                } else if (cs.type === 'line' || cs.type === 'arrow') {
+                    cs.x2 = p.x; cs.y2 = p.y;
+                } else {
+                    let dw = p.x - cs._originX;
+                    let dh = p.y - cs._originY;
+                    if (_shapeAspectLocked(cs)) {
+                        const m = Math.max(Math.abs(dw), Math.abs(dh));
+                        dw = (dw >= 0 ? 1 : -1) * m;
+                        dh = (dh >= 0 ? 1 : -1) * m;
+                    }
+                    cs.x = (dw >= 0) ? cs._originX : cs._originX + dw;
+                    cs.y = (dh >= 0) ? cs._originY : cs._originY + dh;
+                    cs.w = Math.abs(dw);
+                    cs.h = Math.abs(dh);
+                }
+                renderMarkCanvas();
             }
             function end(e) {
-                if (!_markEditorState || !_markEditorState.currentStroke) return;
+                const st = _markEditorState;
+                if (!st) return;
                 e.preventDefault();
-                _markEditorState.strokes.push(_markEditorState.currentStroke);
-                _markEditorState.currentStroke = null;
+                _cancelLongPressTimer();
+                if (st.mode === 'select') {
+                    // 拖完一次：清拖拽态。如果没动过，前面 _pushUndoSnapshot 是浪费的（接受这个小成本）
+                    st.dragMode = null;
+                    st.dragHandle = null;
+                    st.dragStart = null;
+                    st.dragShapeOrig = null;
+                    st.dragMoved = false;
+                    return;
+                }
+                _commitCurrentShape();
+                renderMarkCanvas();
             }
             canvas.addEventListener('mousedown', start);
             canvas.addEventListener('mousemove', move);
@@ -6527,6 +7184,26 @@
             canvas.addEventListener('touchmove', move, { passive: false });
             canvas.addEventListener('touchend', end, { passive: false });
             canvas.addEventListener('touchcancel', end, { passive: false });
+
+            // 键盘删除：Delete / Backspace 删选中
+            document.addEventListener('keydown', (e) => {
+                if (!_markEditorState) return;
+                const modal = document.getElementById('mark-editor-modal');
+                if (!modal || modal.classList.contains('hidden')) return;
+                // 焦点在 input 上别拦
+                const tag = (e.target && e.target.tagName) || '';
+                if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+                if ((e.key === 'Delete' || e.key === 'Backspace') && _markEditorState.selectedId != null) {
+                    e.preventDefault();
+                    _deleteSelectedShape();
+                } else if ((e.key === 'z' || e.key === 'Z') && (e.ctrlKey || e.metaKey)) {
+                    e.preventDefault();
+                    if (e.shiftKey) markRedo(); else markUndo();
+                } else if ((e.key === 'y' || e.key === 'Y') && (e.ctrlKey || e.metaKey)) {
+                    e.preventDefault();
+                    markRedo();
+                }
+            });
         }
 
         // ============== 本地图库 ==============
@@ -7927,6 +8604,18 @@
             watercolor: '水彩画风（透明色层、湿润渐变）',
             custom:     '自由发挥（让模型按内容自选最合适风格）',
         };
+        // 合并图模式下的"分格视觉风格"——影响整张合成图的视觉调性（边框、配色、装裱）
+        // 'default' 表示跟随主风格不额外注入
+        const PLOT_MERGED_FRAME_STYLE_LABELS = {
+            'bw-manga':     '黑白漫画风（黑白线稿、网点纸、对话气泡、紧凑分格）',
+            'color-manga':  '彩色日漫风（彩色 cel-shading、明显黑色描边、动漫分格）',
+            'webcomic':     '韩漫条漫风（竖向长条、柔和高饱和色彩、上下流畅过渡）',
+            'comic-page':   '美漫整页风（强烈黑色阴影、半色调点、不规则分格、戏剧化构图）',
+            'watercolor':   '水彩插画分格（柔和湿润笔触、淡色边框、绘本质感）',
+            'storyboard':   '电影分镜稿（铅笔/线稿草图、相机角度标注感、单色或低饱和）',
+            'vintage-print':'复古印刷风（粗糙网点、做旧米色纸张、二三色套印感）',
+            'ink-sketch':   '水墨速写（毛笔勾线、留白、东方装裱感）',
+        };
 
         const _plotState = {
             phase: 'idle',       // idle | collecting | selecting | picking | inferring | done | error
@@ -7935,6 +8624,13 @@
             panelCount: 6,
             style: 'cinematic',
             includeDialogue: false, // v6: 是否要求每个 panel 嵌入角色对话
+            customStyleText: '',    // style='custom' 时用户填的自由文本；留空则交模型自由发挥
+            outputMode: 'multi',    // 'multi'（每分镜一张图）| 'merged'（合并到一张图）
+            mergedLayout: 'comic',  // 'comic' | 'storybook' | 'custom'，仅 outputMode=merged 时生效
+            mergedLayoutCustom: '', // mergedLayout='custom' 时的自由文本（如"3格L形排列"）
+            mergedGrid: 'auto',     // 'auto' | '2' | '3' | '4' | '6' | '9'，仅 mergedLayout=comic 时生效
+            mergedFrameStyle: 'default', // 分格视觉风格 key（见 PLOT_MERGED_FRAME_STYLE_LABELS）；'default' 不注入
+            mergedFrameStyleCustom: '',  // mergedFrameStyle='custom' 时的自由文本
             abortController: null,
             candidates: [],      // Stage 1 result
             selectedIds: new Set(), // chosen item IDs
@@ -7952,10 +8648,35 @@
             const countEl = document.getElementById('plot-panel-count');
             const styleEl = document.getElementById('plot-style');
             const dlgEl = document.getElementById('plot-include-dialogue');
+            const layoutEl = document.getElementById('plot-merged-layout');
+            const gridEl = document.getElementById('plot-merged-grid');
             _plotState.outline    = (outlineEl && outlineEl.value || '').trim();
             _plotState.panelCount = Math.max(2, Math.min(12, parseInt(countEl && countEl.value, 10) || 6));
             _plotState.style      = (styleEl && styleEl.value) || 'cinematic';
+            const customStyleEl = document.getElementById('plot-style-custom-input');
+            if (customStyleEl) _plotState.customStyleText = (customStyleEl.value || '').trim();
+            // 风格选了自定义才显示文本输入框
+            if (customStyleEl) customStyleEl.classList.toggle('hidden', _plotState.style !== 'custom');
             _plotState.includeDialogue = !!(dlgEl && dlgEl.checked);
+            if (layoutEl) _plotState.mergedLayout = layoutEl.value || 'comic';
+            if (gridEl) _plotState.mergedGrid = gridEl.value || 'auto';
+            // 合并模式下：只有"漫画格"布局才需要格数 select；其他布局把它隐掉减少干扰
+            const gridWrap = document.getElementById('plot-merged-grid-wrap');
+            if (gridWrap) gridWrap.classList.toggle('hidden', _plotState.mergedLayout !== 'comic');
+            // 自定义布局文本：只有 layout='custom' 才显示输入框
+            const layoutCustomEl = document.getElementById('plot-merged-layout-custom-input');
+            if (layoutCustomEl) {
+                _plotState.mergedLayoutCustom = (layoutCustomEl.value || '').trim();
+                layoutCustomEl.classList.toggle('hidden', _plotState.mergedLayout !== 'custom');
+            }
+            // 分格风格 + 自定义文本：风格='custom' 才显示输入框
+            const frameStyleEl = document.getElementById('plot-merged-frame-style');
+            const frameStyleCustomEl = document.getElementById('plot-merged-frame-style-custom-input');
+            if (frameStyleEl) _plotState.mergedFrameStyle = frameStyleEl.value || 'default';
+            if (frameStyleCustomEl) {
+                _plotState.mergedFrameStyleCustom = (frameStyleCustomEl.value || '').trim();
+                frameStyleCustomEl.classList.toggle('hidden', _plotState.mergedFrameStyle !== 'custom');
+            }
             _plotSaveInputToLS();
             _plotRenderDetectedCtx();
         }
@@ -7965,8 +8686,15 @@
                     outline: _plotState.outline,
                     panelCount: _plotState.panelCount,
                     style: _plotState.style,
+                    customStyleText: _plotState.customStyleText,
                     mode: _plotState.mode,
                     includeDialogue: _plotState.includeDialogue,
+                    outputMode: _plotState.outputMode,
+                    mergedLayout: _plotState.mergedLayout,
+                    mergedLayoutCustom: _plotState.mergedLayoutCustom,
+                    mergedGrid: _plotState.mergedGrid,
+                    mergedFrameStyle: _plotState.mergedFrameStyle,
+                    mergedFrameStyleCustom: _plotState.mergedFrameStyleCustom,
                     ts: Date.now(),
                 }));
             } catch {}
@@ -7991,12 +8719,56 @@
                     const el = document.getElementById('plot-style');
                     if (el) el.value = obj.style;
                 }
+                if (typeof obj.customStyleText === 'string') {
+                    _plotState.customStyleText = obj.customStyleText;
+                    const el = document.getElementById('plot-style-custom-input');
+                    if (el) {
+                        el.value = obj.customStyleText;
+                        el.classList.toggle('hidden', _plotState.style !== 'custom');
+                    }
+                }
                 if (typeof obj.includeDialogue === 'boolean') {
                     _plotState.includeDialogue = obj.includeDialogue;
                     const el = document.getElementById('plot-include-dialogue');
                     if (el) el.checked = obj.includeDialogue;
                 }
+                // 输出模式 / 布局 / 格数：回填后同步 UI 显示态
+                if (obj.mergedLayout) {
+                    _plotState.mergedLayout = obj.mergedLayout;
+                    const el = document.getElementById('plot-merged-layout');
+                    if (el) el.value = obj.mergedLayout;
+                }
+                if (obj.mergedGrid) {
+                    _plotState.mergedGrid = obj.mergedGrid;
+                    const el = document.getElementById('plot-merged-grid');
+                    if (el) el.value = obj.mergedGrid;
+                }
+                if (typeof obj.mergedLayoutCustom === 'string') {
+                    _plotState.mergedLayoutCustom = obj.mergedLayoutCustom;
+                    const el = document.getElementById('plot-merged-layout-custom-input');
+                    if (el) {
+                        el.value = obj.mergedLayoutCustom;
+                        el.classList.toggle('hidden', _plotState.mergedLayout !== 'custom');
+                    }
+                }
+                if (obj.mergedFrameStyle) {
+                    _plotState.mergedFrameStyle = obj.mergedFrameStyle;
+                    const el = document.getElementById('plot-merged-frame-style');
+                    if (el) el.value = obj.mergedFrameStyle;
+                }
+                if (typeof obj.mergedFrameStyleCustom === 'string') {
+                    _plotState.mergedFrameStyleCustom = obj.mergedFrameStyleCustom;
+                    const el = document.getElementById('plot-merged-frame-style-custom-input');
+                    if (el) {
+                        el.value = obj.mergedFrameStyleCustom;
+                        el.classList.toggle('hidden', _plotState.mergedFrameStyle !== 'custom');
+                    }
+                }
+                if (obj.outputMode) _setPlotOutputMode(obj.outputMode, true);
                 if (obj.mode) _setPlotMode(obj.mode, true);
+                // 同步 mergedLayout 决定的 grid 子选项可见性
+                const gridWrap = document.getElementById('plot-merged-grid-wrap');
+                if (gridWrap) gridWrap.classList.toggle('hidden', _plotState.mergedLayout !== 'comic');
             } catch {}
         }
         function _setPlotMode(mode, silent) {
@@ -8005,6 +8777,31 @@
             document.querySelectorAll('.plot-mode-seg [data-plot-mode]').forEach(b => {
                 b.classList.toggle('is-active', b.getAttribute('data-plot-mode') === mode);
             });
+            if (!silent) _plotSaveInputToLS();
+        }
+        // 解析最终用于注入 prompt 的风格描述文本：
+        // - style='custom' 且填了自定义文本 → 用自定义文本（"宫崎骏风" 这种）
+        // - style='custom' 没填 → 用 "自由发挥" 标签让模型自选
+        // - 其他 → 用 PLOT_STYLE_LABELS 映射的中文标签
+        function _resolveStyleLabel() {
+            if (_plotState.style === 'custom') {
+                const t = (_plotState.customStyleText || '').trim();
+                if (t) return t;
+            }
+            return PLOT_STYLE_LABELS[_plotState.style] || _plotState.style;
+        }
+
+        // 输出模式切换：multi（每分镜单图）/ merged（合并到一张）；切换时同步按钮文案 + 子选项可见性
+        function _setPlotOutputMode(mode, silent) {
+            if (!['multi','merged'].includes(mode)) mode = 'multi';
+            _plotState.outputMode = mode;
+            document.querySelectorAll('button[data-plot-output]').forEach(b => {
+                b.classList.toggle('is-active', b.getAttribute('data-plot-output') === mode);
+            });
+            const opts = document.getElementById('plot-merged-opts');
+            if (opts) opts.classList.toggle('hidden', mode !== 'merged');
+            const btn = document.getElementById('plot-batch-all-btn');
+            if (btn) btn.textContent = (mode === 'merged') ? '生成合并图' : '全部生成';
             if (!silent) _plotSaveInputToLS();
         }
         // 实时显示自动检测的 @角色 / @场景 / @道具 / 当前世界观
@@ -8486,7 +9283,7 @@
                 outline,
                 '',
                 `=== 任务 ===`,
-                `推演 ${_plotState.panelCount} 个分镜。整体风格基调：${PLOT_STYLE_LABELS[_plotState.style] || _plotState.style}`,
+                `推演 ${_plotState.panelCount} 个分镜。整体风格基调：${_resolveStyleLabel()}`,
                 includeDialogue
                     ? '★ 本次开启"生成对话"开关：每个 panel 必须按 system prompt 里的"对话生成"规则嵌入 1-2 句角色台词（按 persona 风格）。'
                     : '本次未开启对话生成：panel 描述只写画面，不要嵌入对话台词。',
@@ -8790,7 +9587,162 @@
             try { promptInput.setSelectionRange(promptInput.value.length, promptInput.value.length); } catch {}
             showToast('已填入输入框，自由编辑后再发送');
         }
+        // ============== 合并图模式：拼一个大 prompt 走一次生图 ==============
+        // n 没明显数学映射时按经验推：2/3 横向，4/5/6 用 2x3，7-9 用 3x3
+        function _autoGridForCount(n) {
+            if (n <= 2) return '2';
+            if (n === 3) return '3';
+            if (n === 4) return '4';
+            if (n <= 6) return '6';
+            return '9';
+        }
+        function _describeMergedGrid(n, gridChoice) {
+            const choice = (gridChoice === 'auto') ? _autoGridForCount(n) : gridChoice;
+            const map = {
+                '2': '1 行 × 2 列（左右并排）',
+                '3': '1 行 × 3 列（横向并排）',
+                '4': '2 行 × 2 列（2x2 网格）',
+                '6': '2 行 × 3 列（2x3 网格）',
+                '9': '3 行 × 3 列（3x3 网格）',
+            };
+            return map[choice] || `${n} 格自由网格`;
+        }
+        // 给每个分镜一个明确的位置标签（左上 / 右下 等），帮模型对齐
+        function _gridPositionLabels(n, gridChoice) {
+            const choice = (gridChoice === 'auto') ? _autoGridForCount(n) : gridChoice;
+            const lookup = {
+                '2': ['左', '右'],
+                '3': ['左', '中', '右'],
+                '4': ['左上', '右上', '左下', '右下'],
+                '6': ['左上', '中上', '右上', '左下', '中下', '右下'],
+                '9': ['左上', '中上', '右上', '左中', '中央', '右中', '左下', '中下', '右下'],
+            };
+            const labels = lookup[choice] || [];
+            return Array.from({ length: n }, (_, i) => labels[i] || `位置 ${i + 1}`);
+        }
+        // 合并图尺寸：横向布局推 2K 横，竖向布局推 2K 竖，方阵推 2K 方
+        function _pickMergedSize() {
+            const layout = _plotState.mergedLayout;
+            if (layout === 'storybook') return '1152x2048';   // 故事书竖向翻页风
+            if (layout === 'custom')    return '2048x2048';   // 自由排版用最大方图
+            // comic：根据网格定向
+            const n = (_plotState.panels || []).length;
+            const choice = (_plotState.mergedGrid === 'auto') ? _autoGridForCount(n) : _plotState.mergedGrid;
+            if (choice === '2' || choice === '3') return '2048x1152'; // 横排用宽屏
+            return '2048x2048'; // 4/6/9 用方图
+        }
+        // 解析"自定义布局"文本：layout='custom' 且填了文本 → 返回该文本；否则返回 null（走默认 free-layout 措辞）
+        function _resolveMergedLayoutCustom() {
+            if (_plotState.mergedLayout === 'custom') {
+                const t = (_plotState.mergedLayoutCustom || '').trim();
+                if (t) return t;
+            }
+            return null;
+        }
+        // 解析"分格视觉风格"标签：default 不注入；custom 用用户输入；其他用预设字典
+        function _resolveMergedFrameStyle() {
+            const k = _plotState.mergedFrameStyle;
+            if (!k || k === 'default') return null;
+            if (k === 'custom') {
+                const t = (_plotState.mergedFrameStyleCustom || '').trim();
+                return t || null;
+            }
+            return PLOT_MERGED_FRAME_STYLE_LABELS[k] || null;
+        }
+
+        // 把 panels 拼成一个大 prompt；模型理解"分格描述"，会自动把多个分镜画到一张图
+        function _buildMergedPlotPrompt(panels) {
+            const styleLabel = _resolveStyleLabel();
+            const layout = _plotState.mergedLayout;
+            const customLayoutDesc = _resolveMergedLayoutCustom();
+            const frameStyleDesc = _resolveMergedFrameStyle();
+            const n = panels.length;
+            const dialogue = !!_plotState.includeDialogue;
+            const lines = [];
+            if (layout === 'comic') {
+                const gridDesc = _describeMergedGrid(n, _plotState.mergedGrid);
+                const positions = _gridPositionLabels(n, _plotState.mergedGrid);
+                lines.push(`生成一张 ${n} 格漫画风格的图片，所有分镜画在同一张图里。整体布局：${gridDesc}。每格之间用清晰可见的黑色边框分隔。整体艺术风格：${styleLabel}。`);
+                lines.push('');
+                lines.push('=== 分格内容（按顺序）===');
+                for (let i = 0; i < n; i++) {
+                    const titlePart = panels[i].title ? `《${panels[i].title}》：` : '';
+                    lines.push(`[第 ${i + 1} 格 · ${positions[i]}] ${titlePart}${panels[i].prompt}`);
+                }
+            } else if (layout === 'storybook') {
+                lines.push(`生成一张故事绘本风格的合成图，包含 ${n} 个画面竖向排列，每个画面下方留出文字标题区域。整体艺术风格：${styleLabel}。`);
+                lines.push('');
+                lines.push('=== 画面顺序 ===');
+                for (let i = 0; i < n; i++) {
+                    const titlePart = panels[i].title ? `标题《${panels[i].title}》。` : '';
+                    lines.push(`【画面 ${i + 1}】${titlePart}${panels[i].prompt}`);
+                }
+            } else {
+                // layout='custom'：填了自定义布局描述就强约束，没填就让模型自由发挥
+                if (customLayoutDesc) {
+                    lines.push(`生成一张包含 ${n} 个分镜的合成图片，按以下指定布局排版：${customLayoutDesc}。整体艺术风格：${styleLabel}。`);
+                } else {
+                    lines.push(`生成一张包含 ${n} 个分镜的合成图片，由你自己决定最适合的布局排版（电影故事板 / 错落分块 / 不规则分镜均可）。整体艺术风格：${styleLabel}。`);
+                }
+                lines.push('');
+                lines.push('=== 分镜内容（按出现顺序）===');
+                for (let i = 0; i < n; i++) {
+                    const titlePart = panels[i].title ? `《${panels[i].title}》：` : '';
+                    lines.push(`[分镜 ${i + 1}] ${titlePart}${panels[i].prompt}`);
+                }
+            }
+            // 分格视觉风格：单独一段强约束，影响整张图的边框/配色/装裱
+            if (frameStyleDesc) {
+                lines.push('');
+                lines.push('=== 分格视觉风格（必须严格遵守）===');
+                lines.push(frameStyleDesc);
+            }
+            lines.push('');
+            lines.push('=== 整体要求 ===');
+            lines.push('- 每个分镜画面独立完整，分隔清晰可辨');
+            lines.push('- 同一角色在不同分镜中保持一致（长相、服饰、配色不变）');
+            lines.push('- 整体配色协调，构图均衡');
+            if (dialogue) lines.push('- 每分镜按描述自然嵌入角色对话气泡（按性格风格书写）');
+            else          lines.push('- 不要在分镜内添加任何文字气泡');
+            return lines.join('\n');
+        }
+        // 合并模式入口：组 prompt → 拼 params → 走标准 runGeneration（一次生图）
+        async function _generateMergedPlotImage() {
+            const panels = _plotState.panels;
+            if (!panels || panels.length === 0) { showToast('还没有分镜'); return; }
+            if (!currentConversationId) { showToast('请先选一个对话'); return; }
+            const mergedPrompt = _buildMergedPlotPrompt(panels);
+            const size = _pickMergedSize();
+            const params = { size, quality: 'high', format: 'png' };
+            // 关 modal，跟 sendPlotPanel 一样的体验
+            closeStoryModal();
+            await new Promise(r => setTimeout(r, 80));
+            const convId = currentConversationId;
+            const estSend = estimateSendTokens(mergedPrompt, []);
+            const userMsg = await createMessage({
+                conversationId: convId, role: 'user', status: 'done',
+                text: mergedPrompt, images: [], params,
+                sendTokens: estSend, sendTokensEstimated: true,
+                seed: _currentSeed,
+            });
+            if (currentConversationId === convId) renderUserMessage(userMsg);
+            await runGeneration({
+                conversationId: convId,
+                promptText: mergedPrompt,
+                inputImages: [],
+                params,
+                seed: _currentSeed,
+            });
+        }
+
         async function generateAllPlotPanels() {
+            // 合并图模式：单次生图，不走批量循环
+            if (_plotState.outputMode === 'merged') {
+                if (_plotState.isBatching) { showToast('生成进行中…'); return; }
+                await _generateMergedPlotImage();
+                return;
+            }
+            // 多图模式：原有批量循环
             if (_plotState.isBatching) { showToast('批量生成进行中…'); return; }
             if (!currentConversationId) { showToast('请先选一个对话'); return; }
             const panels = _plotState.panels;
