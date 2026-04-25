@@ -625,6 +625,25 @@
             #kbd-help-btn, #kbd-help-modal { display: none !important; }
         }
 
+        /* ========== 故事工坊 tab ========== */
+        .story-tab {
+            padding: 8px 14px;
+            font-size: 13px;
+            color: #6b7280;
+            background: transparent;
+            border: 0;
+            border-bottom: 2px solid transparent;
+            cursor: pointer;
+            transition: color 0.12s, border-color 0.12s;
+            font-weight: 500;
+            margin-bottom: -1px;
+        }
+        .story-tab:hover { color: #374151; }
+        .story-tab.is-active {
+            color: #c2410c;          /* orange-700 */
+            border-bottom-color: #ea580c;  /* orange-600 */
+        }
+
         /* ========== loading 卡片里的 meta 行（计时器 + 事件计数） ========== */
         .loading-meta {
             display: inline-flex;
@@ -784,10 +803,6 @@
                         </div>
                         <!-- 第 2 行：3 个工具按钮 -->
                         <div class="flex flex-wrap items-center gap-1.5 mt-1">
-                            <button type="button" id="character-btn" onclick="openCharacterManager()" class="flex items-center gap-1 text-xs text-emerald-600 hover:bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded" title="管理角色卡；输入框内 @名字 会自动带入该角色的外貌/服饰/武器/设定">
-                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
-                                角色卡<span id="character-count-badge" class="hidden ml-0.5 text-[10px] bg-emerald-100 rounded px-1"></span>
-                            </button>
                             <button type="button" id="enhance-prompt-btn" onclick="openEnhancePromptModal()" class="flex items-center gap-1 text-xs text-purple-600 hover:bg-purple-50 border border-purple-200 px-2 py-0.5 rounded" title="用 gpt-oss-120b 把当前输入框的提示词改写成更适合 gpt-image-2 的自然语言描述">
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path></svg>
                                 提示词增强
@@ -795,6 +810,10 @@
                             <button type="button" onclick="openVideoFrameModal()" class="flex items-center gap-1 text-xs text-indigo-600 hover:bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded" title="从本地视频截取首帧/尾帧加入参考图（纯前端处理，不上传视频）">
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
                                 截取视频帧
+                            </button>
+                            <button type="button" id="story-btn" onclick="openStoryModal()" class="flex items-center gap-1 text-xs text-orange-600 hover:bg-orange-50 border border-orange-200 px-2 py-0.5 rounded" title="故事工坊：场景卡 / 世界观 / 剧情推演">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25"/></svg>
+                                故事
                             </button>
                         </div>
                     </div>
@@ -1053,59 +1072,109 @@
         </div>
     </div>
 
-    <!-- 角色卡管理 modal：列表 + 搜索 + 编辑表单 + 导入导出 -->
-    <div id="character-manager-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden justify-center items-center p-0 sm:p-4">
+    <!-- 故事工坊 modal（v5 + 角色卡整合）：4 tab — 角色卡 / 场景卡 / 世界观 / 剧情推演 -->
+    <div id="story-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden justify-center items-center p-0 sm:p-4">
         <div class="bg-white w-full h-full sm:h-auto sm:rounded-2xl sm:max-w-3xl sm:max-h-[92vh] shadow-2xl flex flex-col relative overflow-hidden">
             <!-- Header -->
-            <div class="shrink-0 px-4 py-3 border-b border-gray-200 flex items-center gap-2">
-                <h3 class="text-lg font-semibold text-gray-800">角色卡</h3>
-                <span class="text-xs text-gray-400">用于 @ 角色名保持样貌/服饰一致性</span>
-                <button onclick="closeCharacterManager()" class="ml-auto text-gray-400 hover:text-gray-600 p-1" title="关闭">
+            <div class="shrink-0 px-4 py-3 flex items-center gap-2">
+                <h3 class="text-lg font-semibold text-gray-800">故事工坊</h3>
+                <span class="text-xs text-gray-400 hidden sm:inline">场景卡 · 世界观 · 剧情推演</span>
+                <button onclick="closeStoryModal()" class="ml-auto text-gray-400 hover:text-gray-600 p-1" title="关闭">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                 </button>
             </div>
-
-            <!-- 操作条：搜索 + 新建 + 导入 + 导出全部 -->
-            <div class="shrink-0 px-4 py-2 border-b border-gray-100 flex flex-wrap items-center gap-2">
-                <input type="text" id="char-search-input" placeholder="搜索角色名/标签…" class="flex-1 min-w-[140px] bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-400" oninput="onCharSearchInput(this.value)">
-                <button onclick="startNewCharacter()" class="text-xs text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2.5 py-1.5 rounded-md flex items-center gap-1">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                    新建
-                </button>
-                <input type="file" id="char-import-input" class="hidden" accept="application/json,.json" onchange="importCharactersFromFile(event)">
-                <button onclick="document.getElementById('char-import-input').click()" class="text-xs text-gray-700 bg-gray-100 hover:bg-gray-200 px-2.5 py-1.5 rounded-md flex items-center gap-1" title="导入单卡或全量角色包 JSON">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1M12 12V4m0 0l-4 4m4-4l4 4"></path></svg>
-                    导入
-                </button>
-                <button onclick="exportAllCharacters()" class="text-xs text-gray-700 bg-gray-100 hover:bg-gray-200 px-2.5 py-1.5 rounded-md flex items-center gap-1" title="导出全部角色为一个 JSON">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0l-4 4m4-4v12"></path></svg>
-                    导出全部
-                </button>
-                <button onclick="clearAllCharactersWithConfirm()" class="text-xs text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 px-2.5 py-1.5 rounded-md">
-                    清空
-                </button>
+            <!-- Tabs -->
+            <div class="shrink-0 px-2 sm:px-4 flex items-center gap-1 overflow-x-auto">
+                <button data-story-tab="character" class="story-tab is-active" onclick="switchStoryTab('character')">角色卡</button>
+                <button data-story-tab="scene" class="story-tab" onclick="switchStoryTab('scene')">场景卡</button>
+                <button data-story-tab="worldview" class="story-tab" onclick="switchStoryTab('worldview')">世界观</button>
+                <button data-story-tab="plot" class="story-tab" onclick="switchStoryTab('plot')">剧情推演</button>
             </div>
-
-            <!-- 主体：桌面左右分栏；移动端堆叠 -->
-            <div class="flex-1 min-h-0 overflow-hidden flex flex-col sm:grid sm:grid-cols-[240px_1fr]">
-                <!-- 列表 -->
-                <div id="char-list-pane" class="border-b sm:border-b-0 sm:border-r border-gray-200 overflow-y-auto max-h-[35vh] sm:max-h-none">
-                    <div id="char-list-container" class="p-2 flex flex-col gap-1"></div>
+            <!-- Tab contents -->
+            <div class="flex-1 min-h-0 overflow-hidden">
+                <!-- 角色卡（stage 1 整合进来） -->
+                <div id="story-tab-character" class="story-tab-pane h-full flex flex-col">
+                    <div class="shrink-0 px-4 py-2 flex flex-wrap items-center gap-2">
+                        <input type="text" id="char-search-input" placeholder="搜索角色名/标签…" class="flex-1 min-w-[140px] bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-400" oninput="onCharSearchInput(this.value)">
+                        <button type="button" onclick="startNewCharacter()" class="text-xs text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2.5 py-1.5 rounded-md flex items-center gap-1">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+                            新建
+                        </button>
+                        <input type="file" id="char-import-input" class="hidden" accept="application/json,.json" onchange="importCharactersFromFile(event)">
+                        <button type="button" onclick="document.getElementById('char-import-input').click()" class="text-xs text-gray-700 bg-gray-100 hover:bg-gray-200 px-2.5 py-1.5 rounded-md flex items-center gap-1" title="导入单卡或全量角色包 JSON">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1M12 12V4m0 0l-4 4m4-4l4 4"/></svg>
+                            导入
+                        </button>
+                        <button type="button" onclick="exportAllCharacters()" class="text-xs text-gray-700 bg-gray-100 hover:bg-gray-200 px-2.5 py-1.5 rounded-md flex items-center gap-1" title="导出全部角色为一个 JSON">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0l-4 4m4-4v12"/></svg>
+                            导出全部
+                        </button>
+                        <button type="button" onclick="clearAllCharactersWithConfirm()" class="text-xs text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 px-2.5 py-1.5 rounded-md">清空</button>
+                    </div>
+                    <div class="flex-1 min-h-0 overflow-hidden flex flex-col sm:grid sm:grid-cols-[240px_1fr]">
+                        <div id="char-list-pane" class="overflow-y-auto max-h-[35vh] sm:max-h-none">
+                            <div id="char-list-container" class="p-2 flex flex-col gap-1"></div>
+                        </div>
+                        <div id="char-edit-pane" class="flex-1 overflow-y-auto p-4"></div>
+                    </div>
                 </div>
-                <!-- 详情/编辑 -->
-                <div id="char-edit-pane" class="flex-1 overflow-y-auto p-4"></div>
+
+                <!-- 世界观 placeholder（stage 2 上线） -->
+                <div id="story-tab-worldview" class="story-tab-pane hidden h-full flex items-center justify-center p-8">
+                    <div class="text-center text-gray-400 max-w-sm">
+                        <svg class="w-10 h-10 mx-auto mb-2 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-1.605.42-3.113 1.157-4.418"/></svg>
+                        <div class="text-sm font-medium text-gray-500 mb-1">世界观（开发中）</div>
+                        <div class="text-xs">stage 2 上线：全局世界观库 + 每对话挂一个，自动注入所有生图 prompt</div>
+                    </div>
+                </div>
+
+                <!-- 场景卡（stage 1 已开放） -->
+                <div id="story-tab-scene" class="story-tab-pane hidden h-full flex flex-col">
+                    <div class="shrink-0 px-4 py-2 flex flex-wrap items-center gap-2">
+                        <input type="text" id="scene-search-input" placeholder="搜索场景名/标签…" class="flex-1 min-w-[140px] bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-orange-400" oninput="onSceneSearchInput(this.value)">
+                        <button type="button" onclick="startNewScene()" class="text-xs text-orange-700 bg-orange-50 hover:bg-orange-100 border border-orange-200 px-2.5 py-1.5 rounded-md flex items-center gap-1">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+                            新建
+                        </button>
+                        <input type="file" id="scene-import-input" class="hidden" accept="application/json,.json" onchange="importScenesFromFile(event)">
+                        <button type="button" onclick="document.getElementById('scene-import-input').click()" class="text-xs text-gray-700 bg-gray-100 hover:bg-gray-200 px-2.5 py-1.5 rounded-md flex items-center gap-1" title="导入单卡或全量场景包 JSON">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1M12 12V4m0 0l-4 4m4-4l4 4"/></svg>
+                            导入
+                        </button>
+                        <button type="button" onclick="exportAllScenes()" class="text-xs text-gray-700 bg-gray-100 hover:bg-gray-200 px-2.5 py-1.5 rounded-md flex items-center gap-1" title="导出全部场景为一个 JSON">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0l-4 4m4-4v12"/></svg>
+                            导出全部
+                        </button>
+                        <button type="button" onclick="clearAllScenesWithConfirm()" class="text-xs text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 px-2.5 py-1.5 rounded-md">清空</button>
+                    </div>
+                    <div class="flex-1 min-h-0 overflow-hidden flex flex-col sm:grid sm:grid-cols-[240px_1fr]">
+                        <div id="scene-list-pane" class="overflow-y-auto max-h-[35vh] sm:max-h-none">
+                            <div id="scene-list-container" class="p-2 flex flex-col gap-1"></div>
+                        </div>
+                        <div id="scene-edit-pane" class="flex-1 overflow-y-auto p-4"></div>
+                    </div>
+                </div>
+
+                <!-- 剧情推演 placeholder（stage 3 上线） -->
+                <div id="story-tab-plot" class="story-tab-pane hidden h-full flex items-center justify-center p-8">
+                    <div class="text-center text-gray-400 max-w-sm">
+                        <svg class="w-10 h-10 mx-auto mb-2 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3v11.25A2.25 2.25 0 006 16.5h12a2.25 2.25 0 002.25-2.25V3M3.75 3h16.5M3.75 3l4.5 4.5h7.5l4.5-4.5M9 16.5v3.75m6-3.75v3.75M5.25 21h13.5"/></svg>
+                        <div class="text-sm font-medium text-gray-500 mb-1">剧情推演（开发中）</div>
+                        <div class="text-xs">stage 3 上线：一句话剧情 → AI 推演 N 个分镜 prompt，支持 AI 智能引用历史 / 手动选 / AI+微调</div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- @ 角色选择器 popover：光标上方弹出；移动端变底部 sheet -->
+    <!-- @ 角色/场景 选择器 popover：光标上方弹出；移动端变底部 sheet -->
     <div id="mention-popover" class="hidden fixed z-[60] bg-white shadow-xl rounded-xl border border-gray-200 overflow-hidden">
         <div class="px-3 py-1.5 border-b border-gray-100 text-[11px] text-gray-400 flex items-center justify-between">
-            <span>角色卡</span>
+            <span>角色卡 · 场景卡</span>
             <span id="mention-popover-hint" class="text-gray-300">↑↓ 选择 · Enter 应用 · Esc 关闭</span>
         </div>
         <ul id="mention-list" class="max-h-64 overflow-y-auto"></ul>
-        <div id="mention-empty" class="hidden px-3 py-3 text-xs text-gray-400">没有匹配的角色，<a onclick="openCharacterManagerForAdd()" class="text-emerald-600 hover:underline cursor-pointer">去新建一个 →</a></div>
+        <div id="mention-empty" class="hidden px-3 py-3 text-xs text-gray-400">没有匹配的角色或场景，<a onclick="openCharacterManagerForAdd()" class="text-emerald-600 hover:underline cursor-pointer mr-1">+ 角色</a><a onclick="openStoryModalForAddScene()" class="text-orange-600 hover:underline cursor-pointer">+ 场景</a></div>
     </div>
 
     <script>
@@ -1124,12 +1193,14 @@
         const PROMPT_ENHANCE_MODEL = "gpt-oss-120b";
 
         const DB_NAME = "VsllmGallery";
-        const DB_VERSION = 4; // v1 只有 images；v2 加 conversations、messages；v3 加 characters；v4 加 favorites
+        const DB_VERSION = 5; // v1 只有 images；v2 加 conversations、messages；v3 加 characters；v4 加 favorites；v5 加 scenes + worldviews
         const STORE_GALLERY = "images";
         const STORE_CONVERSATIONS = "conversations";
         const STORE_MESSAGES = "messages";
         const STORE_CHARACTERS = "characters";
         const STORE_FAVORITES = "favorites";
+        const STORE_SCENES = "scenes";
+        const STORE_WORLDVIEWS = "worldviews";
 
         // 生成时轮播的等待文案（高质量图 1-5 分钟，给用户点乐子别闲着）
         const LOADING_MESSAGES = [
@@ -1345,6 +1416,8 @@
             initMarkCanvasEvents();
             // 不再轮播 placeholder：保留 HTML 里的静态文本"描述或编辑图片"
             await preloadCharacters();
+            await preloadScenes();
+            await preloadWorldviews();
             initMentionEvents();
             initSeedUI();
             initParamsToggle();
@@ -1409,6 +1482,17 @@
                         const fs = d.createObjectStore(STORE_FAVORITES, { keyPath: "id" });
                         fs.createIndex("updatedAt", "updatedAt");
                         fs.createIndex("usedCount", "usedCount");
+                    }
+                    // v5 新增：场景卡 + 世界观；幂等，老用户升级也安全
+                    if (!d.objectStoreNames.contains(STORE_SCENES)) {
+                        const ss = d.createObjectStore(STORE_SCENES, { keyPath: "id" });
+                        ss.createIndex("updatedAt", "updatedAt");
+                        ss.createIndex("nameLower", "nameLower", { unique: false });
+                    }
+                    if (!d.objectStoreNames.contains(STORE_WORLDVIEWS)) {
+                        const ws = d.createObjectStore(STORE_WORLDVIEWS, { keyPath: "id" });
+                        ws.createIndex("updatedAt", "updatedAt");
+                        ws.createIndex("nameLower", "nameLower", { unique: false });
                     }
                 };
                 req.onsuccess = (e) => { db = e.target.result; resolve(); };
@@ -1759,25 +1843,17 @@
         let _charListFilter = '';
         let _charPendingAvatar = null;    // 当前表单里刚上传但还没保存的头像 dataURL
 
+        // v5: 角色卡 UI 已搬进故事工坊 modal 的"角色卡" tab；这里转跳实现，保留旧函数名兼容
         function openCharacterManager() {
-            _charListFilter = '';
-            const search = document.getElementById('char-search-input');
-            if (search) search.value = '';
-            const modal = document.getElementById('character-manager-modal');
-            modal.classList.remove('hidden');
-            modal.classList.add('flex');
-            renderCharacterList();
-            // 默认进入"新建"占位，右侧有引导
-            startNewCharacter();
+            const m = document.getElementById('story-modal');
+            if (!m) return;
+            m.classList.remove('hidden');
+            m.classList.add('flex');
+            switchStoryTab('character');
         }
         function closeCharacterManager() {
-            const modal = document.getElementById('character-manager-modal');
-            modal.classList.add('hidden');
-            modal.classList.remove('flex');
-            _currentEditingCharId = null;
-            _charPendingAvatar = null;
-            // 关闭所有字段 AI 增强的进行中请求，避免跨角色回填
-            abortAllCharFieldEnhancers();
+            // 旧 API 兼容入口；现在由 closeStoryModal 统一处理状态清理
+            closeStoryModal();
         }
         function openCharacterManagerForAdd() {
             closeMentionPopover();
@@ -2381,36 +2457,268 @@
         }
 
         // 单点组合：给 runGeneration 用；返回最终 prompt + 注入元数据
+        // v5: 同时处理场景卡注入（@场景名）；character 优先级 > scene（同名时归 character）
         function composeFinalPromptWithCharacters(userText) {
             const { characters, missingNames } = extractMentionedCharacters(userText || '');
-            if (characters.length === 0) {
-                return {
-                    finalPrompt: userText || '',
-                    injectedCharacters: [],
-                    missingNames,
-                };
-            }
-            const block = buildCharacterInjectionBlock(characters);
+            const scenes = extractMentionedScenes(userText || '');
+            const blocks = [];
+            if (characters.length > 0) blocks.push(buildCharacterInjectionBlock(characters));
+            if (scenes.length > 0)     blocks.push(buildSceneInjectionBlock(scenes));
+            const finalPrompt = blocks.length === 0
+                ? (userText || '')
+                : ((userText || '') + '\n\n' + blocks.join('\n\n'));
             return {
-                finalPrompt: (userText || '') + '\n\n' + block,
-                injectedCharacters: characters.map(c => ({
-                    id: c.id, name: c.name, updatedAt: c.updatedAt,
-                })),
+                finalPrompt,
+                injectedCharacters: characters.map(c => ({ id: c.id, name: c.name, updatedAt: c.updatedAt })),
+                injectedScenes:     scenes.map(s => ({ id: s.id, name: s.name, updatedAt: s.updatedAt })),
                 missingNames,
             };
+        }
+
+        // ============== 场景卡 + 世界观（v5 新增，平行于角色卡的全局库） ==============
+        const SCENE_SCHEMA_VERSION = 1;
+        const WORLDVIEW_SCHEMA_VERSION = 1;
+        const SCENE_FIELD_LABELS = {
+            description: '场景描述',
+            lighting: '光线/光照',
+            composition: '构图/视角',
+            mood: '氛围/情绪',
+            keyElements: '关键元素',
+            styleNote: '风格备注',
+        };
+        const WORLDVIEW_FIELD_LABELS = {
+            era: '时代/时期',
+            setting: '设定/世界规则',
+            mood: '基调',
+            styleNote: '视觉风格',
+            extras: '其他备注',
+        };
+        let _scenesCache = [];
+        let _worldviewsCache = [];
+
+        function _sceneDbOk()     { return !!(db && db.objectStoreNames && db.objectStoreNames.contains(STORE_SCENES)); }
+        function _worldviewDbOk() { return !!(db && db.objectStoreNames && db.objectStoreNames.contains(STORE_WORLDVIEWS)); }
+
+        // ---- Scene schema 归一 + 校验 ----
+        function normalizeSceneForm(raw) {
+            const r = raw || {};
+            const name = normalizeCharacterName(r.name); // 复用归一
+            const pickStr = (v) => (typeof v === 'string' ? v : '');
+            return {
+                name,
+                nameLower: toNameLower(name),
+                description: pickStr(r.description),
+                lighting: pickStr(r.lighting),
+                composition: pickStr(r.composition),
+                mood: pickStr(r.mood),
+                keyElements: pickStr(r.keyElements),
+                styleNote: pickStr(r.styleNote),
+                avatar: (typeof r.avatar === 'string' && r.avatar.startsWith('data:')) ? r.avatar : null,
+                tags: Array.isArray(r.tags) ? r.tags.map(x => String(x).trim()).filter(Boolean) :
+                      (typeof r.tags === 'string' ? r.tags.split(',').map(s => s.trim()).filter(Boolean) : []),
+            };
+        }
+        function validateScene(s) {
+            const errs = [];
+            if (!s.name) errs.push('场景名不能为空');
+            if (s.name && s.name.length > 32) errs.push('名字过长（≤32 字）');
+            for (const k of Object.keys(SCENE_FIELD_LABELS)) {
+                if (s[k] && s[k].length > 2000) errs.push(`${SCENE_FIELD_LABELS[k]} 过长（≤2000 字）`);
+            }
+            return errs;
+        }
+
+        // ---- Scene CRUD ----
+        function putScene(s) {
+            return new Promise((resolve, reject) => {
+                if (!_sceneDbOk()) return reject(new Error('场景卡存储未就绪'));
+                const req = db.transaction(STORE_SCENES, 'readwrite').objectStore(STORE_SCENES).put(s);
+                req.onsuccess = () => resolve();
+                req.onerror = (e) => reject(e.target.error || e);
+            });
+        }
+        function getScene(id) {
+            return new Promise((resolve, reject) => {
+                if (!_sceneDbOk()) return resolve(null);
+                const req = db.transaction(STORE_SCENES, 'readonly').objectStore(STORE_SCENES).get(Number(id));
+                req.onsuccess = () => resolve(req.result || null);
+                req.onerror = (e) => reject(e.target.error || e);
+            });
+        }
+        function listScenes() {
+            return new Promise((resolve, reject) => {
+                if (!_sceneDbOk()) return resolve([]);
+                const req = db.transaction(STORE_SCENES, 'readonly').objectStore(STORE_SCENES).getAll();
+                req.onsuccess = () => {
+                    const items = (req.result || []).sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+                    resolve(items);
+                };
+                req.onerror = (e) => reject(e.target.error || e);
+            });
+        }
+        function deleteScene(id) {
+            return new Promise((resolve, reject) => {
+                if (!_sceneDbOk()) return reject(new Error('场景卡存储未就绪'));
+                const req = db.transaction(STORE_SCENES, 'readwrite').objectStore(STORE_SCENES).delete(Number(id));
+                req.onsuccess = () => resolve();
+                req.onerror = (e) => reject(e.target.error || e);
+            });
+        }
+        function clearAllScenes() {
+            return new Promise((resolve, reject) => {
+                if (!_sceneDbOk()) return reject(new Error('场景卡存储未就绪'));
+                const req = db.transaction(STORE_SCENES, 'readwrite').objectStore(STORE_SCENES).clear();
+                req.onsuccess = () => resolve();
+                req.onerror = (e) => reject(e.target.error || e);
+            });
+        }
+        async function findSceneByName(name, excludeId) {
+            const lower = toNameLower(name);
+            if (!lower) return null;
+            const all = await listScenes();
+            for (const s of all) {
+                if (s.nameLower === lower && s.id !== excludeId) return s;
+            }
+            return null;
+        }
+        async function preloadScenes() {
+            try { _scenesCache = await listScenes(); }
+            catch { _scenesCache = []; }
+        }
+        function invalidateScenesCache() { preloadScenes(); }
+
+        async function upsertSceneFromForm(form, existingId) {
+            const body = normalizeSceneForm(form);
+            const errs = validateScene(body);
+            if (errs.length) throw new Error(errs.join('；'));
+            const dup = await findSceneByName(body.name, existingId);
+            if (dup) throw new Error(`已有同名场景「${body.name}」，请换个名或先删除旧的`);
+            const now = Date.now();
+            const s = {
+                id: existingId || _newId(),
+                ...body,
+                createdAt: existingId ? (await getScene(existingId))?.createdAt || now : now,
+                updatedAt: now,
+                schemaVersion: SCENE_SCHEMA_VERSION,
+            };
+            await putScene(s);
+            await preloadScenes();
+            return s;
+        }
+
+        // ---- Worldview CRUD（stage 1 只建数据层，UI 留给 stage 2） ----
+        function normalizeWorldviewForm(raw) {
+            const r = raw || {};
+            const name = normalizeCharacterName(r.name);
+            const pickStr = (v) => (typeof v === 'string' ? v : '');
+            return {
+                name,
+                nameLower: toNameLower(name),
+                era: pickStr(r.era),
+                setting: pickStr(r.setting),
+                mood: pickStr(r.mood),
+                styleNote: pickStr(r.styleNote),
+                extras: pickStr(r.extras),
+            };
+        }
+        function putWorldview(w) {
+            return new Promise((resolve, reject) => {
+                if (!_worldviewDbOk()) return reject(new Error('世界观存储未就绪'));
+                const req = db.transaction(STORE_WORLDVIEWS, 'readwrite').objectStore(STORE_WORLDVIEWS).put(w);
+                req.onsuccess = () => resolve();
+                req.onerror = (e) => reject(e.target.error || e);
+            });
+        }
+        function getWorldview(id) {
+            return new Promise((resolve, reject) => {
+                if (!_worldviewDbOk()) return resolve(null);
+                const req = db.transaction(STORE_WORLDVIEWS, 'readonly').objectStore(STORE_WORLDVIEWS).get(Number(id));
+                req.onsuccess = () => resolve(req.result || null);
+                req.onerror = (e) => reject(e.target.error || e);
+            });
+        }
+        function listWorldviews() {
+            return new Promise((resolve, reject) => {
+                if (!_worldviewDbOk()) return resolve([]);
+                const req = db.transaction(STORE_WORLDVIEWS, 'readonly').objectStore(STORE_WORLDVIEWS).getAll();
+                req.onsuccess = () => {
+                    const items = (req.result || []).sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+                    resolve(items);
+                };
+                req.onerror = (e) => reject(e.target.error || e);
+            });
+        }
+        function deleteWorldview(id) {
+            return new Promise((resolve, reject) => {
+                if (!_worldviewDbOk()) return reject(new Error('世界观存储未就绪'));
+                const req = db.transaction(STORE_WORLDVIEWS, 'readwrite').objectStore(STORE_WORLDVIEWS).delete(Number(id));
+                req.onsuccess = () => resolve();
+                req.onerror = (e) => reject(e.target.error || e);
+            });
+        }
+        async function preloadWorldviews() {
+            try { _worldviewsCache = await listWorldviews(); }
+            catch { _worldviewsCache = []; }
+        }
+
+        // ---- 场景 mention 提取（与角色一样 @ 前缀；同名 character 优先匹配） ----
+        function extractMentionedScenes(text, excludeIds) {
+            const out = [];
+            const seen = new Set();
+            if (!text) return out;
+            const exclude = new Set(); // 角色已经匹配掉的"代称"在这里保护
+            // 角色名优先（同名时不重复匹配为场景）
+            const charNames = new Set((_charactersCache || []).map(c => c.nameLower));
+            const byLower = new Map();
+            for (const s of (_scenesCache || [])) byLower.set(s.nameLower, s);
+            const re = /@([^\s@]+)/g;
+            let m;
+            while ((m = re.exec(text)) != null) {
+                const raw = m[1];
+                let matched = null;
+                for (let len = raw.length; len >= 1; len--) {
+                    const sub = raw.slice(0, len).toLowerCase();
+                    if (charNames.has(sub)) break; // 先被 character 占用
+                    const s = byLower.get(sub);
+                    if (s) { matched = s; break; }
+                }
+                if (matched && !seen.has(matched.id)) {
+                    seen.add(matched.id);
+                    out.push(matched);
+                }
+            }
+            return out;
+        }
+        function buildSceneInjectionBlock(scenes) {
+            if (!scenes || scenes.length === 0) return '';
+            const lines = ['---', '【场景一致性指令】'];
+            lines.push(`本次提示词中出现 ${scenes.map(s => '@' + s.name).join('、')} 等场景代称。请按以下场景设定渲染画面：`);
+            lines.push('');
+            for (const s of scenes) {
+                lines.push(`场景「${s.name}」：`);
+                if (s.description)  lines.push(`  描述：${s.description}`);
+                if (s.lighting)     lines.push(`  光线：${s.lighting}`);
+                if (s.composition)  lines.push(`  构图：${s.composition}`);
+                if (s.mood)         lines.push(`  氛围：${s.mood}`);
+                if (s.keyElements)  lines.push(`  关键元素：${s.keyElements}`);
+                if (s.styleNote)    lines.push(`  风格：${s.styleNote}`);
+                lines.push('');
+            }
+            lines.push('请让画面环境精确匹配以上场景描述。');
+            lines.push('---');
+            let block = lines.join('\n');
+            if (block.length > 3000) block = block.slice(0, 2970) + '\n...（场景描述过长已截断）\n---';
+            return block;
         }
 
         // 用于 user message 气泡渲染：先 escape 再把已注册角色的 @名字 包成绿高亮
         function renderTextWithMentionsHTML(rawText) {
             const safe = escapeHTML(rawText || '');
             if (!safe) return safe;
-            // 在 escape 后的字符串里替换 @名字：必须避开 HTML 实体干扰
-            // 由 escape 产出的 @ 仍是字面 @，没有被转义；后面名字里含 & < > ' " 会变成实体
-            // 为稳妥：基于原文本做替换后再逐段 escape；但原文可能含 HTML 标签，需要分段处理
-            // 折中：用正则在原文上找 @名字区段，分段 escape
-            const names = (_charactersCache || []).map(c => c.name).filter(Boolean);
-            if (names.length === 0) return safe;
-            const lowerSet = new Set((_charactersCache || []).map(c => c.nameLower));
+            // v5: 同时高亮 @角色卡（emerald）和 @场景卡（orange）；character 优先匹配
+            const charLowerSet  = new Set((_charactersCache || []).map(c => c.nameLower));
+            const sceneLowerSet = new Set((_scenesCache || []).map(s => s.nameLower));
+            if (charLowerSet.size === 0 && sceneLowerSet.size === 0) return safe;
             let html = '';
             let i = 0;
             const n = (rawText || '').length;
@@ -2418,23 +2726,25 @@
                 const at = (rawText || '').indexOf('@', i);
                 if (at < 0) { html += escapeHTML((rawText || '').slice(i)); break; }
                 html += escapeHTML((rawText || '').slice(i, at));
-                // 找最长可匹配名字
-                let matched = null;
-                let maxLen = 0;
-                // 向后扫描至空白/结尾
+                // 向后扫到空白/下一个 @ / 结尾
                 let j = at + 1;
                 while (j < n && !/\s/.test((rawText || '')[j]) && (rawText || '')[j] !== '@') j++;
                 const candidate = (rawText || '').slice(at + 1, j);
+                // 最长匹配；character 优先；character 没中再试 scene
+                let matched = null, maxLen = 0, kind = null;
                 for (let len = candidate.length; len >= 1; len--) {
-                    const sub = candidate.slice(0, len);
-                    if (lowerSet.has(sub.toLowerCase())) { matched = sub; maxLen = len; break; }
+                    const sub = candidate.slice(0, len).toLowerCase();
+                    if (charLowerSet.has(sub))  { matched = candidate.slice(0, len); maxLen = len; kind = 'character'; break; }
+                    if (sceneLowerSet.has(sub)) { matched = candidate.slice(0, len); maxLen = len; kind = 'scene';     break; }
                 }
                 if (matched) {
-                    html += `<span class="text-emerald-600 bg-emerald-50 rounded px-0.5">@${escapeHTML(matched)}</span>`;
+                    const cls = kind === 'scene'
+                        ? 'text-orange-600 bg-orange-50 rounded px-0.5'
+                        : 'text-emerald-600 bg-emerald-50 rounded px-0.5';
+                    html += `<span class="${cls}">@${escapeHTML(matched)}</span>`;
                     html += escapeHTML(candidate.slice(maxLen));
                     i = j;
                 } else {
-                    // 没匹配就按普通字符输出 @candidate
                     html += escapeHTML('@' + candidate);
                     i = j;
                 }
@@ -2503,6 +2813,30 @@
             }
             return prefix.concat(substr).slice(0, 8);
         }
+        // v5: 同时搜场景卡（同 @ 命名空间）
+        function searchScenesForMention(query) {
+            const list = _scenesCache || [];
+            if (!query) return list.slice(0, 8);
+            const q = query.toLowerCase();
+            const prefix = [], substr = [];
+            for (const s of list) {
+                const n = s.nameLower || '';
+                if (n.startsWith(q)) prefix.push(s);
+                else if (n.includes(q)) substr.push(s);
+                else if (Array.isArray(s.tags) && s.tags.some(t => (t || '').toLowerCase().includes(q))) substr.push(s);
+            }
+            return prefix.concat(substr).slice(0, 8);
+        }
+        // 统一搜索：角色 + 场景，character 优先，每条带 _kind 标记
+        // 同名时排除 scene（character 优先匹配，避免歧义）
+        function searchCardsForMention(query) {
+            const chars  = searchCharactersForMention(query).map(c => Object.assign({}, c, { _kind: 'character' }));
+            const charNames = new Set(chars.map(c => c.nameLower));
+            const scenes = searchScenesForMention(query)
+                .filter(s => !charNames.has(s.nameLower))
+                .map(s => Object.assign({}, s, { _kind: 'scene' }));
+            return chars.concat(scenes).slice(0, 12);
+        }
 
         function _matchHighlightHTML(name, query) {
             const safe = escapeHTML(name || '');
@@ -2531,15 +2865,27 @@
             const q = _mentionState.anchor ? _mentionState.anchor.query : '';
             ul.innerHTML = items.map((c, i) => {
                 const active = (i === _mentionState.activeIdx);
+                const isScene = c._kind === 'scene';
+                const accentBg = isScene ? 'bg-orange-50' : 'bg-emerald-50';
+                const avatarShape = isScene ? 'rounded-md' : 'rounded-full';
+                const avatarBg = isScene ? 'bg-orange-100 text-orange-700' : 'bg-emerald-100 text-emerald-700';
+                const kindBadge = isScene
+                    ? `<span class="text-[9px] px-1 py-px rounded bg-orange-100 text-orange-700 shrink-0">场景</span>`
+                    : `<span class="text-[9px] px-1 py-px rounded bg-emerald-100 text-emerald-700 shrink-0">角色</span>`;
                 const avatar = c.avatar
-                    ? `<img src="${c.avatar}" class="w-7 h-7 rounded-full object-cover border border-gray-200 shrink-0">`
-                    : `<div class="w-7 h-7 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-semibold shrink-0">${escapeHTML((c.name || '?').slice(0,2))}</div>`;
-                const summary = (c.appearance || c.outfit || c.persona || '').replace(/\s+/g, ' ').slice(0, 32);
+                    ? `<img src="${c.avatar}" class="w-7 h-7 ${avatarShape} object-cover border border-gray-200 shrink-0">`
+                    : `<div class="w-7 h-7 ${avatarShape} ${avatarBg} flex items-center justify-center text-[10px] font-semibold shrink-0">${escapeHTML((c.name || '?').slice(0,2))}</div>`;
+                const summary = isScene
+                    ? (c.description || c.lighting || c.mood || c.keyElements || '').replace(/\s+/g, ' ').slice(0, 32)
+                    : (c.appearance || c.outfit || c.persona || '').replace(/\s+/g, ' ').slice(0, 32);
                 return `
-                    <li data-idx="${i}" class="mention-item flex items-center gap-2 px-3 min-h-11 cursor-pointer ${active ? 'bg-emerald-50' : 'hover:bg-gray-50'}">
+                    <li data-idx="${i}" class="mention-item flex items-center gap-2 px-3 min-h-11 cursor-pointer ${active ? accentBg : 'hover:bg-gray-50'}">
                         ${avatar}
                         <div class="flex-1 min-w-0 py-2">
-                            <div class="text-sm text-gray-800 truncate">${_matchHighlightHTML(c.name || '', q)}</div>
+                            <div class="text-sm text-gray-800 truncate flex items-center gap-1.5">
+                                <span class="truncate">${_matchHighlightHTML(c.name || '', q)}</span>
+                                ${kindBadge}
+                            </div>
                             <div class="text-[11px] text-gray-400 truncate">${escapeHTML(summary || '（无描述）')}</div>
                         </div>
                     </li>
@@ -2579,7 +2925,7 @@
         function openMentionPopover(anchor) {
             _mentionState.open = true;
             _mentionState.anchor = anchor;
-            _mentionState.items = searchCharactersForMention(anchor.query);
+            _mentionState.items = searchCardsForMention(anchor.query);
             _mentionState.activeIdx = 0;
             const pop = document.getElementById('mention-popover');
             if (!pop) return;
@@ -2605,7 +2951,7 @@
             const anchor = detectMentionQueryAtCaret(promptInput);
             if (!anchor) { if (_mentionState.open) closeMentionPopover(); return; }
             _mentionState.anchor = anchor;
-            _mentionState.items = searchCharactersForMention(anchor.query);
+            _mentionState.items = searchCardsForMention(anchor.query);
             if (!_mentionState.open) {
                 openMentionPopover(anchor);
             } else {
@@ -5752,6 +6098,10 @@
                     if (attachModal && !attachModal.classList.contains('hidden')) {
                         e.preventDefault(); closeAttachPicker(); return;
                     }
+                    const storyModal = document.getElementById('story-modal');
+                    if (storyModal && !storyModal.classList.contains('hidden')) {
+                        e.preventDefault(); closeStoryModal(); return;
+                    }
                     if (cancelMostRecentTask()) e.preventDefault();
                     return;
                 }
@@ -5786,6 +6136,475 @@
                 document.addEventListener('DOMContentLoaded', __removeKbdUI, { once: true });
             } else {
                 __removeKbdUI();
+            }
+        }
+
+        // ============================================================
+        // 故事工坊 modal + 场景卡管理 UI（v5 stage 1）
+        // ============================================================
+        let _currentEditingSceneId = null;
+        let _sceneListFilter = '';
+        let _scenePendingAvatar = null;
+
+        function openStoryModal() {
+            const m = document.getElementById('story-modal');
+            if (!m) return;
+            m.classList.remove('hidden');
+            m.classList.add('flex');
+            switchStoryTab('character'); // 默认角色卡 tab（最左边）
+        }
+        // 从 @ 弹层"+场景"快捷入口；先关弹层再开 modal 并切到场景 tab
+        function openStoryModalForAddScene() {
+            try { closeMentionPopover(); } catch {}
+            const m = document.getElementById('story-modal');
+            if (!m) return;
+            m.classList.remove('hidden');
+            m.classList.add('flex');
+            switchStoryTab('scene');
+        }
+        function closeStoryModal() {
+            const m = document.getElementById('story-modal');
+            if (!m) return;
+            m.classList.add('hidden');
+            m.classList.remove('flex');
+            _currentEditingSceneId = null;
+            _scenePendingAvatar = null;
+            abortAllSceneFieldEnhancers();
+            // 同时清理角色 tab 的状态
+            _currentEditingCharId = null;
+            _charPendingAvatar = null;
+            try { abortAllCharFieldEnhancers(); } catch {}
+        }
+        function switchStoryTab(tab) {
+            document.querySelectorAll('.story-tab').forEach(b => {
+                b.classList.toggle('is-active', b.getAttribute('data-story-tab') === tab);
+            });
+            document.querySelectorAll('.story-tab-pane').forEach(p => p.classList.add('hidden'));
+            const target = document.getElementById('story-tab-' + tab);
+            if (target) target.classList.remove('hidden');
+            if (tab === 'character') {
+                _charListFilter = '';
+                const search = document.getElementById('char-search-input');
+                if (search) search.value = '';
+                renderCharacterList();
+                startNewCharacter();
+            } else if (tab === 'scene') {
+                _sceneListFilter = '';
+                const search = document.getElementById('scene-search-input');
+                if (search) search.value = '';
+                renderSceneList();
+                startNewScene();
+            }
+        }
+
+        function onSceneSearchInput(v) {
+            _sceneListFilter = (v || '').trim().toLowerCase();
+            renderSceneList();
+        }
+        function _filterScenes(list, q) {
+            if (!q) return list;
+            return list.filter(s => {
+                if (s.nameLower && s.nameLower.includes(q)) return true;
+                if (Array.isArray(s.tags) && s.tags.some(t => (t || '').toLowerCase().includes(q))) return true;
+                return false;
+            });
+        }
+        function renderSceneList() {
+            const container = document.getElementById('scene-list-container');
+            if (!container) return;
+            const list = _filterScenes(_scenesCache, _sceneListFilter);
+            if (list.length === 0) {
+                container.innerHTML = `<div class="text-xs text-gray-400 text-center py-4">${_sceneListFilter ? '没有匹配的场景' : '还没有场景，点上方"新建"创建第一张'}</div>`;
+                return;
+            }
+            container.innerHTML = list.map(s => {
+                const active = (_currentEditingSceneId === s.id);
+                const avatarHtml = s.avatar
+                    ? `<img src="${s.avatar}" class="w-8 h-8 rounded-md object-cover border border-gray-200 shrink-0">`
+                    : `<div class="w-8 h-8 rounded-md bg-orange-100 text-orange-700 flex items-center justify-center text-xs font-semibold shrink-0">${escapeHTML((s.name || '?').slice(0, 2))}</div>`;
+                const summary = (s.description || s.lighting || s.mood || '').replace(/\s+/g, ' ').slice(0, 40);
+                return `
+                    <div class="flex items-center gap-2 px-2 py-2 rounded-lg cursor-pointer ${active ? 'bg-orange-50 border border-orange-200' : 'hover:bg-gray-50 border border-transparent'}" onclick="selectSceneForEdit(${s.id})">
+                        ${avatarHtml}
+                        <div class="flex-1 min-w-0">
+                            <div class="text-sm text-gray-800 truncate">${escapeHTML(s.name || '未命名')}</div>
+                            <div class="text-[11px] text-gray-400 truncate">${escapeHTML(summary)}</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        function startNewScene() {
+            _currentEditingSceneId = null;
+            _scenePendingAvatar = null;
+            renderSceneEditPane(null);
+            renderSceneList();
+        }
+        async function selectSceneForEdit(id) {
+            abortAllSceneFieldEnhancers();
+            const s = await getScene(id);
+            if (!s) { showToast('场景已丢失'); return; }
+            _currentEditingSceneId = s.id;
+            _scenePendingAvatar = s.avatar || null;
+            renderSceneEditPane(s);
+            renderSceneList();
+        }
+
+        function renderSceneEditPane(s) {
+            const pane = document.getElementById('scene-edit-pane');
+            if (!pane) return;
+            const isNew = !s;
+            const title = isNew ? '新建场景' : `编辑：${escapeHTML(s.name)}`;
+            const avatarSrc = (_scenePendingAvatar) ? _scenePendingAvatar : (s && s.avatar) || '';
+
+            const fieldsHTML = Object.keys(SCENE_FIELD_LABELS).map(k => `
+                <div class="scene-field-group" data-field="${k}">
+                    <div class="flex items-center mb-1">
+                        <label class="text-sm font-medium text-gray-700">${SCENE_FIELD_LABELS[k]}</label>
+                        <button type="button" onclick="onSceneFieldEnhanceClick('${k}')" class="scene-ai-btn ml-auto inline-flex items-center gap-1 text-[11px] text-purple-600 hover:bg-purple-50 border border-purple-200 px-2 py-1 sm:py-0.5 rounded-md" title="用 gpt-oss-120b 生成/优化这个字段">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+                            AI
+                        </button>
+                    </div>
+                    <textarea id="scene-field-${k}" rows="3" class="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 focus:ring-1 focus:ring-orange-400 focus:outline-none resize-y"></textarea>
+                    <div class="scene-field-preview hidden mt-2 rounded-lg border border-purple-200 bg-purple-50 p-3">
+                        <div class="flex items-center justify-between text-[11px] text-purple-700 mb-1">
+                            <span class="scene-field-preview-label">AI 建议</span>
+                            <button type="button" class="scene-field-preview-close text-gray-400 hover:text-red-500" onclick="discardSceneFieldPreview('${k}')" title="关闭">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                            </button>
+                        </div>
+                        <div class="scene-field-preview-body">
+                            <pre class="scene-field-preview-text whitespace-pre-wrap break-words text-sm text-gray-800 font-sans"></pre>
+                        </div>
+                        <div class="scene-field-preview-actions mt-2 flex flex-wrap gap-2">
+                            <button type="button" class="flex-1 min-h-[36px] sm:min-h-0 bg-purple-600 text-white text-xs px-3 py-1.5 rounded-md hover:bg-purple-500" onclick="applySceneFieldPreview('${k}')">应用到此字段</button>
+                            <button type="button" class="flex-1 min-h-[36px] sm:min-h-0 bg-white border border-gray-300 text-gray-600 text-xs px-3 py-1.5 rounded-md hover:bg-gray-50" onclick="discardSceneFieldPreview('${k}')">放弃</button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+
+            pane.innerHTML = `
+                <div class="flex items-center gap-2 mb-3">
+                    <div class="relative shrink-0">
+                        <img id="scene-avatar-preview" src="${avatarSrc || ''}" class="w-14 h-14 rounded-md object-cover border border-gray-200 bg-gray-100 ${avatarSrc ? '' : 'hidden'}">
+                        <div id="scene-avatar-placeholder" class="w-14 h-14 rounded-md bg-orange-100 text-orange-700 flex items-center justify-center text-base font-semibold border border-orange-200 ${avatarSrc ? 'hidden' : ''}">?</div>
+                        <input type="file" id="scene-avatar-input" accept="image/*" class="hidden" onchange="onSceneAvatarPick(event)">
+                        <button type="button" onclick="document.getElementById('scene-avatar-input').click()" class="absolute -bottom-1 -right-1 bg-white border border-gray-200 rounded-full p-1 shadow-sm hover:bg-gray-50" title="上传缩略图（可选）">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+                        </button>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="text-xs text-gray-400">${title}</div>
+                        <input id="scene-field-name" type="text" maxlength="32" placeholder="场景名（@ 触发用）" class="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-base text-gray-800 focus:ring-1 focus:ring-orange-400 focus:outline-none">
+                    </div>
+                </div>
+                <div class="flex items-center gap-1 mb-3 text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-2 py-1.5">
+                    <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    <span>字段越具体场景一致性越稳。每段可点 AI 让 gpt-oss-120b 生成/优化。</span>
+                </div>
+                <div class="space-y-3">
+                    ${fieldsHTML}
+                    <div>
+                        <label class="text-sm font-medium text-gray-700 mb-1 block">标签（可选，逗号分隔）</label>
+                        <input id="scene-field-tags" type="text" class="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 focus:ring-1 focus:ring-orange-400 focus:outline-none">
+                    </div>
+                </div>
+                <div class="sticky bottom-0 left-0 right-0 -mx-4 mt-4 px-4 py-3 bg-white flex flex-wrap gap-2 shadow-[0_-2px_6px_rgba(0,0,0,0.04)]">
+                    <button type="button" onclick="saveCurrentScene()" class="flex-1 min-w-[120px] min-h-[40px] bg-black text-white rounded-lg text-sm hover:bg-gray-800">保存</button>
+                    ${isNew ? '' : `
+                        <button type="button" onclick="exportCurrentScene()" class="min-h-[40px] bg-gray-100 text-gray-700 rounded-lg text-sm px-3 hover:bg-gray-200">导出本卡</button>
+                        <button type="button" onclick="deleteCurrentScene()" class="min-h-[40px] bg-red-50 text-red-600 border border-red-200 rounded-lg text-sm px-3 hover:bg-red-100">删除</button>
+                    `}
+                </div>
+            `;
+
+            document.getElementById('scene-field-name').value = s ? (s.name || '') : '';
+            for (const k of Object.keys(SCENE_FIELD_LABELS)) {
+                document.getElementById('scene-field-' + k).value = s ? (s[k] || '') : '';
+            }
+            document.getElementById('scene-field-tags').value = s && Array.isArray(s.tags) ? s.tags.join(', ') : '';
+        }
+
+        function collectSceneFormFromDOM() {
+            const get = (id) => (document.getElementById(id) && document.getElementById(id).value) || '';
+            return {
+                name: get('scene-field-name'),
+                description: get('scene-field-description'),
+                lighting: get('scene-field-lighting'),
+                composition: get('scene-field-composition'),
+                mood: get('scene-field-mood'),
+                keyElements: get('scene-field-keyElements'),
+                styleNote: get('scene-field-styleNote'),
+                avatar: _scenePendingAvatar || null,
+                tags: get('scene-field-tags'),
+            };
+        }
+        async function saveCurrentScene() {
+            const form = collectSceneFormFromDOM();
+            try {
+                const s = await upsertSceneFromForm(form, _currentEditingSceneId);
+                _currentEditingSceneId = s.id;
+                _scenePendingAvatar = s.avatar || null;
+                renderSceneList();
+                renderSceneEditPane(s);
+                showToast('场景已保存');
+            } catch (e) {
+                alert('保存失败：' + (e && e.message ? e.message : e));
+            }
+        }
+        async function deleteCurrentScene() {
+            if (!_currentEditingSceneId) return;
+            const s = (_scenesCache || []).find(x => x.id === _currentEditingSceneId);
+            if (!confirm(`确定删除场景「${(s && s.name) || '未命名'}」？\n历史消息里的 @ 文本不会变，但以后 reroll 将无法再注入这个场景。`)) return;
+            try {
+                await deleteScene(_currentEditingSceneId);
+                await preloadScenes();
+                _currentEditingSceneId = null;
+                _scenePendingAvatar = null;
+                renderSceneList();
+                renderSceneEditPane(null);
+                showToast('已删除');
+            } catch (e) {
+                alert('删除失败：' + (e && e.message ? e.message : e));
+            }
+        }
+        async function clearAllScenesWithConfirm() {
+            if (!_scenesCache.length) { alert('图库已空'); return; }
+            if (!confirm(`确定清空全部 ${_scenesCache.length} 张场景卡？\n此操作不可恢复（不影响角色卡和已生成图）。`)) return;
+            try {
+                await clearAllScenes();
+                await preloadScenes();
+                _currentEditingSceneId = null;
+                _scenePendingAvatar = null;
+                renderSceneList();
+                renderSceneEditPane(null);
+                showToast('已清空');
+            } catch (e) {
+                alert('清空失败：' + (e && e.message ? e.message : e));
+            }
+        }
+        function onSceneAvatarPick(e) {
+            const file = e.target.files && e.target.files[0];
+            if (!file) return;
+            if (!/^image\//.test(file.type)) { alert('请选择图片文件'); e.target.value = ''; return; }
+            const reader = new FileReader();
+            reader.onload = async () => {
+                try {
+                    const compressed = await compressDataURLForAvatar(reader.result);
+                    _scenePendingAvatar = compressed;
+                    const img = document.getElementById('scene-avatar-preview');
+                    const ph = document.getElementById('scene-avatar-placeholder');
+                    if (img) { img.src = compressed; img.classList.remove('hidden'); }
+                    if (ph) ph.classList.add('hidden');
+                } catch {
+                    alert('缩略图处理失败');
+                }
+            };
+            reader.readAsDataURL(file);
+            e.target.value = '';
+        }
+
+        // ---- 导入导出 ----
+        async function exportCurrentScene() {
+            if (!_currentEditingSceneId) { alert('请先选择或保存一个场景再导出'); return; }
+            const s = await getScene(_currentEditingSceneId);
+            if (!s) { alert('场景已丢失'); return; }
+            _downloadJSON({ type: 'vsllm-scene', schemaVersion: SCENE_SCHEMA_VERSION, scene: s },
+                `scene-${safeFilename(s.name)}-${new Date().toISOString().slice(0,10).replace(/-/g,'')}.json`);
+        }
+        async function exportAllScenes() {
+            const all = await listScenes();
+            if (all.length === 0) { alert('还没有任何场景可以导出'); return; }
+            _downloadJSON({
+                type: 'vsllm-scene-pack',
+                schemaVersion: SCENE_SCHEMA_VERSION,
+                exportedAt: Date.now(),
+                scenes: all,
+            }, `scenes-pack-${new Date().toISOString().slice(0,10).replace(/-/g,'')}.json`);
+        }
+        async function importScenesFromFile(e) {
+            const file = e.target.files && e.target.files[0];
+            if (!file) return;
+            if (file.size > 5 * 1024 * 1024) { alert('文件太大（> 5MB），拒绝导入'); e.target.value=''; return; }
+            try {
+                const text = await file.text();
+                let obj;
+                try { obj = JSON.parse(text); }
+                catch (pe) { throw new Error('JSON 解析失败：' + pe.message); }
+
+                let list = [];
+                if (obj && obj.type === 'vsllm-scene-pack' && Array.isArray(obj.scenes)) list = obj.scenes;
+                else if (obj && obj.type === 'vsllm-scene' && obj.scene) list = [obj.scene];
+                else if (obj && (obj.name || obj.description || obj.lighting)) list = [obj];
+                else if (Array.isArray(obj) && obj.length && (obj[0].name || obj[0].description)) list = obj;
+                else throw new Error('文件格式不认识：既不是单卡也不是 scene-pack');
+
+                const result = await _importSceneList(list);
+                showToast(`导入完成：新增 ${result.added}，覆盖 ${result.overwritten}，改名 ${result.renamed}，跳过 ${result.skipped}`);
+                renderSceneList();
+            } catch (err) {
+                alert('导入失败：' + (err && err.message ? err.message : err));
+            }
+            e.target.value = '';
+        }
+        async function _importSceneList(list) {
+            const stats = { added: 0, overwritten: 0, renamed: 0, skipped: 0 };
+            let globalStrategy = null;
+            for (const raw of list) {
+                const body = normalizeSceneForm(raw);
+                const errs = validateScene(body);
+                if (errs.length) { stats.skipped++; continue; }
+                const existing = await findSceneByName(body.name, null);
+                let strategy = globalStrategy;
+                if (existing && !strategy) {
+                    const ans = prompt(
+                        `场景「${body.name}」已存在。\n输入 1 覆盖，2 改名导入（自动加后缀），3 跳过\n（输入 1!/2!/3! 表示对剩余重名沿用此策略）`,
+                        '2'
+                    );
+                    if (ans == null) { stats.skipped++; continue; }
+                    const sticky = ans.endsWith('!');
+                    const n = ans.replace(/!$/, '').trim();
+                    strategy = n === '1' ? 'overwrite' : n === '3' ? 'skip' : 'rename';
+                    if (sticky) globalStrategy = strategy;
+                }
+                if (existing && strategy === 'skip') { stats.skipped++; continue; }
+                let finalName = body.name;
+                let targetId;
+                if (existing && strategy === 'overwrite') { targetId = existing.id; stats.overwritten++; }
+                else if (existing && strategy === 'rename') {
+                    let k = 2;
+                    while (await findSceneByName(`${body.name}-${k}`, null)) k++;
+                    finalName = `${body.name}-${k}`;
+                    stats.renamed++;
+                } else stats.added++;
+                const now = Date.now();
+                const s = {
+                    id: targetId || _newId(),
+                    ...body,
+                    name: finalName,
+                    nameLower: toNameLower(finalName),
+                    createdAt: raw.createdAt || now,
+                    updatedAt: now,
+                    schemaVersion: SCENE_SCHEMA_VERSION,
+                };
+                try { await putScene(s); }
+                catch { stats.skipped++; if (strategy === 'overwrite') stats.overwritten--; else if (strategy === 'rename') stats.renamed--; else stats.added--; }
+            }
+            await preloadScenes();
+            return stats;
+        }
+
+        // ---- AI 字段增强 ----
+        const _sceneFieldAborters = new Map();
+        function abortAllSceneFieldEnhancers() {
+            for (const ac of _sceneFieldAborters.values()) { try { ac.abort(); } catch {} }
+            _sceneFieldAborters.clear();
+        }
+        const SCENE_FIELD_ENHANCE_SYSTEM = [
+            '你在帮助用户构建"场景卡"，用于 gpt-image-2 图像模型保持场景一致性。',
+            '任务：为指定字段产出或润色一段清晰的自然语言描述（不是关键词堆砌）。',
+            '',
+            '字段语义：',
+            '- description：场景描述（地点、规模、关键陈设）',
+            '- lighting：光线（光源、方向、色温、明暗对比）',
+            '- composition：构图与镜头（视角、距离、角度、镜头特性）',
+            '- mood：氛围/情绪（孤独、紧张、温馨等）',
+            '- keyElements：必须出现的关键元素（标志物、道具、氛围细节）',
+            '- styleNote：画风、年代感、整体色调、参考美学',
+            '',
+            '硬性规则：',
+            '- 输出必须是自然语言段落，不要 Markdown / 列点 / 引号 / 前后解释。',
+            '- 严格只输出本字段的最终内容本体。',
+            '- 不要与用户已填的其他字段矛盾。',
+            '- 用户中文交流回中文，英文回英文。',
+            '- 不添加用户未要求的敏感/违规内容。',
+            '- 长度约 60~220 字。',
+            '',
+            '判定：当前值为空 → 基于场景名 + 其他字段合理生成；非空 → 保留用户意图润色补细节。',
+        ].join('\n');
+        async function callSceneFieldEnhancer({ sceneName, fieldKey, currentValue, otherFields, signal }) {
+            const label = SCENE_FIELD_LABELS[fieldKey] || fieldKey;
+            const isEmpty = !currentValue || !currentValue.trim();
+            const other = [];
+            for (const k of Object.keys(SCENE_FIELD_LABELS)) {
+                if (k === fieldKey) continue;
+                const v = otherFields && otherFields[k];
+                if (v && v.trim()) other.push(`  ${k}(${SCENE_FIELD_LABELS[k]}): ${v.trim()}`);
+            }
+            const userMsg = [
+                `场景名：${sceneName || '(未命名)'}`,
+                `目标字段：${fieldKey}（${label}）`,
+                `当前值：${isEmpty ? '(空)' : currentValue.trim()}`,
+                `任务：${isEmpty ? '生成一段合理的新描述。' : '在保留用户意图前提下润色、补细节、去歧义。'}`,
+                '',
+                '其他已填字段（仅供参考，保持一致）：',
+                other.length ? other.join('\n') : '  (无)',
+                '',
+                `请只输出 ${fieldKey} 字段的最终自然语言内容本体。`,
+            ].join('\n');
+            return await postChatCompletion({
+                system: SCENE_FIELD_ENHANCE_SYSTEM,
+                user: userMsg,
+                signal,
+            });
+        }
+        function _setSceneFieldPreview(fieldKey, state, opts) {
+            const group = document.querySelector(`.scene-field-group[data-field="${fieldKey}"]`);
+            if (!group) return;
+            const preview = group.querySelector('.scene-field-preview');
+            const label = group.querySelector('.scene-field-preview-label');
+            const text = group.querySelector('.scene-field-preview-text');
+            if (!preview || !label || !text) return;
+            preview.classList.remove('hidden');
+            if (state === 'loading') {
+                label.textContent = 'AI 生成中…';
+                text.textContent = '';
+            } else if (state === 'done') {
+                label.textContent = 'AI 建议';
+                text.textContent = (opts && opts.text) || '';
+            } else if (state === 'error') {
+                label.textContent = '失败';
+                text.textContent = (opts && opts.error) || '请重试';
+            }
+        }
+        function discardSceneFieldPreview(fieldKey) {
+            const group = document.querySelector(`.scene-field-group[data-field="${fieldKey}"]`);
+            const preview = group && group.querySelector('.scene-field-preview');
+            if (preview) preview.classList.add('hidden');
+            const ac = _sceneFieldAborters.get(fieldKey);
+            if (ac) { try { ac.abort(); } catch {} _sceneFieldAborters.delete(fieldKey); }
+        }
+        function applySceneFieldPreview(fieldKey) {
+            const group = document.querySelector(`.scene-field-group[data-field="${fieldKey}"]`);
+            const text = group && group.querySelector('.scene-field-preview-text');
+            const ta = document.getElementById('scene-field-' + fieldKey);
+            if (text && ta) ta.value = text.textContent || '';
+            discardSceneFieldPreview(fieldKey);
+            showToast(`已应用到【${SCENE_FIELD_LABELS[fieldKey] || fieldKey}】`);
+        }
+        async function onSceneFieldEnhanceClick(fieldKey) {
+            if (!localStorage.getItem('vsllm_api_key')) { showToast('先去设置填 API Key'); openSettings(); return; }
+            const form = collectSceneFormFromDOM();
+            const sceneName = (form.name || '').trim() || '(未命名)';
+            const currentValue = form[fieldKey] || '';
+            const prev = _sceneFieldAborters.get(fieldKey);
+            if (prev) { try { prev.abort(); } catch {} }
+            const ac = new AbortController();
+            _sceneFieldAborters.set(fieldKey, ac);
+            _setSceneFieldPreview(fieldKey, 'loading');
+            try {
+                const out = await callSceneFieldEnhancer({
+                    sceneName, fieldKey, currentValue, otherFields: form, signal: ac.signal,
+                });
+                if (ac.signal.aborted) return;
+                _setSceneFieldPreview(fieldKey, 'done', { text: (out || '').trim() });
+            } catch (err) {
+                if (err && err.name === 'AbortError') return;
+                _setSceneFieldPreview(fieldKey, 'error', { error: (err && err.message) || String(err) });
+            } finally {
+                if (_sceneFieldAborters.get(fieldKey) === ac) _sceneFieldAborters.delete(fieldKey);
             }
         }
     </script>
