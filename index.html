@@ -837,22 +837,32 @@
 
     <!-- 主对话区 -->
     <main class="flex-1 flex flex-col h-full relative min-w-0">
-        <header class="h-14 flex items-center justify-between px-4 shrink-0 bg-white z-10">
-            <button onclick="toggleSidebar()" class="p-2 text-gray-600 hover:text-gray-900 md:hidden rounded-md hover:bg-gray-100">
+        <header class="h-14 flex items-center px-2 sm:px-4 shrink-0 bg-white z-10 gap-1.5 sm:gap-2">
+            <button onclick="toggleSidebar()" class="p-2 text-gray-600 hover:text-gray-900 md:hidden rounded-md hover:bg-gray-100 shrink-0">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
             </button>
-            <div class="font-medium text-lg flex items-center gap-2 flex-1 justify-center md:justify-start md:pl-4 min-w-0">
-                <svg class="w-5 h-5 text-indigo-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path></svg>
-                <span id="header-conv-title" class="truncate">vsllm 绘图工作台</span>
-                <span id="header-worldview-badge" class="hidden shrink-0 inline-flex items-center gap-1 ml-1 text-[11px] font-normal text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-full pl-2 pr-1 py-0.5">
-                    <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-1.605.42-3.113 1.157-4.418"/></svg>
-                    <span id="header-worldview-name" class="max-w-[100px] truncate"></span>
-                    <button type="button" onclick="clearConvWorldview()" class="text-indigo-400 hover:text-indigo-700 hover:bg-indigo-100 rounded-full w-4 h-4 flex items-center justify-center" title="解除世界观">
-                        <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
-                    </button>
-                </span>
+            <!-- 模型选择器 -->
+            <div class="relative shrink-0">
+                <button id="model-btn" onclick="toggleModelDropdown(event)" class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg hover:bg-gray-100 transition-colors group" title="切换模型">
+                    <svg id="current-model-crown" class="hidden w-3.5 h-3.5 text-amber-500 shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M5 16L3 7l4.5 3L12 4l4.5 6L21 7l-2 9H5zm0 2h14v1H5z"/></svg>
+                    <span id="current-model-display" class="text-sm font-medium text-gray-800 truncate max-w-[180px] sm:max-w-none">gpt-image-2-chat</span>
+                    <svg class="w-3.5 h-3.5 text-gray-400 group-hover:text-gray-700 shrink-0 transition-transform" id="model-btn-chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+                </button>
+                <!-- 下拉框 -->
+                <div id="model-dropdown" class="hidden absolute left-0 top-full mt-1 w-72 max-w-[calc(100vw-1rem)] bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden z-[60]">
+                    <div id="model-dropdown-list"></div>
+                </div>
             </div>
-            <button onclick="openSettings()" class="p-2 text-gray-600 hover:text-gray-900 rounded-md hover:bg-gray-100" title="设置">
+            <!-- 世界观徽章（保留，原视觉系列） -->
+            <span id="header-worldview-badge" class="hidden shrink-0 inline-flex items-center gap-1 ml-1 text-[11px] font-normal text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-full pl-2 pr-1 py-0.5">
+                <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-1.605.42-3.113 1.157-4.418"/></svg>
+                <span id="header-worldview-name" class="max-w-[100px] truncate"></span>
+                <button type="button" onclick="clearConvWorldview()" class="text-indigo-400 hover:text-indigo-700 hover:bg-indigo-100 rounded-full w-4 h-4 flex items-center justify-center" title="解除世界观">
+                    <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </span>
+            <div class="flex-1"></div>
+            <button onclick="openSettings()" class="p-2 text-gray-600 hover:text-gray-900 rounded-md hover:bg-gray-100 shrink-0" title="设置">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
             </button>
         </header>
@@ -962,7 +972,7 @@
                 </div>
 
                 <div class="text-center mt-2 text-xs text-gray-400">
-                    当前使用模型: <span class="font-mono bg-gray-100 px-1 rounded text-gray-500">gpt-image-2-chat</span>
+                    当前使用模型: <span id="footer-current-model" class="font-mono bg-gray-100 px-1 rounded text-gray-500">gpt-image-2-chat</span>
                 </div>
             </div>
         </div>
@@ -1397,7 +1407,91 @@
         // ============================================================
         const BASE_URL = "https://vsllm.com/v1/responses";
         const MODELS_URL = "https://vsllm.com/v1/models";
-        const MODEL = "gpt-image-2-chat";
+        // 可选的图像生成模型（请求格式完全相同，只是模型名不同）
+        const IMAGE_MODELS = [
+            { id: 'gpt-image-2-chat',          name: 'gpt-image-2-chat',          desc: '默认 · 便宜 · 慢',           premium: false },
+            { id: 'gpt-image-2-chat-priority', name: 'gpt-image-2-chat-priority', desc: '官转 · 更快更稳 · 价格更高', premium: true },
+        ];
+        const MODEL_LS_KEY = 'vsllm_current_model';
+        const DEFAULT_IMAGE_MODEL = 'gpt-image-2-chat';
+        function getCurrentModel() {
+            const saved = localStorage.getItem(MODEL_LS_KEY);
+            if (saved && IMAGE_MODELS.some(m => m.id === saved)) return saved;
+            return DEFAULT_IMAGE_MODEL;
+        }
+        // 兼容旧引用：MODEL 变成 getter 一样的字符串（仅在初始化时取一次默认值）；新代码请用 getCurrentModel()
+        const MODEL = DEFAULT_IMAGE_MODEL;
+
+        // ---- 模型选择器 UI ----
+        function setCurrentModel(id) {
+            if (!IMAGE_MODELS.some(m => m.id === id)) return;
+            try { localStorage.setItem(MODEL_LS_KEY, id); } catch {}
+            refreshModelDisplay();
+            closeModelDropdown();
+            const m = IMAGE_MODELS.find(x => x.id === id);
+            if (typeof showToast === 'function') showToast(`已切换到 ${m.name}`);
+        }
+        function refreshModelDisplay() {
+            const display = document.getElementById('current-model-display');
+            const crown = document.getElementById('current-model-crown');
+            const footer = document.getElementById('footer-current-model');
+            const cur = getCurrentModel();
+            const m = IMAGE_MODELS.find(x => x.id === cur);
+            if (display && m) display.textContent = m.name;
+            if (footer && m) footer.textContent = m.name;
+            if (crown) crown.classList.toggle('hidden', !(m && m.premium));
+            _renderModelDropdownList();
+        }
+        function _renderModelDropdownList() {
+            const list = document.getElementById('model-dropdown-list');
+            if (!list) return;
+            const cur = getCurrentModel();
+            list.innerHTML = IMAGE_MODELS.map(m => {
+                const isActive = m.id === cur;
+                const crownIcon = m.premium
+                    ? `<svg class="w-3.5 h-3.5 text-amber-500 shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M5 16L3 7l4.5 3L12 4l4.5 6L21 7l-2 9H5zm0 2h14v1H5z"/></svg>`
+                    : '';
+                const checkIcon = isActive
+                    ? `<svg class="w-4 h-4 text-emerald-600 shrink-0 ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>`
+                    : '';
+                return `
+                    <button type="button" onclick="setCurrentModel('${m.id}')" class="w-full text-left px-3 py-2.5 hover:bg-gray-50 transition-colors flex items-start gap-2 ${isActive ? 'bg-emerald-50/40' : ''}">
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-1.5 text-sm font-medium text-gray-900">
+                                ${crownIcon}<span class="font-mono text-[13px]">${m.name}</span>
+                            </div>
+                            <div class="text-[11px] text-gray-500 mt-0.5">${m.desc}</div>
+                        </div>
+                        ${checkIcon}
+                    </button>
+                `;
+            }).join('');
+        }
+        function toggleModelDropdown(ev) {
+            if (ev) { try { ev.stopPropagation(); } catch {} }
+            const dd = document.getElementById('model-dropdown');
+            const chev = document.getElementById('model-btn-chevron');
+            if (!dd) return;
+            const willOpen = dd.classList.contains('hidden');
+            if (willOpen) _renderModelDropdownList(); // 现 render 保证勾的是最新选中
+            dd.classList.toggle('hidden');
+            if (chev) chev.style.transform = willOpen ? 'rotate(180deg)' : '';
+        }
+        function closeModelDropdown() {
+            const dd = document.getElementById('model-dropdown');
+            const chev = document.getElementById('model-btn-chevron');
+            if (dd) dd.classList.add('hidden');
+            if (chev) chev.style.transform = '';
+        }
+        // 点击外部关闭
+        document.addEventListener('click', (e) => {
+            const dd = document.getElementById('model-dropdown');
+            if (!dd || dd.classList.contains('hidden')) return;
+            const btn = document.getElementById('model-btn');
+            if (e.target === btn || (btn && btn.contains(e.target))) return;
+            if (dd.contains(e.target)) return;
+            closeModelDropdown();
+        });
         // 提示词增强：OpenAI 兼容的 Chat Completions，与图片 Responses API 完全独立
         const CHAT_URL = "https://vsllm.com/v1/chat/completions";
         const PROMPT_ENHANCE_MODEL = "gpt-oss-120b";
@@ -1630,6 +1724,8 @@
             await preloadScenes();
             await preloadWorldviews();
             await preloadProps();
+            // 初始化模型选择器（恢复 LS 中保存的模型选择 + 刷新顶部显示）
+            try { refreshModelDisplay(); } catch {}
             initMentionEvents();
             initSeedUI();
             initParamsToggle();
@@ -4812,7 +4908,7 @@
             if (size && size !== 'auto') imageGenTool.size = size;
 
             const payload = {
-                model: MODEL,
+                model: getCurrentModel(),
                 input: [{ role: 'user', content: contentArray }],
                 tools: [imageGenTool],
                 instructions: 'You are a helpful assistant. Always call image_generation when the user asks for an image. Do not answer with only text.',
