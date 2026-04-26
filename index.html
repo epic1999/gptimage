@@ -133,6 +133,107 @@
             .mark-tool-btn svg { width: 18px; height: 18px; }
         }
 
+        /* ========== AI 标签提取面板（mark editor 内） ========== */
+        /* 折叠态的 AI 提取按钮：用 indigo 区分于灰底工具按钮 */
+        .ai-extract-btn {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 6px 12px;
+            font-size: 12px;
+            font-weight: 500;
+            color: #4338ca;
+            background: #eef2ff;
+            border: 1px solid #c7d2fe;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color .12s ease, color .12s ease, border-color .12s ease;
+        }
+        .ai-extract-btn:hover:not(:disabled) {
+            background: #e0e7ff;
+            border-color: #a5b4fc;
+        }
+        .ai-extract-btn:active:not(:disabled) { transform: scale(0.97); }
+        .ai-extract-btn:disabled {
+            opacity: 0.55;
+            cursor: not-allowed;
+        }
+        /* 单个标签 chip：左侧文字区可点 toggle，右侧复制图标独立 */
+        .ai-tag-chip {
+            display: inline-flex; align-items: stretch;
+            background: #f3f4f6;
+            color: #374151;
+            border: 1px solid transparent;
+            border-radius: 999px;
+            font-size: 12px;
+            line-height: 1;
+            overflow: hidden;
+            transition: background-color .12s ease, color .12s ease, border-color .12s ease;
+            user-select: none;
+            max-width: 100%;
+        }
+        .ai-tag-chip:hover { background: #e5e7eb; }
+        .ai-tag-chip.is-selected {
+            background: #e0e7ff;
+            color: #3730a3;
+            border-color: #a5b4fc;
+        }
+        .ai-tag-chip.is-selected:hover { background: #c7d2fe; }
+        /* 文字区：负责 toggle 选中态 */
+        .ai-tag-chip-label {
+            padding: 6px 10px 6px 12px;
+            cursor: pointer;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 240px;
+        }
+        /* 复制按钮：跟文字区分隔条用左 border，悬停加深 */
+        .ai-tag-copy-btn {
+            display: inline-flex; align-items: center; justify-content: center;
+            padding: 0 8px;
+            color: #9ca3af;
+            cursor: pointer;
+            border-left: 1px solid rgba(0,0,0,0.06);
+            transition: color .12s ease, background-color .12s ease;
+        }
+        .ai-tag-copy-btn:hover { color: #4338ca; background: rgba(255,255,255,0.6); }
+        .ai-tag-chip.is-selected .ai-tag-copy-btn { color: #6366f1; border-left-color: rgba(67,56,202,0.18); }
+        .ai-tag-chip.is-selected .ai-tag-copy-btn:hover { color: #312e81; background: rgba(255,255,255,0.5); }
+        /* prompt 实时回显条：让用户知道选中的 tag 拼到哪里 */
+        .ai-tags-prompt-preview {
+            font-size: 11px;
+            color: #6b7280;
+            background: #f9fafb;
+            border: 1px dashed #e5e7eb;
+            border-radius: 6px;
+            padding: 6px 10px;
+            line-height: 1.4;
+            max-height: 3.6em;
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            word-break: break-word;
+        }
+        .ai-tags-prompt-preview .preview-label {
+            color: #9ca3af;
+            margin-right: 4px;
+        }
+        .ai-tags-prompt-preview .preview-empty {
+            color: #9ca3af;
+            font-style: italic;
+        }
+        /* 简易 spinner：圈圈转 */
+        .ai-extract-spinner {
+            width: 12px; height: 12px;
+            border: 2px solid rgba(67, 56, 202, 0.25);
+            border-top-color: #4338ca;
+            border-radius: 50%;
+            animation: ai-extract-spin 0.7s linear infinite;
+        }
+        @keyframes ai-extract-spin {
+            to { transform: rotate(360deg); }
+        }
+
         /* 输入区底部：原本 Tailwind 的 pb-3 + 安全区高度（home indicator / 浏览器底栏）累加，
            避免移动端被 Edge / Chrome 底栏盖住 */
         #input-container { padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px)); }
@@ -1209,6 +1310,9 @@
             <div class="flex-1 overflow-auto bg-gray-100 rounded-lg flex items-center justify-center p-2 min-h-0">
                 <canvas id="mark-canvas" class="max-w-full max-h-full shadow" style="touch-action: none; cursor: crosshair;"></canvas>
             </div>
+
+            <!-- AI 标签提取面板：默认折叠态只显示按钮，点了之后展开 chips 区。整段渲染由 _renderMarkAITagsPanel 接管 -->
+            <div id="mark-ai-tags-panel" class="shrink-0 flex flex-col gap-2"></div>
 
             <div class="flex justify-end gap-2 pt-1 shrink-0">
                 <button type="button" onclick="closeMarkEditor()" class="px-4 py-2 text-sm text-gray-600 rounded-lg hover:bg-gray-100">取消</button>
@@ -6588,6 +6692,7 @@
                 canvas.height = Math.round(h);
                 _markEditorState = {
                     canvas, ctx, baseImg: img,
+                    srcDataUrl,          // 原图 dataURL，AI 标签提取时小图快路径直接复用
                     shapes: [],          // 已提交的形状列表（绘制顺序：先画的在底）
                     currentShape: null,  // 正在拖出来的形状（实时预览用）
                     mode: 'brush',       // 默认画笔
@@ -6607,6 +6712,9 @@
                 setMarkTool('brush');
                 _syncMarkFillBtn();
                 renderMarkCanvas();
+                // AI 标签面板：每次打开都重置成 idle，渲染折叠态按钮
+                _resetMarkAITagState();
+                _renderMarkAITagsPanel();
             };
             img.onerror = () => alert('图片加载失败，无法打开标记编辑器。');
             img.src = srcDataUrl;
@@ -6622,6 +6730,11 @@
                 clearTimeout(_markEditorState.longPressTimer);
             }
             _markEditorState = null;
+            // AI 标签面板：取消正在跑的 fetch，清空状态
+            if (_markAITagState && _markAITagState.abortCtrl) {
+                try { _markAITagState.abortCtrl.abort(); } catch {}
+            }
+            _markAITagState = null;
         }
 
         // 保存：把当前 shapes 渲染到不带选中态的 canvas，导出 dataURL
@@ -7204,6 +7317,353 @@
                     markRedo();
                 }
             });
+        }
+
+        // ============== AI 标签提取（mark editor 内） ==============
+        // 调 GLM-4.6V-Flash 把图里的元素拆成自然语言标签，用户点选后自动拼到主 prompt
+        // 标签发的是底图（不带画笔标注），避免红圈污染识别结果
+        const AI_TAG_EXTRACT_MODEL = 'glm-4.6v-flash';
+        const AI_TAG_EXTRACT_PROMPT = '提取图片上所有元素并且转为自然语言，用逗号分隔开每个元素';
+        const AI_TAG_MAX_COUNT = 30;          // 模型偶尔会废话一大堆，截断防止 UI 卡
+        // vsllm 小水管不耐折腾，宁可糙一点也得压瘦：512 边长 + JPEG 0.5 基本能压到 30~80KB
+        const AI_TAG_REQUEST_MAX_DIM = 512;
+        const AI_TAG_REQUEST_QUALITY = 0.5;
+        // 原图已经够小（两边都 <256）就直接拿 srcDataUrl，省去 canvas 转码
+        const AI_TAG_REQUEST_MIN_SKIP_DIM = 256;
+        let _markAITagState = null;           // 整个 modal 关掉时清空，详细字段见 _resetMarkAITagState
+
+        // 重置成"还没提取"的初始态。openMarkEditor / closeMarkEditor / 重新提取 都会调
+        function _resetMarkAITagState() {
+            _markAITagState = {
+                phase: 'idle',     // 'idle' | 'loading' | 'ready' | 'error' | 'empty'
+                tags: [],          // [{text, selected}]
+                manualPrefix: null,// 用户首次 toggle 前的 prompt 快照, null = 还没 snapshot
+                error: '',         // phase=error 时的提示文本
+                abortCtrl: null,   // 正在跑的 fetch 的 AbortController
+            };
+        }
+
+        // 把 baseImg 画到一个临时 canvas（不含任何标注），按 AI_TAG_REQUEST_MAX_DIM 缩边长，导出 dataURL
+        // 原图够小直接返回原 srcDataUrl，跳过 canvas 转码
+        function _buildTagExtractRequestImage() {
+            const st = _markEditorState;
+            if (!st || !st.baseImg) return null;
+            const img = st.baseImg;
+            let w = img.naturalWidth || img.width;
+            let h = img.naturalHeight || img.height;
+            if (!w || !h) return null;
+            // 原图两边都 <256：已经够瘦，直接发原图，能省一次重编码
+            if (w < AI_TAG_REQUEST_MIN_SKIP_DIM && h < AI_TAG_REQUEST_MIN_SKIP_DIM && st.srcDataUrl) {
+                return st.srcDataUrl;
+            }
+            const MAX = AI_TAG_REQUEST_MAX_DIM;
+            if (w > MAX || h > MAX) {
+                if (w > h) { h = h * MAX / w; w = MAX; }
+                else { w = w * MAX / h; h = MAX; }
+            }
+            const tmp = document.createElement('canvas');
+            tmp.width = Math.round(w);
+            tmp.height = Math.round(h);
+            const tctx = tmp.getContext('2d');
+            // 白底兜底，jpeg 不支持透明
+            tctx.fillStyle = '#ffffff';
+            tctx.fillRect(0, 0, tmp.width, tmp.height);
+            tctx.drawImage(img, 0, 0, tmp.width, tmp.height);
+            return tmp.toDataURL('image/jpeg', AI_TAG_REQUEST_QUALITY);
+        }
+
+        // 解析模型返回的逗号串：兼容中英逗号 / 顿号 / 换行 / 分号；去空、trim、去重，截断到上限
+        function _parseExtractedTags(raw) {
+            if (!raw || typeof raw !== 'string') return [];
+            // 干掉模型可能加的开场白前缀 "图片中有：" 之类
+            const cleaned = raw.replace(/^[^：:]{0,40}[：:]\s*/, '').trim();
+            const parts = cleaned.split(/[,，、；;\n]+/);
+            const seen = new Set();
+            const out = [];
+            for (let p of parts) {
+                p = p.replace(/^[\s。.、，,;；·•\-—\*\d]+|[\s。.、，,;；·•\-—\*]+$/g, '').trim();
+                if (!p) continue;
+                if (p.length > 60) continue; // 太长八成是模型句子，跳过
+                const k = p.toLowerCase();
+                if (seen.has(k)) continue;
+                seen.add(k);
+                out.push(p);
+                if (out.length >= AI_TAG_MAX_COUNT) break;
+            }
+            return out;
+        }
+
+        // 主入口：按钮点击调
+        async function extractMarkImageTags() {
+            if (!_markEditorState || !_markEditorState.baseImg) {
+                showToast('图还没加载好，稍等一下');
+                return;
+            }
+            if (!_markAITagState) _resetMarkAITagState();
+            const apiKey = (localStorage.getItem('vsllm_api_key') || '').trim();
+            if (!apiKey) {
+                _markAITagState.phase = 'error';
+                _markAITagState.error = '请先在右上角设置里填 API Key';
+                _renderMarkAITagsPanel();
+                return;
+            }
+            // 重新提取：清掉之前选中态 + 还原 prompt-input
+            _restorePromptToManualPrefix();
+            _markAITagState.tags = [];
+            _markAITagState.manualPrefix = null;
+            _markAITagState.error = '';
+            _markAITagState.phase = 'loading';
+            _renderMarkAITagsPanel();
+
+            const dataUrl = _buildTagExtractRequestImage();
+            if (!dataUrl) {
+                _markAITagState.phase = 'error';
+                _markAITagState.error = '图片处理失败，刷新页面再试';
+                _renderMarkAITagsPanel();
+                return;
+            }
+            const ctrl = new AbortController();
+            _markAITagState.abortCtrl = ctrl;
+            const url = buildApiUrl(getApiBaseUrl(), 'chat/completions');
+            const payload = {
+                model: AI_TAG_EXTRACT_MODEL,
+                messages: [{
+                    role: 'user',
+                    content: [
+                        { type: 'image_url', image_url: { url: dataUrl } },
+                        { type: 'text', text: AI_TAG_EXTRACT_PROMPT },
+                    ],
+                }],
+            };
+            let resp;
+            try {
+                resp = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${apiKey}`,
+                    },
+                    body: JSON.stringify(payload),
+                    signal: ctrl.signal,
+                });
+            } catch (err) {
+                if (err && err.name === 'AbortError') return; // 用户主动取消（关 modal 触发）
+                _markAITagState.phase = 'error';
+                _markAITagState.error = '网络请求失败：' + (err && err.message ? err.message : err);
+                _renderMarkAITagsPanel();
+                return;
+            }
+            if (!resp.ok) {
+                const txt = await resp.text().catch(() => '');
+                let msg = '';
+                try {
+                    const j = JSON.parse(txt);
+                    msg = j?.error?.message || j?.message || txt;
+                } catch { msg = txt; }
+                _markAITagState.phase = 'error';
+                _markAITagState.error = `HTTP ${resp.status}：${msg || '服务端没返回错误信息'}`;
+                _renderMarkAITagsPanel();
+                return;
+            }
+            let data;
+            try {
+                data = await resp.json();
+            } catch (err) {
+                _markAITagState.phase = 'error';
+                _markAITagState.error = '响应解析失败：' + (err && err.message ? err.message : err);
+                _renderMarkAITagsPanel();
+                return;
+            }
+            // chat/completions 标准结构：choices[0].message.content
+            const content = data?.choices?.[0]?.message?.content;
+            const contentText = typeof content === 'string'
+                ? content
+                : Array.isArray(content)
+                    ? content.map(c => (c && (c.text || c.content)) || '').join(' ')
+                    : '';
+            const tags = _parseExtractedTags(contentText);
+            if (tags.length === 0) {
+                _markAITagState.phase = 'empty';
+                _renderMarkAITagsPanel();
+                return;
+            }
+            _markAITagState.tags = tags.map(t => ({ text: t, selected: false }));
+            _markAITagState.phase = 'ready';
+            _markAITagState.abortCtrl = null;
+            _renderMarkAITagsPanel();
+        }
+
+        // toggle 单个 tag 的选中态，并重算 prompt-input
+        function toggleMarkAITag(index) {
+            const st = _markAITagState;
+            if (!st || !st.tags[index]) return;
+            // 第一次 toggle：快照 prompt-input 当前值，之后所有重算都基于这个
+            if (st.manualPrefix == null) {
+                const inp = document.getElementById('prompt-input');
+                st.manualPrefix = inp ? inp.value : '';
+            }
+            st.tags[index].selected = !st.tags[index].selected;
+            _applySelectedTagsToPrompt();
+            _renderMarkAITagsPanel();
+        }
+
+        // 复制单个 tag 到剪贴板。ev 用来阻止冒泡，不触发 toggle
+        function copyMarkAITag(index, ev) {
+            if (ev) { ev.stopPropagation(); ev.preventDefault(); }
+            const st = _markAITagState;
+            if (!st || !st.tags[index]) return;
+            const text = st.tags[index].text;
+            const done = () => showToast(`已复制：${text}`);
+            const fail = () => showToast('复制失败，手动选择文本吧');
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(done).catch(() => {
+                    if (_legacyCopyToClipboard(text)) done(); else fail();
+                });
+            } else {
+                if (_legacyCopyToClipboard(text)) done(); else fail();
+            }
+        }
+
+        // execCommand fallback：老浏览器或非 https 场景
+        function _legacyCopyToClipboard(text) {
+            try {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                ta.style.position = 'fixed';
+                ta.style.opacity = '0';
+                document.body.appendChild(ta);
+                ta.select();
+                const ok = document.execCommand('copy');
+                document.body.removeChild(ta);
+                return ok;
+            } catch { return false; }
+        }
+
+        // 清空所有选中 + 还原 prompt-input 到快照
+        function clearMarkAITagSelection() {
+            const st = _markAITagState;
+            if (!st) return;
+            st.tags.forEach(t => { t.selected = false; });
+            _restorePromptToManualPrefix();
+            st.manualPrefix = null;
+            _renderMarkAITagsPanel();
+        }
+
+        // 把"manualPrefix + 选中 tags"重新写回 #prompt-input
+        function _applySelectedTagsToPrompt() {
+            const st = _markAITagState;
+            if (!st) return;
+            const inp = document.getElementById('prompt-input');
+            if (!inp) return;
+            const selected = st.tags.filter(t => t.selected).map(t => t.text);
+            const prefix = (st.manualPrefix || '').trimEnd();
+            let next;
+            if (selected.length === 0) {
+                next = st.manualPrefix || '';
+            } else if (!prefix) {
+                next = selected.join('，');
+            } else {
+                // 已有内容末尾不是中英文逗号/句号，就加个中文逗号衔接，看着自然点
+                const sep = /[，,。.；;]$/.test(prefix) ? ' ' : '，';
+                next = prefix + sep + selected.join('，');
+            }
+            inp.value = next;
+            // 同步触发自适应高度
+            if (typeof autoResizeTextarea === 'function') autoResizeTextarea(inp);
+        }
+
+        // 把 prompt-input 还原到 manualPrefix（清空选中 / 重新提取时用）
+        function _restorePromptToManualPrefix() {
+            const st = _markAITagState;
+            if (!st || st.manualPrefix == null) return;
+            const inp = document.getElementById('prompt-input');
+            if (!inp) return;
+            inp.value = st.manualPrefix;
+            if (typeof autoResizeTextarea === 'function') autoResizeTextarea(inp);
+        }
+
+        // 渲染 AI 标签面板。phase 决定显示啥：折叠/loading/错误/空/chips
+        function _renderMarkAITagsPanel() {
+            const panel = document.getElementById('mark-ai-tags-panel');
+            if (!panel) return;
+            if (!_markAITagState) _resetMarkAITagState();
+            const st = _markAITagState;
+
+            // sparkle 图标：用 svg 不引外部
+            const sparkleSvg = '<svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z"/><path d="M19 14l.8 2.2L22 17l-2.2.8L19 20l-.8-2.2L16 17l2.2-.8L19 14z"/></svg>';
+            const copyIconSvg = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>';
+
+            // 折叠/loading 头部按钮区：永远显示
+            let html = '';
+            const btnDisabled = st.phase === 'loading';
+            const btnLabel = st.phase === 'loading'
+                ? '<span class="ai-extract-spinner"></span><span>分析中…</span>'
+                : (st.phase === 'ready' || st.phase === 'empty' || st.phase === 'error')
+                    ? `${sparkleSvg}<span>重新提取</span>`
+                    : `${sparkleSvg}<span>AI 提取标签</span>`;
+            html += `
+                <div class="flex items-center justify-between gap-2 flex-wrap">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <button type="button" class="ai-extract-btn" onclick="extractMarkImageTags()" ${btnDisabled ? 'disabled' : ''}>
+                            ${btnLabel}
+                        </button>
+                        ${st.phase === 'idle'
+                            ? '<span class="text-[11px] text-gray-500">分析图片元素，点选后自动拼到下方提示词</span>'
+                            : ''}
+                    </div>
+                    ${st.phase === 'ready'
+                        ? `<button type="button" onclick="clearMarkAITagSelection()" class="text-[11px] text-gray-500 hover:text-indigo-600 underline-offset-2 hover:underline">清空选中</button>`
+                        : ''}
+                </div>
+            `;
+
+            // 错误显示
+            if (st.phase === 'error') {
+                html += `
+                    <div class="text-xs text-red-600 bg-red-50 border border-red-100 rounded px-3 py-2 leading-relaxed">
+                        ${escapeHTML(st.error || '提取失败')}
+                    </div>
+                `;
+            }
+            // 空结果
+            if (st.phase === 'empty') {
+                html += `
+                    <div class="text-xs text-gray-500 bg-gray-50 border border-gray-100 rounded px-3 py-2">
+                        模型没识别出元素，换张图试试
+                    </div>
+                `;
+            }
+            // chips + prompt 预览
+            if (st.phase === 'ready' && st.tags.length > 0) {
+                const selectedCount = st.tags.filter(t => t.selected).length;
+                // prompt 预览：选中后展示当前 prompt-input 的值，没选就显示提示
+                const inp = document.getElementById('prompt-input');
+                const previewText = inp ? inp.value : '';
+                let previewBody;
+                if (selectedCount === 0) {
+                    previewBody = '<span class="preview-empty">点选下方标签，会自动拼到提示词输入框</span>';
+                } else {
+                    previewBody = `<span class="preview-label">提示词：</span>${escapeHTML(previewText) || '<span class="preview-empty">（空）</span>'}`;
+                }
+                html += `<div class="ai-tags-prompt-preview">${previewBody}</div>`;
+                // chips
+                const chipsHtml = st.tags.map((t, i) => `
+                    <div class="ai-tag-chip ${t.selected ? 'is-selected' : ''}">
+                        <span class="ai-tag-chip-label" onclick="toggleMarkAITag(${i})" title="${escapeHTML(t.text)}">${escapeHTML(t.text)}</span>
+                        <span class="ai-tag-copy-btn" onclick="copyMarkAITag(${i}, event)" title="复制这个标签">${copyIconSvg}</span>
+                    </div>
+                `).join('');
+                html += `
+                    <div class="flex flex-wrap gap-1.5 max-h-40 overflow-auto pr-1">
+                        ${chipsHtml}
+                    </div>
+                    <div class="text-[10px] text-gray-400 leading-tight">
+                        共 ${st.tags.length} 个标签，已选 ${selectedCount}。点文字选中/取消，点右侧图标复制单个。
+                    </div>
+                `;
+            }
+
+            panel.innerHTML = html;
         }
 
         // ============== 本地图库 ==============
