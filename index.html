@@ -1934,6 +1934,15 @@
             }
             // 发送前最后一道关：清洗 + 校验 base64，挡住脏数据打到后端
             const cleaned = sanitizeImageDataUrl(url, label);
+            // 调试：把实际发出去的图片数据打出来，定位 byte 0 这种解码错；同时对比清洗前后看 sanitize 是否动过数据
+            console.log(`[buildImageContent] ${label || '未知图'}`, {
+                原长: url.length,
+                新长: cleaned.length,
+                被sanitize改过: url !== cleaned,
+                前200: cleaned.slice(0, 200),
+                末50: cleaned.slice(-50),
+                是dataURL: cleaned.startsWith('data:'),
+            });
             return { type: 'input_image', image_url: cleaned };
         }
 
