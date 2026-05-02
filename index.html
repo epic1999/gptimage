@@ -1890,13 +1890,51 @@
             }, 3000);
         }
 
+        // 清洗 + 校验 data URL 里的 base64 主体；http URL 直接放过
+        // 解决拷贝粘贴时混进换行/空格、url-safe 编码、padding 缺失之类导致后端 400 的脏数据
+        function sanitizeImageDataUrl(url, label) {
+            if (typeof url !== 'string' || !url) return url;
+            // 不是 data:xxx;base64,xxx 形态就放过（普通 http/https URL）
+            const m = url.match(/^(data:[^;,]*;base64,)([\s\S]*)$/i);
+            if (!m) return url;
+            const prefix = m[1];
+            const original = m[2];
+            // 1. 干掉所有空白：换行/空格/tab，剪贴板里最容易混进来
+            let body = original.replace(/\s+/g, '');
+            // 2. url-safe 字符翻回标准 base64
+            body = body.replace(/-/g, '+').replace(/_/g, '/');
+            // 3. 补 padding 到 4 的倍数
+            const mod = body.length % 4;
+            if (mod === 2) body += '==';
+            else if (mod === 3) body += '=';
+            else if (mod === 1) {
+                // 长度 mod 4 == 1 是非法 base64，没法补齐说明数据被截断了
+                throw new Error(`图片 base64 数据损坏（${label || '未知图'}）：长度异常无法修复，请重新上传该图片`);
+            }
+            // 4. 严格校验：只允许 base64 标准字符 + 末尾 0~2 个 =
+            if (!/^[A-Za-z0-9+/]+={0,2}$/.test(body)) {
+                throw new Error(`图片 base64 数据含非法字符（${label || '未知图'}）：请重新上传该图片`);
+            }
+            // 5. 真改过才 warn，避免日志噪音
+            if (body !== original) {
+                console.warn('[sanitizeImageDataUrl] 清洗了 base64 主体', {
+                    label: label || null,
+                    原长: original.length,
+                    新长: body.length,
+                });
+            }
+            return prefix + body;
+        }
+
         // 全项目构造图片 content item 的唯一入口；别的地方一律不能手写 { type: 'image_url', ... }
-        function buildImageContent(url) {
+        function buildImageContent(url, label) {
             if (typeof url !== 'string' || !url) {
                 // 强制字符串入参；老调用里如果传了 content item 对象，这里会早早炸出来，不会打到后端
                 throw new Error(`buildImageContent 期望字符串 URL（data URL 或 http URL），收到：${typeof url}`);
             }
-            return { type: 'input_image', image_url: url };
+            // 发送前最后一道关：清洗 + 校验 base64，挡住脏数据打到后端
+            const cleaned = sanitizeImageDataUrl(url, label);
+            return { type: 'input_image', image_url: cleaned };
         }
 
         // 把任意形态的"图片条目"归一成字符串 URL；老持久化里可能混进对象形态
@@ -1916,9 +1954,12 @@
         function normalizeInputImages(arr) {
             if (!Array.isArray(arr)) return [];
             const out = [];
-            for (const x of arr) {
-                const s = normalizeImageEntry(x);
-                if (typeof s === 'string' && s) out.push(s);
+            for (let i = 0; i < arr.length; i++) {
+                const s = normalizeImageEntry(arr[i]);
+                if (typeof s === 'string' && s) {
+                    // 老持久化数据可能带脏 base64，这里也走一遍清洗，落库的就是干净数据
+                    out.push(sanitizeImageDataUrl(s, `第 ${i + 1} 张`));
+                }
             }
             return out;
         }
@@ -5264,8 +5305,8 @@
             if (inputImages.length > 0) instruction += `\n【重要指令】：请务必参考我附带的图片特征进行画面的修改、变体或延续生成。`;
 
             const contentArray = [{ type: 'input_text', text: instruction }];
-            // 只通过唯一入口 buildImageContent 构造，入参非字符串会早早抛错
-            inputImages.forEach(url => contentArray.push(buildImageContent(url)));
+            // 只通过唯一入口 buildImageContent 构造，入参非字符串会早早抛错；带上序号方便定位坏图
+            inputImages.forEach((url, idx) => contentArray.push(buildImageContent(url, `第 ${idx + 1} 张`)));
 
             const imageGenTool = {
                 type: 'image_generation',
