@@ -1890,40 +1890,111 @@
             }, 3000);
         }
 
-        // 清洗 + 校验 data URL 里的 base64 主体；http URL 直接放过
-        // 解决拷贝粘贴时混进换行/空格、url-safe 编码、padding 缺失之类导致后端 400 的脏数据
-        function sanitizeImageDataUrl(url, label) {
-            if (typeof url !== 'string' || !url) return url;
-            // 不是 data:xxx;base64,xxx 形态就放过（普通 http/https URL）
-            const m = url.match(/^(data:[^;,]*;base64,)([\s\S]*)$/i);
-            if (!m) return url;
-            const prefix = m[1];
-            const original = m[2];
-            // 1. 干掉所有空白：换行/空格/tab，剪贴板里最容易混进来
-            let body = original.replace(/\s+/g, '');
-            // 2. url-safe 字符翻回标准 base64
-            body = body.replace(/-/g, '+').replace(/_/g, '/');
-            // 3. 补 padding 到 4 的倍数
-            const mod = body.length % 4;
-            if (mod === 2) body += '==';
-            else if (mod === 3) body += '=';
+        // ============== 图片 URL / base64 归一化 ==============
+        // 目标：所有图生图输入在发给 Responses API 前统一成干净的 data URL：
+        //   data:image/jpeg;base64,/9j/...
+        // 同时兼容历史脏数据：
+        //   base64:data:image/jpeg;base64,/9j/...  ← 这类会导致 New API 报 failed to decode base64
+        //   base64:/9j/... / 纯 base64 / 带空白换行 / URL-safe base64
+        function _guessImageMimeFromBase64(body) {
+            const head = String(body || '').slice(0, 32);
+            if (head.startsWith('/9j/')) return 'image/jpeg';
+            if (head.startsWith('iVBORw0KGgo')) return 'image/png';
+            if (head.startsWith('R0lGOD')) return 'image/gif';
+            if (head.startsWith('UklGR')) return 'image/webp';
+            return 'image/jpeg';
+        }
+
+        function _cleanBase64Body(body, label) {
+            let b = String(body || '');
+            // 去掉所有空白：换行、空格、tab、不可见空白都不能进 JSON 里的 base64
+            b = b.replace(/\s+/g, '');
+            // 兼容 URL-safe base64
+            b = b.replace(/-/g, '+').replace(/_/g, '/');
+            // 有些粘贴/中转会把 + 变成 %2B，把 / 变成 %2F；这里只解常见安全片段，避免误伤完整 URL
+            b = b.replace(/%2B/gi, '+').replace(/%2F/gi, '/').replace(/%3D/gi, '=');
+            const mod = b.length % 4;
+            if (mod === 2) b += '==';
+            else if (mod === 3) b += '=';
             else if (mod === 1) {
-                // 长度 mod 4 == 1 是非法 base64，没法补齐说明数据被截断了
-                throw new Error(`图片 base64 数据损坏（${label || '未知图'}）：长度异常无法修复，请重新上传该图片`);
+                throw new Error(`图片 base64 数据损坏（${label || '未知图'}）：长度异常，通常是图片数据被截断，请重新上传该图片`);
             }
-            // 4. 严格校验：只允许 base64 标准字符 + 末尾 0~2 个 =
-            if (!/^[A-Za-z0-9+/]+={0,2}$/.test(body)) {
+            if (!b) {
+                throw new Error(`图片 base64 数据为空（${label || '未知图'}）：请重新上传该图片`);
+            }
+            if (!/^[A-Za-z0-9+/]+={0,2}$/.test(b)) {
                 throw new Error(`图片 base64 数据含非法字符（${label || '未知图'}）：请重新上传该图片`);
             }
-            // 5. 真改过才 warn，避免日志噪音
-            if (body !== original) {
-                console.warn('[sanitizeImageDataUrl] 清洗了 base64 主体', {
-                    label: label || null,
-                    原长: original.length,
-                    新长: body.length,
-                });
+            // 浏览器侧真实解码一次，提前拦截“看起来像 base64、实际解不开”的数据。
+            // atob 只在浏览器运行；离线静态检查环境没有 atob 时跳过。
+            if (typeof atob === 'function') {
+                try { atob(b); }
+                catch (e) { throw new Error(`图片 base64 解码失败（${label || '未知图'}）：请重新上传或压缩后再试`); }
             }
-            return prefix + body;
+            return b;
+        }
+
+        function _looksLikeBase64ImageBody(s) {
+            const v = String(s || '').replace(/\s+/g, '');
+            if (v.length < 32) return false;
+            // 常见图片魔数的 base64 开头：jpg/png/gif/webp
+            return /^(\/9j\/|iVBORw0KGgo|R0lGOD|UklGR)/.test(v);
+        }
+
+        // 清洗 + 校验图片 URL；http URL 直接放过，base64 一律转成标准 data URL
+        function sanitizeImageDataUrl(url, label) {
+            if (typeof url !== 'string' || !url) return url;
+            let s = String(url).trim();
+
+            // 修复历史/中转脏格式：base64:data:image/jpeg;base64,xxxx
+            // 多个 base64: 也一并去掉，避免后端看到 base64:data: 后按纯 base64 解码失败。
+            while (/^base64:/i.test(s)) s = s.replace(/^base64:/i, '').trim();
+
+            // 普通 http/https/blob URL 不是本地 base64，不做处理
+            if (/^(https?:|blob:)/i.test(s)) return s;
+
+            // 兼容 data URL，允许 MIME 参数：data:image/jpeg;charset=utf-8;base64,xxxx
+            if (/^data:/i.test(s)) {
+                const comma = s.indexOf(',');
+                if (comma < 0) throw new Error(`图片 data URL 格式错误（${label || '未知图'}）：缺少逗号分隔符`);
+                let meta = s.slice(5, comma);       // image/jpeg;base64 或 image/jpeg;charset=utf-8;base64
+                const originalBody = s.slice(comma + 1);
+                if (!/;base64(?:;|$)/i.test(meta)) {
+                    throw new Error(`图片 data URL 不是 base64 编码（${label || '未知图'}）：请重新上传图片`);
+                }
+                let mime = (meta.split(';')[0] || '').trim().toLowerCase();
+                const body = _cleanBase64Body(originalBody, label);
+                if (!/^image\//i.test(mime)) mime = _guessImageMimeFromBase64(body);
+                const cleaned = `data:${mime};base64,${body}`;
+                if (cleaned !== url) {
+                    console.warn('[sanitizeImageDataUrl] 已归一化图片 data URL', {
+                        label: label || null,
+                        原前缀: String(url).slice(0, 80),
+                        新前缀: cleaned.slice(0, 80),
+                        原长: String(url).length,
+                        新长: cleaned.length,
+                    });
+                }
+                return cleaned;
+            }
+
+            // 兼容 base64,xxxx / 纯 base64；统一补成标准 data URL
+            s = s.replace(/^base64,/i, '').trim();
+            if (_looksLikeBase64ImageBody(s)) {
+                const body = _cleanBase64Body(s, label);
+                return `data:${_guessImageMimeFromBase64(body)};base64,${body}`;
+            }
+
+            return s;
+        }
+
+        function _extractBase64BodyFromImageUrl(url, label) {
+            const cleaned = sanitizeImageDataUrl(url, label);
+            if (typeof cleaned !== 'string') return cleaned;
+            const m = cleaned.match(/^data:[^,]*;base64,([\s\S]*)$/i);
+            if (m) return _cleanBase64Body(m[1], label);
+            if (_looksLikeBase64ImageBody(cleaned)) return _cleanBase64Body(cleaned, label);
+            return cleaned;
         }
 
         // 全项目构造图片 content item 的唯一入口；别的地方一律不能手写 { type: 'image_url', ... }
@@ -1934,19 +2005,19 @@
             }
             // 发送前最后一道关：清洗 + 校验 base64，挡住脏数据打到后端
             const cleaned = sanitizeImageDataUrl(url, label);
-            // 调试：把实际发出去的图片数据打出来，定位 byte 0 这种解码错；同时对比清洗前后看 sanitize 是否动过数据
+            // 调试：把实际发出去的图片数据打出来，定位 base64/data URL 格式问题
             console.log(`[buildImageContent] ${label || '未知图'}`, {
                 原长: url.length,
                 新长: cleaned.length,
                 被sanitize改过: url !== cleaned,
-                前200: cleaned.slice(0, 200),
-                末50: cleaned.slice(-50),
+                前120: cleaned.slice(0, 120),
+                末30: cleaned.slice(-30),
                 是dataURL: cleaned.startsWith('data:'),
             });
             return { type: 'input_image', image_url: cleaned };
         }
 
-        // 把任意形态的"图片条目"归一成字符串 URL；老持久化里可能混进对象形态
+        // 把任意形态的“图片条目”归一成字符串 URL；老持久化里可能混进对象形态
         // 兼容：字符串 / { image_url: { url } } / { image_url: 'str' } / { url } / { b64 } / { data }
         function normalizeImageEntry(x) {
             if (typeof x === 'string') return x;
@@ -1966,11 +2037,46 @@
             for (let i = 0; i < arr.length; i++) {
                 const s = normalizeImageEntry(arr[i]);
                 if (typeof s === 'string' && s) {
-                    // 老持久化数据可能带脏 base64，这里也走一遍清洗，落库的就是干净数据
+                    // 老持久化数据可能带脏 base64，这里也走一遍清洗，落库/发送都是干净数据
                     out.push(sanitizeImageDataUrl(s, `第 ${i + 1} 张`));
                 }
             }
             return out;
+        }
+
+        function _payloadContainsDataUrlImages(payload) {
+            const inputs = (payload && Array.isArray(payload.input)) ? payload.input : [];
+            for (const item of inputs) {
+                const content = (item && Array.isArray(item.content)) ? item.content : [];
+                for (const c of content) {
+                    if (c && c.type === 'input_image' && typeof c.image_url === 'string' && /^data:/i.test(c.image_url)) return true;
+                }
+            }
+            return false;
+        }
+
+        // 有些 New API / 兼容层的计费 tokenizer 会把 data URL 误当成“base64:<内容>”再解码，
+        // 最终报：error counting image token / failed to decode base64 data。
+        // 遇到这种服务端 500 时，自动重试一次，把 data URL 改成纯 base64 主体，兼容这类后端。
+        function _shouldRetryImagesAsBareBase64(status, serverMsg, payload) {
+            if (!_payloadContainsDataUrlImages(payload)) return false;
+            if (!(status >= 500 && status < 600)) return false;
+            return /count(?:ing)? image token|count_token_failed|failed to decode base64|illegal base64|base64 data/i.test(String(serverMsg || ''));
+        }
+
+        function _clonePayloadWithBareBase64Images(payload) {
+            const cloned = JSON.parse(JSON.stringify(payload));
+            const inputs = Array.isArray(cloned.input) ? cloned.input : [];
+            for (let i = 0; i < inputs.length; i++) {
+                const content = Array.isArray(inputs[i]?.content) ? inputs[i].content : [];
+                for (let j = 0; j < content.length; j++) {
+                    const c = content[j];
+                    if (c && c.type === 'input_image' && typeof c.image_url === 'string') {
+                        c.image_url = _extractBase64BodyFromImageUrl(c.image_url, `第 ${j + 1} 张`);
+                    }
+                }
+            }
+            return cloned;
         }
 
         // fetch 前的最后兜底：payload 里如果还有 Chat Completions 形态的 image_url 就直接拦住
